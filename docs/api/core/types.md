@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 04-v2
-verified_at: unverified
+verified_at: 5be37bb
 ---
 
 # `mindsos_core.schema` — `NodeType` / `EdgeType` / `HyperEdgeType` / `PropertyType`

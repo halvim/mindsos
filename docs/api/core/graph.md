@@ -1,14 +1,14 @@
 ---
 last_confirmed_phase: 03
-verified_at: unverified
+verified_at: 5be37bb
 ---
 
 # `mindsos_core.Graph`
 
-Phase 03 ships the slim `Graph` primitive — node / edge / hyperedge
-collections with identity guards and Cypher rel-type validation. Schema
-enforcement, the graph-level property bag, persistence, soft-delete, and
-reconstruction land in subsequent phases per the slim-port deferral list
+The `Graph` primitive — node / edge / hyperedge collections with identity
+guards and Cypher rel-type validation. It shipped as a slim Phase 03 port;
+schema enforcement, the graph-level property bag, soft-delete and the
+property updaters have since landed on it and are documented below
 (see `docs/concepts/graphs-and-metagraphs.md`).
 
 ## Constructor
@@ -20,6 +20,8 @@ Graph(
     role: Optional[str] = None,
     graph_id: Optional[str] = None,
     identity: Optional[IdentityRegistry] = None,
+    schema: Optional[Schema] = None,
+    properties: Optional[Dict[str, Any]] = None,
 )
 ```
 
@@ -28,7 +30,9 @@ Graph(
 | `name` | `str` | Human-readable graph name. |
 | `role` | `Optional[str]` | Optional semantic role (e.g. `"ontology"`, `"lexicon"`). Knowledge Layer (Phase 13+) consumes this. |
 | `graph_id` | `Optional[str]` | Optional explicit id (used during Phase 08 reconstruction; tester-facing graphs auto-mint). |
-| `identity` | `Optional[IdentityRegistry]` | Shared registry (used in Phase 05+ when contained in a `Metagraph`). Defaults to a fresh per-graph registry. |
+| `identity` | `Optional[IdentityRegistry]` | Shared registry (used when contained in a `Metagraph`). Defaults to a fresh per-graph registry. |
+| `schema` | `Optional[Schema]` | Attached schema; when present, node / edge / hyperedge properties are validated on add and update. |
+| `properties` | `Optional[Dict[str, Any]]` | Graph-level property bag (ADR-0130). |
 
 When `graph_id` is None, the auto-minted id is registered against the
 identity registry. When supplied (reconstruction path), the caller is
@@ -55,9 +59,10 @@ Create and register a new directed edge.
 before construction; invalid identifiers raise `CypherError`. Source /
 target must already be in the graph; otherwise `IdentityError`.
 
-### `add_hyperedge(nodes, *, label=None, properties=None, edge_id=None) -> HyperEdge`
+### `add_hyperedge(nodes, type_name, *, label=None, properties=None, edge_id=None) -> HyperEdge`
 
 Create and register a new n-ary hyperedge over `nodes` (any iterable).
+`type_name` is required and is validated like an edge's.
 Empty member set raises `SchemaError` (via `HyperEdge.__post_init__`).
 Members must already be in the graph; otherwise `IdentityError`.
 
@@ -83,15 +88,23 @@ Remove a single edge or hyperedge by id. Unknown ids raise
 | `nodes` | `Dict[str, Node]` | Keyed by `node_id`. |
 | `edges` | `Dict[str, Edge]` | Keyed by `edge_id`. |
 | `hyperedges` | `Dict[str, HyperEdge]` | Keyed by `edge_id`. |
+| `schema` | `Optional[Schema]` | Attached schema, or `None`. |
+| `properties` | `Dict[str, Any]` | Graph-level property bag. |
 
-## Slim-port deferrals
+## Beyond the Phase 03 slim port
 
-Phase 03 strips, per the PHASE_MAP Phase 03 row:
+Every surface the Phase 03 row deferred has shipped on `Graph` except the
+`_restore_*` helpers, which were never built (reconstruction builds graphs
+through the public `add_*` methods instead):
 
-| Surface | Lands in |
-|---|---|
-| `schema` parameter + `validate_*_properties` | Phase 04 |
-| Graph-level `properties` bag (ADR-0130) | Phase 05 / 10 |
-| `update_node_properties` / `update_edge_properties` | Phase 04 |
-| `iter_edges(include_deprecated=...)` / `deprecate_*` / `dispute_*` | Phase 10 |
-| `_restore_node` / `_restore_edge` / `_restore_hyperedge` | Phase 08 |
+* `schema` and `properties` constructor parameters, and property validation
+  on add / update.
+* `update_node_properties` / `update_edge_properties` /
+  `update_hyperedge_properties`, each with `replace=False`, and
+  `update_hyperedge_type`.
+* Soft-delete (ADR-0133): `iter_edges` / `iter_hyperedges` /
+  `get_edges_for_node`, all taking `include_deprecated=False`, plus
+  `deprecate_edge` / `undeprecate_edge` / `dispute_edge` /
+  `undispute_edge` and the four `*_hyperedge` counterparts. See
+  [soft-delete.md](soft-delete.md).
+* `register_remove_observer(callback)` — fires on node / edge removal.
