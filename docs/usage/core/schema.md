@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 04-v2
-verified_at: unverified
+verified_at: 2d94d0f
 ---
 
 # Schemas
@@ -373,8 +373,10 @@ mindsos graph set-prop --name g --node-id n-a --prop ref:anchor=uuid-2 --replace
 deliberate asymmetry — refs are linkage metadata with semantic
 significance (cross-graph references); making them harder to drop
 than user properties is a feature, not a bug. If you need to drop a
-ref in Phase 04, hand-edit the JSON state file. Future Phase 09 ships
-proper XRef migration including drop semantics.
+ref, hand-edit the JSON state file. Phase 09 shipped XRefs proper
+(`Metagraph.add_xref` / `iter_xrefs` / `remove_xref`, and
+`mindsos persistence xref-list`), but there is still no CLI path that
+drops a `ref:*` key from a property bag.
 
 ## Exit codes
 
@@ -397,11 +399,12 @@ Same conventions as Phase 03 — see [Building graphs](building-graphs.md).
 * **ADR-0127** — Optimistic concurrency on `_version` (referenced;
   Phase 04 deliberately does NOT bump `_version` on `update_*` —
   Phase 07 ships the OCC machinery).
-* **ADR-0130** — Graph-level `properties` bag (deferred to Phase 05/10;
-  `validate_namespaced_properties` not ported in Phase 04).
-* **ADR-0133** — Soft-delete via `deprecated_at` / `disputed_at`
-  (deferred to Phase 10; Phase 04 reserves the keys via
-  `RESERVED_PROPERTY_KEYS`).
+* **ADR-0130** — Graph-level `properties` bag. Deferred at Phase 04;
+  it has since shipped on the `Graph` constructor.
+* **ADR-0133** — Soft-delete via `deprecated_at` / `disputed_at`.
+  Deferred at Phase 04, which reserved the keys via
+  `RESERVED_PROPERTY_KEYS`; the setters and the read filter shipped at
+  Phase 10 (see [soft-delete](../../api/core/soft-delete.md)).
 
 ---
 

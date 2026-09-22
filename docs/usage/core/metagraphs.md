@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 05a
-verified_at: unverified
+verified_at: 2d94d0f
 ---
 
 # Working with metagraphs

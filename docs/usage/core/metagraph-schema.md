@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 05b
-verified_at: unverified
+verified_at: 2d94d0f
 ---
 
 # `mindsos metagraph-schema`
@@ -8,9 +8,10 @@ verified_at: unverified
 Phase 05b's metagraph-level schema container. Parallel to
 `mindsos schema` (which carries graph-level `NodeType` /
 `EdgeType` / `HyperEdgeType` vocabularies); `mindsos metagraph-schema`
-carries the metagraph-level `IntergraphEdgeType` vocabulary (and in
-Phase 05c, `MetaEdgeType` / `MetaHyperEdgeType` /
-`IntergraphHyperEdgeType` will join it).
+carries the metagraph-level `IntergraphEdgeType` vocabulary.
+`IntergraphHyperEdgeType` (Phase 05c) and `MetaEdgeType` /
+`MetaHyperEdgeType` (Phase 05d) have since joined it — see
+`mindsos_core.schema`.
 
 ## Subcommands
 
