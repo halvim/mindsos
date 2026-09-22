@@ -528,7 +528,9 @@ amendment 5**: a prompt is a `PromptEdition` in the `prompts` role. *Identified*
 `document_reading` and `origin_method` `read_by_model`, widened by I-11. *Shown*: the
 `PolicyEdition` the conclusion's `prompt_iri` + `prompt_version` name. *Re-run without
 the model*: the conclusion's `request_key`, the `RecordedSet` payload that lists it,
-and `ImportedSet.replay_config` off the file the pointer names.
+and `ImportedSet.replay_config` off the file the pointer names. ⚠ **SUPERSEDED by
+amendment 7** (plan R19): re-run means re-derive with a producer that does not consult
+the model; replay is not excision.
 
 ## Amendment 5 — the prompt store is its own role; amendment 4 clause 1 is WITHDRAWN (2026-09-16)
 
@@ -665,8 +667,10 @@ names and compare it with `sha256`. A prompt edition is only retrievable, becaus
 its `append_only` is declared and not enforced
 (`core-llm-prompt-edition-append-only-unenforced`).
 
-**For I-12 — measured, and forced by the shape.** Getting from a conclusion to its
-set is a DECODE SCAN. Property bags are primitives-only, so the sorted keys cannot
+**For I-12 — measured, and forced by the shape.** ⚠ **SUPERSEDED by amendment 7:**
+this paragraph prescribed I-12's lookup without a ruling, and plan R19 makes it
+unnecessary — I-12 re-derives and reads no recorded set. The measurement stands:
+getting from a conclusion to its set is a DECODE SCAN. Property bags are primitives-only, so the sorted keys cannot
 be lifted out of the payload, and ADR-0182 rule 5 makes a JSON-encoded value
 opaque to Cypher. I-12 scans the role's nodes and binary-searches each decoded key
 list; the role is Local and per-user, which bounds it.
@@ -674,3 +678,42 @@ list; the role is Local and per-user, which bounds it.
 **Filed, not built:** `core-llm-recorded-set-has-no-file-writer` — nothing in the
 tree writes a recorded-set file (`CapturingLLM` fills a store in memory; `export_set`
 has no caller outside tests), so the file a pointer names is operator-produced today.
+
+## Amendment 7 — excision is re-derivation, and an answer names what was asked by content (2026-09-21)
+
+**Amendment status:** Proposed — I-17 and I-12 of `docs/plans/MINDSOS_LLM_PLAN.md`
+flip it to Accepted as each ships. The decision above stands. This transcribes plan
+rulings **R19–R28** (R19, R20, R21 and the I-17 split OWNER 2026-09-21; R22–R28 ruled
+against the plan's §1 end state, each citing its authority there).
+
+**WHAT CHANGES.**
+
+1. **Re-run means RE-DERIVE** (R19). The conclusion's value DataState is produced
+   again from the same source text by a producer declaring `consults_llm=False`
+   (R25), and compared with the stored value (R28: L4 locates and dispatches, L3
+   compares). Replaying a recorded answer is reproducibility, not excision.
+   Amendment 4's *"Against the end state — re-run"* and amendment 6's *"For I-12"*
+   paragraph are superseded in place.
+2. **Shown is VERIFIABLE for all of what was asked** (R20), superseding amendment
+   6's *"a prompt edition is only retrievable"*. ⚠ **Measured:** the words sent come
+   from a `resolve_prompt` the deployment injects into the adapter, and nothing ties
+   it to the `prompts` role; the extraction schema is recorded nowhere; `LiveLLM` and
+   the adapter each hold their own model and temperature. So the fix is not
+   `append_only` enforcement — it is making the answer name its question by content.
+3. **The transport receives everything the model receives** (R21) — prompt words,
+   schema, tool name and description, model, temperature, `max_tokens` — and adds
+   only wire syntax and the credential. *"The transport sends exactly what it was
+   handed"* is added to `UNVERIFIABLE_PROPERTIES` by name. ⚠ This changes the
+   transport signature for every consumer and the checks behind contract rows 7, 9
+   and 10.
+4. **`request_key` v2** (R22) hashes the prompt digest, the schema digest, the
+   framing, the model settings and the source text; `KEY_SCHEMA_VERSION` bumps and a
+   v1 set misses loudly. The origin record carries the schema text and both digests
+   (R23), and *shown* is verified by recomputing the key (R24).
+5. **Domain** (R27): a conclusion in a persisted Episode's grounding graph — the only
+   place its source text lives. Guarded by
+   `tests/llm_seam/test_a_reading_reaches_its_source_text.py`.
+
+**What does not change.** `mindsos_llm` still holds no L2 record (R2); a digest is
+never stored beside the text it describes; the recorded-set role (am-6) stands and
+keeps serving replay.

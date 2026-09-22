@@ -45,7 +45,7 @@ is left to build"*. The 2026-09-05 ruling that made it the completion criterion 
 
 ---
 
-## 2. THE DESIGN RULINGS — OWNER, 2026-09-13 and 2026-09-18; DELEGATED, 2026-09-20
+## 2. THE DESIGN RULINGS — OWNER, 2026-09-13, 2026-09-18 and 2026-09-21; DELEGATED, 2026-09-20
 
 **R1 — L3 writes the L2 record, not L0.** *"it should be L3 as this is part of the
 reading text intelligence, not L0 server code."* Settles
@@ -105,7 +105,8 @@ verifiable against the file it names: a re-capture of the same bytes refuses as 
 duplicate, and an appended set gets its own pointer. ⚠ **So *shown* means VERIFIABLE for
 a recorded set and only RETRIEVABLE for a prompt edition** (whose `append_only` is
 declared-not-enforced, `core-llm-prompt-edition-append-only-unenforced`). The asymmetry
-is recorded, not smoothed over. **OWNER 2026-09-18.**
+is recorded, not smoothed over. **OWNER 2026-09-18.** ⚠ **Its prompt half is SUPERSEDED
+by R20 (OWNER 2026-09-21):** *shown* is verifiable for a prompt too, by content.
 
 **R9 — nothing unverifiable is stored.** `vendor_id` is **dropped** from the pointer:
 nothing stamps it on a payload and nothing can check it, so storing it would be a claim
@@ -179,6 +180,75 @@ shape), and `file_uri` is the resolved absolute path with no scheme — taken fr
 `describe_set`'s `path`, never from the caller, so a pointer cannot name one file
 and hash another.
 
+---
+
+**R19–R28 are I-12's design rulings, 2026-09-21.** R19, R20 and the split into I-17
++ I-12 are **OWNER** rulings; R21's full reach is **OWNER** (P2). R22–R28 were ruled by
+the I-12 chat against §1 and each cites its authority. Recorded as ADR-0210 amendment 7.
+
+**R19 — "re-run without the borrowed model" means RE-DERIVE, not replay.** The
+conclusion's value DataState is produced again, from the same source text, by a
+producer that does not consult the model; the result is compared with the stored
+conclusion. Replaying the recorded answer reproduces the MODEL's output without a
+vendor — reproducibility, not removability — so it is not excision. **OWNER
+2026-09-21** (Q1). ⚠ Consequence: the re-run does not read a recorded set, so **I-12
+does not depend on I-10**; I-10 stays DONE and serves replay (contract rows 5, 6).
+
+**R20 — "shown" means VERIFIABLE for everything that was asked**, prompt words and
+extraction schema included. **Supersedes R8's asymmetry for prompts.** ⚠ Measured
+2026-09-21: the words sent come from a `resolve_prompt` the DEPLOYMENT injects into the
+adapter (`adapters/anthropic.py`, *"the only source of prompt words"*), and nothing in
+core ties it to the `prompts` role — so enforcing `append_only` would NOT have made a
+shown prompt the one that ran. The extraction schema is in no record at all: not on the
+origin record, not on the declaration (it lives in the reader's closure), not in
+`request_key`. **OWNER 2026-09-21** (Q2, option ii).
+
+**R21 — the client hands the transport EVERYTHING the model receives**: prompt words,
+extraction schema, tool name and description, model, temperature, `max_tokens`. The
+transport adds only wire syntax and the credential. ⚠ Measured 2026-09-21: `LiveLLM` and
+the adapter each take their own `model_id` and `temperature`, and nothing checks they
+agree — so the stamped values are a configuration claim, not a fact about the call.
+Every stamp becomes a fact about what the client sent (R9's rule). *"The transport sends
+exactly what it was handed"* joins `UNVERIFIABLE_PROPERTIES` by name. **OWNER
+2026-09-21** (P2).
+
+**R22 — `request_key` v2 hashes what was asked BY CONTENT**: the prompt words' digest,
+the schema's digest, the framing (tool name, description, `max_tokens`), model,
+version, temperature and the source text. `KEY_SCHEMA_VERSION` bumps, so a v1 set misses
+loudly (the key's own rule). Authority: R20, R21, and the key's docstring (*"everything
+that materially determines a reading"*), which v1 does not meet.
+
+**R23 — the origin record carries the schema TEXT and both digests.** A prompt edition
+is addressed by `prompt_iri` + `prompt_version`, which do not identify a schema, so the
+schema is shown from the record and verified against the answer's stamp. The prompt
+words stay in the `prompts` role; no digest is stored beside the text it describes
+(am-4's own argument). Authority: R20.
+
+**R24 — *shown* is verified by RECOMPUTING `request_key`** from the prompt edition's
+text, the record's schema, the answer's stamped model settings and the source text found
+in the grounding graph. One match verifies all of what was asked; a mismatch names that
+the shown material is not what ran. Authority: R20, R8's pattern (identity is content).
+
+**R25 — a substitute producer** outputs the same value DataState from the same source
+DataState and declares `consults_llm=False` (ADR-0180 §am-3). None registered ⟹ the
+report says **not yet excisable** — the honest state of every real conclusion until
+MindsOS reads text. Authority: R19.
+
+**R26 — *identified* is `origin_method == read_by_model`, in EVERY mode** (a replayed
+answer is still the model's), refusals the model produced included;
+`environment_fault` refusals excluded (no reading happened). Authority: ADR-0210 am-4
+("Identified: already").
+
+**R27 — the domain of "every conclusion" is a conclusion in a PERSISTED Episode's
+grounding graph** — the only place its source text lives. The origin record holds the
+source's type, a quote and a one-way key; a recorded payload holds the answer only.
+Proven by `tests/llm_seam/test_a_reading_reaches_its_source_text.py`. Authority: RULES
+§12.3 (a quantified claim states its domain).
+
+**R28 — L4 locates and dispatches; L3 compares.** Reading an Episode and choosing a
+producer is control flow (L4, R4); judging agreement between two values is a
+capability (L3, R1). Authority: R1, R4.
+
 ## 3. THE ITEM LIST
 
 | id | item | filed as | state |
@@ -195,21 +265,23 @@ and hash another.
 | I-9 | prompt bodies have a home: a conclusion stamped `prompt_iri` + `prompt_version` can show the text it names | core-llm-prompt-text-has-no-home | DONE(a1687f2) |
 | I-10 | a recorded set has a home in the graph: pointer + provenance in L2 Local, payloads stay a FILE | core-llm-recorded-set-l2-pointer-owner | DONE(780ee1b) |
 | I-11 | `mode` and `credential_level` reach the origin record. Required under §1, no longer deferred; prerequisite discharged at `fe0e19a`. ⚠ **NOT blocked by I-8** — measured: `origin_v0.py` imports only `..identifiers` and `..printable`, so it has no L2 dependency, and the change is two names in `PRODUCER_DECLARED` plus two lines in `comprehension_v0._record` reading fields the answer already carries beside the seven at lines 353-359 | core-llm-l3-may-declare-answer-mode-and-level | DONE(44889a9) |
-| I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Not yet specified, and must not be guessed at before I-9/I-10/I-11 exist** | core-llm-excision-capability | TODO |
+| I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Specified 2026-09-21 by R19–R28**; blocked by I-17 | core-llm-excision-capability | TODO |
 | I-13 | a transport's other keys survive into the answer | core-llm-transport-extra-keys-survive-into-the-answer | OUT(trigger: a consumer iterates an answer's keys, or a third-party transport's output is stored) |
 | I-14 | level 3 / hosted adapter, the old "slice 3" | core-llm-level-3-awaits-a-hosted-adapter | OUT(trigger: a consumer wants Bedrock, Vertex or Azure) |
 | I-15 | a capacity **declares** that it writes (R7): `writes=True` on the declaration, both invoke sites gate the `writeable` injection on it instead of on `outputs == ()`, and an AST guard reconciles the declaration against the body — the `context.llm` census shape. **Blocks I-10**, whose ruled declared output is unreachable without it | core-capacity-write-is-declared-not-inferred | DONE(8f1f7d4) |
+| I-17 | an answer names what was asked BY CONTENT (R20–R23): the client resolves and hands the transport everything the model receives, stamps the prompt and schema digests, `request_key` v2, and both digests plus the schema text reach the origin record. **Blocks I-12**, whose *shown* is unverifiable without it | core-llm-answer-names-what-was-asked | TODO |
 | I-16 | I-9's writer gets its installer. Measured 2026-09-17: nothing in the tree calls `build_write_prompt_edition`, and `install_learn_parameter_capacities` is the precedent it skipped — so a `DONE` item is a declaration L4 cannot route to | core-llm-prompt-edition-has-no-installer | DONE(6e6514e) |
 
-**DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16.**
+**DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17.**
 
-**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-12.**
+**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 → I-12.**
 I-9 and I-10 are blocked by I-8, the L2 record shape, and may ship in either order once
 it is ruled. ⚠ **I-9's dependency is the ROLE decision only** — measured: no prompt text crosses the
 transport seam, so the text is in no ANSWER. ⚠ **It does NOT follow that no run writes it**
 (ADR-0210 am-5 withdraws that): per R2 an L3 write capacity takes the text as an INPUT
 record, as `learn_parameter` takes a value it did not compute. ⚠ **I-11 is NOT blocked by anything and can start today** — see its row.
-I-12 needs all three.
+I-12 needs all three. ⚠ **CORRECTED 2026-09-21 by R19:** I-12 needs I-9 and I-11
+and **I-17**; it does NOT read a recorded set, so I-10 is not its prerequisite.
 
 ---
 
@@ -360,3 +432,19 @@ amendment.)*
   field exposed it), and a tag box read a FAILED diff as "0 files differ" — a
   failed check must never read as a passing one. **I-12 is next and last**: every
   prerequisite it names now exists.
+
+- **2026-09-21** — **I-12 SPECIFIED: rulings R19–R28 and a new item, I-17**, approved
+  by the owner (*"agreed with q1 and q2"*, *"agreed with P1 and P2"*). The premise was
+  measured first, as the handoff required. **Three measurements changed the design:**
+  (a) a stored conclusion carries `request_key` but not its source text — the text is
+  reachable only through the persisted grounding graph (R27, now guarded); (b) the
+  prompt words sent come from a deployment-injected `resolve_prompt` that nothing ties
+  to the `prompts` role, so the handoff's question *"enforce append_only?"* was the
+  wrong question — the shown prompt was not even the same SOURCE as the sent one (R20);
+  (c) the extraction schema is recorded nowhere, and `LiveLLM` and the adapter each hold
+  their own model and temperature (R21). **R19 (owner): re-run means re-derive, not
+  replay** — which removes I-10 from I-12's prerequisites (§3 note corrected in place).
+  **I-17 is split out of I-12** for I-15's reason — one claim per gate: it changes the
+  seam in `mindsos_llm` (R2 forbids records there, not the seam). ⚠ ADR-0210 am-6's
+  *"I-12 scans the role's nodes"* cited no ruling and is superseded by R19: I-12 builds
+  no set lookup. Filed: `core-llm-answer-names-what-was-asked` (I-17).
