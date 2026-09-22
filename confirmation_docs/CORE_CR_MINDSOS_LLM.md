@@ -671,7 +671,13 @@ predicate, not the sentence** (this document's third stale-prose finding).
    doors, with pre-existing sets exported unchecked (an absent key is not a
    `None` value).
 6. **`request_key`'s input set is pinned by SIGNATURE** — nothing pinned it
-   before.
+   before. ⚠ **RULED 2026-09-21, NOT YET BUILT (plan R22, item I-17):** the v1
+   input set above is not *"everything that materially determines a reading"* — it
+   omits the prompt WORDS (it carries only the IRI and version), the extraction
+   schema, the forced tool's name and description, and `max_tokens`. Key **v2**
+   hashes the prompt and schema digests plus the framing, and
+   `KEY_SCHEMA_VERSION` bumps so a v1 set misses loudly. Everything this section
+   says about v1 describes what ships today.
 
 **Findings, each with a disposition (RULES §12.4):**
 

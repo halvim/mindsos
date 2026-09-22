@@ -23,6 +23,14 @@ capability, it is a promise.**
 ⚠ **This table is checked, not recalled.** A ship that changes any row updates
 it in the same commit.
 
+⚠ **Two plan items will change this table** (`docs/plans/MINDSOS_LLM_PLAN.md`,
+rulings R19–R28, ADR-0210 amendment 7, 2026-09-21). **I-17** moves prompt
+resolution and the model-facing framing to the client (R21), which reworks the
+checks behind **rows 7, 9 and 10** and adds *"the transport sends exactly what it
+was handed"* to `UNVERIFIABLE_PROPERTIES`. **I-12** adds **row 12**, the first row
+about removing the stand-in. Neither is built; every row below describes what
+ships today.
+
 ## The contract
 
 | # | A consuming project can… | Answered by | Pinned by | Status |

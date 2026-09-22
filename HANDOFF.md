@@ -261,7 +261,12 @@ versions and the pointer to a recorded set (payloads stay a file, never
 Global); ⚠ **SUPERSEDED IN PART:** prompt editions are DUAL-SCOPE, the `prompts`
 role (owner ruling 2026-09-14, ADR-0210 am-4/am-5, built `a1687f2`); only recorded
 sets are Local-only (`recorded-sets`, built `780ee1b`). **For current state read the
-plan, `docs/plans/MINDSOS_LLM_PLAN.md` — as of 2026-09-21 only I-12 is open.** **L3**'s `comprehension_v0.build_reader` is the reading capacity —
+plan, `docs/plans/MINDSOS_LLM_PLAN.md` — as of 2026-09-21 the open items are I-17
+then I-12.** ⚠ **I-12 was SPECIFIED 2026-09-21** (plan R19–R28, ADR-0210 am-7,
+squash `84b8053`): *re-run without the model* means RE-DERIVE with a producer that
+declares `consults_llm=False`, never replay; *shown* is VERIFIABLE for everything that
+was asked, by content; and **I-17** — an answer names what was asked, by content — was
+split out of it and ships first. **L3**'s `comprehension_v0.build_reader` is the reading capacity —
 **no new one was added**, because it already mints one per reading.
 `mindsos_llm` never imports `mindsos_server` (ADR-0010 §I-S1), so the module
 that makes the call cannot read the store the credential came from.

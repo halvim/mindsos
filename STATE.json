@@ -662,7 +662,7 @@
     },
     {
       "name": "core-llm-prompt-edition-append-only-unenforced",
-      "status": "OPENED 2026-09-14 by ADR-0210 amendment 4 (I-8), FILED RATHER THAN GUESSED. mindsos_knowledge/schemas/policies.py states outright that append_only is DECLARED, NOT ENFORCED - validate_mutation_discipline is uncalled system-wide - so a PolicyEdition, and therefore a prompt edition, can be overwritten today. CONSEQUENCE FOR THE MODULE'S END STATE: 'shown' currently means RETRIEVABLE, not VERIFIABLE - a reader cannot prove the prompt they are shown is the one that ran. ⚠ A DIGEST CANNOT CLOSE THIS FROM THE ANSWER SIDE, which is why nothing was built: MEASURED, no prompt text crosses the transport seam (the call is prompt_iri, prompt_version, source_text, extraction_schema, timeout_s), so no client can stamp one, and a digest stored beside the text it describes proves nothing. RE-OPEN TRIGGER: a consumer must prove a shown prompt is the one that ran.",
+      "status": "⚠ ITS RE-OPEN TRIGGER FIRED 2026-09-21, AND IS ANSWERED A DIFFERENT WAY. Plan R20 (OWNER) makes 'shown' VERIFIABLE for a prompt too, and R22/R23 do it by CONTENT: the client stamps a digest of the words it resolved, and a shown edition is verified by re-hashing its text - so I-12's consumer need is met WITHOUT enforcing append_only, and no digest is stored beside the text it describes. WHAT REMAINS OPEN, narrowed: validate_mutation_discipline is still uncalled system-wide, so an edition can still be OVERWRITTEN - a retrieval by (prompt_iri, prompt_version) can therefore return text that no longer hashes to any conclusion's stamp. After I-17 that reads as a MISMATCH rather than as a silent falsehood, which is the whole change. RE-OPEN TRIGGER, revised: enforcement of append_only on the L2 write path, wanted by a consumer that needs retrieval (not verification) to be trustworthy. *** ORIGINAL ENTRY FOLLOWS. OPENED 2026-09-14 by ADR-0210 amendment 4 (I-8), FILED RATHER THAN GUESSED. mindsos_knowledge/schemas/policies.py states outright that append_only is DECLARED, NOT ENFORCED - validate_mutation_discipline is uncalled system-wide - so a PolicyEdition, and therefore a prompt edition, can be overwritten today. CONSEQUENCE FOR THE MODULE'S END STATE: 'shown' currently means RETRIEVABLE, not VERIFIABLE - a reader cannot prove the prompt they are shown is the one that ran. ⚠ A DIGEST CANNOT CLOSE THIS FROM THE ANSWER SIDE, which is why nothing was built: MEASURED, no prompt text crosses the transport seam (the call is prompt_iri, prompt_version, source_text, extraction_schema, timeout_s), so no client can stamp one, and a digest stored beside the text it describes proves nothing. RE-OPEN TRIGGER: a consumer must prove a shown prompt is the one that ran.",
       "branch_to_open": "not until a consumer needs the proof; enforcement belongs to the L2 write path, not to mindsos_llm",
       "spec": "mindsos_knowledge/schemas/policies.py (the append_only caveat); docs/decisions/adr/0210-llm-communication-layering.md amendment 4",
       "consumer": "none today - the trigger above is the gate"
@@ -733,6 +733,15 @@
     }
   ],
   "recent": [
+    {
+      "kind": "docs",
+      "name": "Contradiction sweep after the I-12 specification - three live statements marked or corrected in place",
+      "sha": "pending (this branch's squash)",
+      "tag": "none",
+      "gate": "CI on the PR (the full suite on Linux). Markdown + STATE only; no mindsos_* module touched.",
+      "what": "A grep of every tracked .md for the statements plan R19-R28 change. (1) HANDOFF.md said 'as of 2026-09-21 only I-12 is open' - now I-17 then I-12, with one line on what was ruled. (2) confirmation_docs/CORE_CR_MINDSOS_LLM.md's 'request_key's input set is pinned by SIGNATURE' gains a dated RULED-NOT-YET-BUILT marker: v1 omits the prompt words, the schema, the tool name/description and max_tokens (R22, I-17). (3) docs/usage/runtime/llm-capability-contract.md gains a forward note that I-17 reworks rows 7/9/10 plus UNVERIFIABLE_PROPERTIES and I-12 adds row 12; every row still describes what ships today. NOTHING ELSE CONTRADICTS: no other tracked doc asserts 'shown is retrievable', names replay as the re-run, or states the closed-set/role facts this work changes. pending_designs core-llm-prompt-edition-append-only-unenforced: its re-open trigger FIRED and is answered by content-addressing rather than by enforcement; what remains open is narrowed to overwrite-vs-retrieval, with a revised trigger.",
+      "docs": "HANDOFF.md; confirmation_docs/CORE_CR_MINDSOS_LLM.md; docs/usage/runtime/llm-capability-contract.md; STATE.json (this entry + the narrowed pending_design)."
+    },
     {
       "kind": "docs+test",
       "name": "I-12 specified - plan rulings R19-R28, new item I-17, ADR-0210 am-7 (Proposed), and the premise guard: a stored reading reaches its source text",
