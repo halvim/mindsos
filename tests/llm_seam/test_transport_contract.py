@@ -169,8 +169,11 @@ def test_the_override_check_goes_RED_when_the_client_stops_stamping(monkeypatch)
 
     monkeypatch.setattr(
         contract, "_client",
-        lambda t: _NoStamp(t, model_id="probe", model_version="probe",
-                           credential_level=None, max_calls=8),
+        lambda t, **fr: _NoStamp(t, model_id="probe", model_version="probe",
+                                 credential_level=None, max_calls=8,
+                                 resolve_prompt=lambda **_: fr["prompt_text"],
+                                 tool_name=fr["tool_name"],
+                                 tool_description=fr["tool_description"]),
     )
     report = _verify(GOOD)
     check = {c.name: c for c in report.checks}[OVERRIDE]
