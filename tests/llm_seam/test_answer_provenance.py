@@ -58,6 +58,10 @@ from mindsos_llm.replay import RecordedLLM
 
 PROMPT = "prompt:probe"
 CALL = dict(prompt_iri=PROMPT, prompt_version=1, source_text="the source text")
+FRAMING = dict(prompt_text="read the document", tool_name="extract",
+               tool_description="pull the fields out")
+CLIENT_FRAMING = dict(resolve_prompt=lambda **_: "read the document",
+                      tool_name="extract", tool_description="pull the fields out")
 
 
 def _transport(**_: Any) -> Dict[str, Any]:
@@ -66,7 +70,8 @@ def _transport(**_: Any) -> Dict[str, Any]:
 
 def _live(level, **over: Any) -> LiveLLM:
     kw: Dict[str, Any] = dict(
-        model_id="a-model", model_version="1", credential_level=level
+        model_id="a-model", model_version="1", credential_level=level,
+        resolve_prompt=lambda **_: "read the document", tool_name="extract", tool_description="pull the fields out",
     )
     kw.update(over)
     return LiveLLM(_transport, **kw)
@@ -266,7 +271,8 @@ def test_verify_transport_reports_both_fields_as_stamped_above_the_transport():
     the two fields reach the payload, not that they are core's.
     """
     report = contract.verify_transport(_transport, prompt_iri=PROMPT,
-                                       prompt_version=1, source_text="s")
+                                       prompt_version=1, source_text="s",
+                                       **FRAMING)
     check = next(c for c in report.checks
                  if c.name == "identity_is_stamped_above_the_transport")
     assert check.status == contract.PASSED, check.detail
@@ -281,13 +287,15 @@ def test_verify_transport_reports_both_fields_as_stamped_above_the_transport():
             return payload
 
     original = contract._client
-    contract._client = lambda t: _Stripped(  # type: ignore[assignment]
+    contract._client = lambda t, **fr: _Stripped(  # type: ignore[assignment]
         t, model_id="probe", model_version="probe", credential_level=None,
-        max_calls=8,
+        max_calls=8, resolve_prompt=lambda **_: fr["prompt_text"],
+        tool_name=fr["tool_name"], tool_description=fr["tool_description"],
     )
     try:
         stripped = contract.verify_transport(_strips, prompt_iri=PROMPT,
-                                             prompt_version=1, source_text="s")
+                                             prompt_version=1, source_text="s",
+                                             **FRAMING)
     finally:
         contract._client = original  # type: ignore[assignment]
     failed = next(c for c in stripped.checks
@@ -395,13 +403,13 @@ def test_the_level_stamped_is_the_one_RESOLVED_not_only_an_explicit_argument(
 
     implicit = C.build_client(
         vendor_id=stub_vendor, mode=C.MODE_LIVE, resolver=resolver,
-        model_id="a-model", model_version="1",
+        model_id="a-model", model_version="1", **CLIENT_FRAMING,
     ).read(**CALL)
     assert implicit["credential_level"] == 3, "resolved from the resolver"
 
     explicit = C.build_client(
         vendor_id=stub_vendor, mode=C.MODE_LIVE, resolver=resolver,
-        credential_level=3, model_id="a-model", model_version="1",
+        credential_level=3, model_id="a-model", model_version="1", **CLIENT_FRAMING,
     ).read(**CALL)
     assert explicit["credential_level"] == 3, "and from the keyword"
     assert implicit["mode"] == explicit["mode"] == C.MODE_LIVE

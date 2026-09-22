@@ -614,6 +614,13 @@ not exist yet. This section is what someone needs in order to write it.
 
 ### 6.1 What it is
 
+⚠ **SUPERSEDED 2026-09-22 by plan R21/R29 (ADR-0210 am-7, I-17).** The signature
+and step 1 below are the 2026-08 shape and are kept as the record. A transport no
+longer resolves a prompt: the CLIENT resolves the words and hands the transport
+`prompt_text`, `source_text`, `extraction_schema`, `tool_name`,
+`tool_description`, `model_id`, `temperature`, `max_tokens` and `timeout_s` —
+everything the model receives — and never `prompt_iri` / `prompt_version`.
+
 A plain function, supplied by the deployment at boot, that speaks one provider's
 protocol. `LiveLLM` calls it and does not care how it works.
 

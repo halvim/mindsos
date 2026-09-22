@@ -45,7 +45,7 @@ is left to build"*. The 2026-09-05 ruling that made it the completion criterion 
 
 ---
 
-## 2. THE DESIGN RULINGS — OWNER, 2026-09-13, 2026-09-18 and 2026-09-21; DELEGATED, 2026-09-20
+## 2. THE DESIGN RULINGS — OWNER, 2026-09-13, 2026-09-18 and 2026-09-21; DELEGATED, 2026-09-20 and 2026-09-22
 
 **R1 — L3 writes the L2 record, not L0.** *"it should be L3 as this is part of the
 reading text intelligence, not L0 server code."* Settles
@@ -61,7 +61,10 @@ library), Local a per-user trial — because a prompt held Local-only cannot be 
 anyone but the user whose reading produced it, which defeats §1 for every shared
 conclusion. L3 cannot write Global, so the asymmetry needs no new gate.
 `mindsos_capacity` (L3) WRITES it. ⚠ `mindsos_llm` may not import either. **A chat that
-opens a branch expecting to edit `mindsos_llm` has misread this plan.**
+opens a branch expecting to edit `mindsos_llm` has misread this plan.** ⚠ **NARROWED
+2026-09-22 (I-17, owner-approved split of 2026-09-21):** the sentence is about the
+RECORDS — none is held in `mindsos_llm`. I-17 changes the SEAM there (R21, R29), which
+R2 never forbade.
 
 **R3 — the family is `comprehension`, NOT `llm`.** `FAMILY_RULES` already carries a
 `comprehension` family and `comprehension_v0` belongs to it. A family named for the
@@ -249,6 +252,62 @@ Proven by `tests/llm_seam/test_a_reading_reaches_its_source_text.py`. Authority:
 producer is control flow (L4, R4); judging agreement between two values is a
 capability (L3, R1). Authority: R1, R4.
 
+---
+
+**R29–R35 are I-17's build rulings, 2026-09-22**, ruled by the I-17 chat after
+convergence passes against §1, each citing its authority (the owner's brief for this
+chat: *"rule what you can against the §1 end state and cite the authority for every
+clause"*). Recorded as part of ADR-0210 amendment 7.
+
+**R29 — the transport call is exactly what the model receives**: `prompt_text`,
+`source_text`, `extraction_schema`, `tool_name`, `tool_description`, `model_id`,
+`temperature`, `max_tokens`, `timeout_s`. `prompt_iri` and `prompt_version` **no
+longer cross** — a transport that can see a prompt's name can resolve words of its
+own, which is the defect R20 measured. The adapter is built with wire configuration
+only. ⚠ Measured 2026-09-22 while ruling it: `build_client` never passed its
+`temperature` to the adapter, so every non-zero temperature was stamped and never
+sent. Authority: R21 (*"the transport adds only wire syntax and the credential"*).
+
+**R30 — `request_key` v2 hashes CONTENT only**: `prompt_iri` and `prompt_version`
+leave the key (the answer still stamps them). The same words under two names are
+one question. Authority: R22's list, which names the words' digest and not the name.
+
+**R31 — a replay client poses its question BY DIGEST.** A deployment replaying its
+own set hashes its CURRENT words, so a reworded prompt misses — the purpose
+`recording.py` states for the key. A third party gets the per-prompt digests and the
+framing from `ImportedSet.replay_config`, derived from the set's payloads, so replay
+needs no prompt words and none are disclosed; `replay_config` refuses a set holding
+more than one framing, as it already refuses more than one model identity.
+⚠ **This reverses the STATE build note *"RecordedLLM needs the words too"*** — a
+design choice written as a measurement: R22 hashes the digest, and the digest is
+sufficient. Authority: R22; ADR-0210 am-6 (*"portability is the export's job"*).
+
+**R32 — the tool framing is stamped on the answer and written to the origin
+record**: `tool_name`, `tool_description`, `max_tokens`. R24 recomputes the v2 key,
+which hashes the framing, and the description is WORDS the model receives, which R20
+requires shown. A digest alone would verify but not show it. Authority: R20, R24,
+and R23's own reasoning for the schema.
+
+**R33 — a refusal from an undecodable answer names what was asked.** Measured
+2026-09-22: `comprehension_v0` writes that refusal with `response=None`, so the
+record carries no model identity, no `request_key`, and — contrary to what I-11's
+row implies — no `mode` or `credential_level`. The client attaches its stamps to
+`MalformedResponse` and the reader records them. Authority: §1 (*every*
+conclusion), R26 (refusals the model produced are the model's conclusions).
+
+**R34 — `key_schema_version` is derived, never supplied.** Measured 2026-09-22:
+`_derive_manifest` writes the module constant, so after R22's bump every v1 set
+would be described as v2 — while `mindsos_knowledge/recorded_sets.py` claims the
+value is *"derived from the file's bytes"*. Each answer stamps the version its key
+was computed under; the manifest derives it; a payload with no stamp predates the
+stamp and is `"1"`; a mixture refuses. Authority: R9, R13.
+
+**R35 — `model_version` stays a configured LABEL**, not a fact about the call:
+nothing sends it to the model, so R21's *"every stamp becomes a fact about what the
+client sent"* does not reach it. Named in the capability contract; not built.
+Making it a fact needs the provider's own reply, which is I-13's territory (OUT).
+Authority: R21's list; I-13.
+
 ## 3. THE ITEM LIST
 
 | id | item | filed as | state |
@@ -287,6 +346,8 @@ and **I-17**; it does NOT read a recorded set, so I-10 is not its prerequisite.
 
 ## 4. STANDING CONSTRAINTS — do not re-derive
 
+- ⚠ **"L2 Local, never Global" below is the RECORDED SET's rule** (R2's 2026-09-14
+  correction): prompt editions are dual-scope. Marked 2026-09-22.
 - `mindsos_llm` may not import `mindsos_capacity`, `mindsos_knowledge`,
   `mindsos_server`, `mindsos_intelligence` or `mindsos_broker`.
 - L2 Local, **never Global** — reproducibility needs an explicit export/import.
@@ -448,3 +509,30 @@ amendment.)*
   seam in `mindsos_llm` (R2 forbids records there, not the seam). ⚠ ADR-0210 am-6's
   *"I-12 scans the role's nodes"* cited no ruling and is superseded by R19: I-12 builds
   no set lookup. Filed: `core-llm-answer-names-what-was-asked` (I-17).
+
+- **2026-09-22** — **I-17 BUILD RULINGS R29–R35**, ruled by the I-17 chat against §1
+  after six convergence passes (the last two reversed nothing), each citing its
+  authority. The premises were re-measured first: all four of I-17's STATE
+  measurements hold, and three new ones changed the build — `build_client` never
+  sent its `temperature` (R29), an undecodable answer's refusal names nothing that
+  was asked (R33), and `key_schema_version` is the module constant rather than a
+  derived fact (R34). **One STATE build note was REVERSED**: replay does not need
+  the prompt words, only their digest (R31). **One ORDER correction:** the brief's
+  step 1 (repoint the am-4 guard) cannot gate alone — the guard pins the call's key
+  set, so repointing it before the seam changes is a red test; it ships with the
+  seam change as that change's claim test. I-17 therefore ships in THREE gates, one
+  claim each: (1) the seam (R21, R29) with the repointed guard; (2) `request_key` v2,
+  the digests, the framing stamps and replay (R22, R30, R31, R34); (3) the
+  origin-record fields, the undecodable-answer path included (R23, R32, R33).
+  Marked in place: R2's *"a chat that opens a branch expecting to edit
+  `mindsos_llm` has misread this plan"* (it is about records, not the seam), and
+  §4's *"L2 Local, never Global"* (the recorded set's rule). ⚠ **PUT TO THE OWNER,
+  OPEN:** must core GUARANTEE that the words sent are the stored prompt edition?
+  The deployment supplies the words and core builds no client in production, so a
+  deployment resolving words elsewhere yields conclusions that are identified and
+  verifiable-as-mismatched but never shown — §1's *every* fails at the source.
+  The chat's recommendation is to accept and detect (I-12 reports "no stored
+  edition matches what ran"); the alternative is a core-owned client builder.
+  **Approval:** delegated by the owner's brief for this chat (*"rule what you can
+  against the §1 end state and cite the authority for every clause"*); the open
+  question above is NOT ruled and changes no gate-1 code.

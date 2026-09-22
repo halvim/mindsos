@@ -56,7 +56,7 @@ package refuses everywhere else. A caller must decide; it may decide
 from __future__ import annotations
 
 import json
-from typing import Any, Callable, Mapping, Optional, Union
+from typing import Any, Callable, Mapping, Optional, Tuple, Union
 
 import inspect
 
@@ -68,12 +68,30 @@ from .exceptions import (
     TransportSignatureError,
 )
 from .recording import RecordingStore, request_key
+from .seam import require_prompt_text
 
-#: ``(prompt_iri, prompt_version, source_text, extraction_schema,
-#: timeout_s)`` -> the model's answer, EITHER already decoded into a
-#: mapping OR the raw text the model produced (S-2). Supplied by the
-#: deployment; see :mod:`mindsos_llm.contract` for the checks a
-#: transport has to pass.
+#: The call a transport receives: **everything the model receives**, and
+#: nothing that only names it (plan R21, ADR-0210 am-7). The transport adds
+#: wire syntax and the credential; it resolves no prompt and holds no model
+#: setting of its own. ``prompt_iri`` / ``prompt_version`` are NOT here — they
+#: name the words, and a transport that could see the name could fetch its
+#: own words, which is the defect R21 closes.
+TRANSPORT_CALL_KEYS: Tuple[str, ...] = (
+    "prompt_text",
+    "source_text",
+    "extraction_schema",
+    "tool_name",
+    "tool_description",
+    "model_id",
+    "temperature",
+    "max_tokens",
+    "timeout_s",
+)
+
+#: ``**TRANSPORT_CALL_KEYS`` -> the model's answer, EITHER already decoded
+#: into a mapping OR the raw text the model produced (S-2). Supplied by the
+#: deployment; see :mod:`mindsos_llm.contract` for the checks a transport has
+#: to pass.
 Transport = Callable[..., Union[Mapping[str, Any], str]]
 
 
@@ -133,7 +151,16 @@ def _assert_binds(transport, kwargs) -> None:
 
 
 class LiveLLM:
-    """Consult a real model through a deployment-supplied transport."""
+    """Consult a real model through a deployment-supplied transport.
+
+    ⚠ **The client resolves and hands over everything the model receives**
+    (plan R21, ADR-0210 am-7): the prompt words through ``resolve_prompt``,
+    and the tool framing, model id, temperature and token ceiling it was
+    built with. They used to be split — the prompt resolver and the framing
+    lived in the adapter, and the model id and temperature were held twice,
+    here and there, with nothing checking the two agreed. Held once, here,
+    every value this class stamps is the value it sent.
+    """
 
     #: Stamped on every answer this class produces. A class attribute
     #: rather than an argument — see the module docstring.
@@ -146,11 +173,23 @@ class LiveLLM:
         model_id: str,
         model_version: str,
         credential_level: Optional[int],
+        resolve_prompt: Callable[..., str],
+        tool_name: str,
+        tool_description: str,
+        max_tokens: int = 1024,
         temperature: float = 0.0,
         timeout_s: float = 30.0,
         max_calls: int = 200,
     ) -> None:
+        if not callable(resolve_prompt):
+            raise TypeError("resolve_prompt must be a callable (prompt_iri, prompt_version) -> str")
+        if not tool_name or not tool_description:
+            raise ValueError("the forced tool needs a name and a description")
         self._transport = transport
+        self._resolve_prompt = resolve_prompt
+        self._tool_name = str(tool_name)
+        self._tool_description = str(tool_description)
+        self._max_tokens = int(max_tokens)
         self._model_id = model_id
         self._model_version = model_version
         self._credential_level = credential_level
@@ -174,11 +213,26 @@ class LiveLLM:
         if self._calls >= self._max_calls:
             raise LLMCallBudgetExceeded(max_calls=self._max_calls)
         self._calls += 1
+        try:
+            # Resolved HERE, inside the classified failure: a resolver that
+            # raises is our configuration failing, exactly as it was when the
+            # adapter called it, and it reaches the caller as an outage.
+            prompt_text = require_prompt_text(
+                self._resolve_prompt(
+                    prompt_iri=prompt_iri, prompt_version=prompt_version
+                )
+            )
+        except Exception as exc:
+            raise LLMCallFailed() from exc
         call = dict(
-            prompt_iri=prompt_iri,
-            prompt_version=prompt_version,
+            prompt_text=prompt_text,
             source_text=source_text,
             extraction_schema=extraction_schema,
+            tool_name=self._tool_name,
+            tool_description=self._tool_description,
+            model_id=self._model_id,
+            temperature=self._temperature,
+            max_tokens=self._max_tokens,
             timeout_s=self._timeout_s,
         )
         _assert_binds(self._transport, call)
@@ -254,4 +308,10 @@ class CapturingLLM:
         return response
 
 
-__all__ = ["CapturingLLM", "LiveLLM", "Transport", "decode_response"]
+__all__ = [
+    "CapturingLLM",
+    "LiveLLM",
+    "TRANSPORT_CALL_KEYS",
+    "Transport",
+    "decode_response",
+]

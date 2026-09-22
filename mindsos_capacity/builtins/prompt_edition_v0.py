@@ -19,6 +19,11 @@ transport call carries ``prompt_iri``, ``prompt_version``, ``source_text``,
 so no answer contains it and no reading can produce it. The text comes from
 whoever authored the prompt, through this capacity's input record, exactly as
 ``learn_parameter`` receives a value it did not compute.
+⚠ **The measurement is SUPERSEDED 2026-09-22, the conclusion is not** (plan
+R21/R29, ADR-0210 am-7): the client now resolves the words and hands them to
+the transport as ``prompt_text``, so prompt text DOES cross the seam. It
+still reaches no answer — an answer carries a digest of the words, never the
+words — so this capacity still takes the text as an input record.
 
 ⚠ **This capacity consults no model.** It reaches the write capability and
 no model client, so ``EXPECTED_EXTERNAL_CLIENT_CONSUMERS`` stays at its one

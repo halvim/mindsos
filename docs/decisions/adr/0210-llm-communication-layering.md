@@ -717,3 +717,33 @@ against the plan's §1 end state, each citing its authority there).
 **What does not change.** `mindsos_llm` still holds no L2 record (R2); a digest is
 never stored beside the text it describes; the recorded-set role (am-6) stands and
 keeps serving replay.
+
+**I-17's build rulings — plan R29–R35 (2026-09-22).** Ruled by the I-17 chat against
+the plan's §1, each citing its authority in the plan.
+
+6. **The transport call** (R29) is `prompt_text`, `source_text`, `extraction_schema`,
+   `tool_name`, `tool_description`, `model_id`, `temperature`, `max_tokens`,
+   `timeout_s` — and **not** `prompt_iri` / `prompt_version`. The adapter is built
+   with wire configuration only (credential or broker, endpoint, opener).
+   ⚠ **This supersedes amendment 4's measurement *"no prompt text crosses the
+   seam"***, which was true and was the defect. Its guard,
+   `tests/architecture/test_adr_0210_am4_l2_record_shape.py`, is **repointed, not
+   deleted**: the words must cross and the name must not. Amendment 5's
+   consequence stands — a prompt edition is still written as an input record; an
+   answer carries a digest of the words, not the words.
+7. **`request_key` v2 hashes content only** (R30); **replay poses its question by
+   digest** (R31) — the deployment's own replay hashes its current words, a third
+   party's `replay_config` supplies digests and framing derived from the set, and a
+   set with more than one framing refuses.
+8. **The framing is stamped and recorded** (R32): `tool_name`, `tool_description`,
+   `max_tokens`, on the answer and on the origin record.
+9. **An undecodable answer's refusal names what was asked** (R33): the client's
+   stamps travel on `MalformedResponse`.
+10. **`key_schema_version` is derived** (R34), per answer; unstamped means `"1"`,
+    a mixture refuses.
+11. **`model_version` is a configured label** (R35), not a fact about the call.
+
+**Build state.** I-17 ships in three gates: (1) the seam, clause 6 — **this
+amendment's first built part**; (2) clauses 4, 7 and 10; (3) the origin-record half
+of clause 4, and clauses 8 and 9. The amendment stays **Proposed** until I-12 ships,
+because clauses 1 and 5 are I-12's.

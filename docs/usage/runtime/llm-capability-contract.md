@@ -23,13 +23,21 @@ capability, it is a promise.**
 ⚠ **This table is checked, not recalled.** A ship that changes any row updates
 it in the same commit.
 
-⚠ **Two plan items will change this table** (`docs/plans/MINDSOS_LLM_PLAN.md`,
-rulings R19–R28, ADR-0210 amendment 7, 2026-09-21). **I-17** moves prompt
-resolution and the model-facing framing to the client (R21), which reworks the
-checks behind **rows 7, 9 and 10** and adds *"the transport sends exactly what it
-was handed"* to `UNVERIFIABLE_PROPERTIES`. **I-12** adds **row 12**, the first row
-about removing the stand-in. Neither is built; every row below describes what
-ships today.
+⚠ **Two plan items change this table** (`docs/plans/MINDSOS_LLM_PLAN.md`,
+rulings R19–R35, ADR-0210 amendment 7). **I-17's first gate is BUILT** (R21,
+R29): the client resolves the prompt words and holds the tool framing, the model,
+the temperature and the token ceiling, and hands **all of it** to the transport on
+every call — so a transport now receives `prompt_text`, `source_text`,
+`extraction_schema`, `tool_name`, `tool_description`, `model_id`, `temperature`,
+`max_tokens`, `timeout_s`, and no longer `prompt_iri` / `prompt_version`. That is
+a **breaking change for any transport a consumer wrote**, and for
+`verify_transport`, which now takes the words it probes with. Rows 7, 9 and 10
+below describe it. I-17's later gates add the digests and `request_key` v2;
+**I-12** adds **row 12**.
+
+⚠ **`model_version` is a configured label, not a fact about the call** (R35): no
+provider is sent it, so unlike `model_id` and `temperature` it is stamped as
+configured.
 
 ## The contract
 
@@ -41,10 +49,10 @@ ships today.
 | 4 | Make a live call and get a classified refusal, never an exception carrying the customer's material | `live.LiveLLM`, `seam` exception family | `tests/llm_seam/test_llm_client.py` | **PASS** |
 | 5 | Record what it called and replay it later with no credential and no network | `recording.RecordingStore`, `replay.RecordedLLM` | `tests/llm_seam/test_recording_and_replay.py` | **PASS** |
 | 6 | Export a recorded set and have a third party replay it — including the refusal when the set holds two model identities | `recorded_sets` | `tests/llm_seam/test_recorded_set_export.py` | **PASS** |
-| 7 | Verify its own transport against the contract, and be told **by name** which properties core cannot verify | `contract.verify_transport`, `contract.UNVERIFIABLE_PROPERTIES` | `tests/llm_seam/test_transport_contract.py`, `tests/llm_seam/test_contract_against_the_shipped_adapter.py` | **PASS** — **two checks**: `identity_is_stamped_above_the_transport` (presence, against the consumer's transport) and `identity_overrides_a_transport_that_supplies_its_own` (override, against a probe the harness fabricates). `credential_not_retained_on_the_composed_request` is named in the tuple per ADR-0210 §5 (`511b999`) |
+| 7 | Verify its own transport against the contract, and be told **by name** which properties core cannot verify | `contract.verify_transport`, `contract.UNVERIFIABLE_PROPERTIES` | `tests/llm_seam/test_transport_contract.py`, `tests/llm_seam/test_contract_against_the_shipped_adapter.py` | **PASS** — **two checks**: `identity_is_stamped_above_the_transport` (presence, against the consumer's transport) and `identity_overrides_a_transport_that_supplies_its_own` (override, against a probe the harness fabricates). `credential_not_retained_on_the_composed_request` is named in the tuple per ADR-0210 §5 (`511b999`), and `transport_sends_exactly_what_it_was_handed` per R21. The call-shape check is `accepts_the_specified_call` (it was `accepts_the_five_keywords` until the call grew to nine) |
 | 8 | Do all of the above without core acquiring a network dependency, a credential, or a vendor SDK | `pyproject.toml` declares none; `adapters/anthropic.py` is `urllib` only | `tests/phase_28/test_import_isolation_phase_28.py`, `tests/llm_seam/test_import_isolation_mindsos_llm.py` | **PASS** |
-| 9 | Trust that core proved **its own shipped adapter** against the contract it publishes | `contract.verify_transport` against `adapters.anthropic.build_transport` | `tests/llm_seam/test_contract_against_the_shipped_adapter.py` | **PASS** |
-| 10 | Route its calls through a **broker it runs**, so core never holds the credential at all — and run the broker core ships rather than writing one | `broker`, `adapters.build_brokered_transport`, `mindsos_broker` | `tests/llm_seam/test_broker_contract.py`, `tests/llm_seam/test_reference_broker.py` | **PASS** |
+| 9 | Trust that core proved **its own shipped adapter** against the contract it publishes — including, for that adapter only, that it sends exactly what the client handed it | `contract.verify_transport` against `adapters.anthropic.build_transport` | `tests/llm_seam/test_contract_against_the_shipped_adapter.py` (`test_the_shipped_adapter_sends_exactly_what_the_client_handed_it` reads the composed body on the DEFAULT opener) | **PASS** |
+| 10 | Route its calls through a **broker it runs**, so core never holds the credential at all — and run the broker core ships rather than writing one. The brokered transport takes the same call as the credentialled one (R29) | `broker`, `adapters.build_brokered_transport`, `mindsos_broker` | `tests/llm_seam/test_broker_contract.py`, `tests/llm_seam/test_reference_broker.py` | **PASS** |
 | 11 | Read **off any answer** which mode produced it and at which credential level, without knowing how the client was built — and never be handed a replayed answer that claims to be live | `live.LiveLLM`, `live.CapturingLLM`, `replay.RecordedLLM`, `client.MODES` | `tests/llm_seam/test_answer_provenance.py` | **PASS** — ADR-0210 decisions 5 and 6, amendment 2 |
 
 ## Row 9, and how it was closed

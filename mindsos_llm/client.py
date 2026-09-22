@@ -120,6 +120,10 @@ def build_client(
     model_id: str,
     model_version: str,
     store: Optional[RecordingStore] = None,
+    resolve_prompt: Optional[Callable[..., str]] = None,
+    tool_name: Optional[str] = None,
+    tool_description: Optional[str] = None,
+    max_tokens: int = 1024,
     temperature: float = 0.0,
     timeout_s: float = 30.0,
     max_calls: int = 200,
@@ -142,8 +146,20 @@ def build_client(
         store: the recorded set. Required for ``capture`` and ``replay``;
             refused for ``live``, because a store passed to a live client is
             silently unused and the caller meant ``capture``.
-        **transport_kwargs: passed to the adapter's builder
-            (``resolve_prompt``, ``tool_name``, ``tool_description``, …).
+        resolve_prompt, tool_name, tool_description, max_tokens: what the
+            model receives besides the document and the schema. **Held by the
+            client, not the adapter** (plan R21, ADR-0210 am-7): the client
+            hands every one of them to the transport on each call, so the
+            values stamped on an answer are the values sent. Required for
+            ``live`` and ``capture`` (``LiveLLM`` refuses a missing one).
+            ⚠ ``replay`` does not use them yet: its key is still v1, which
+            hashes none of them. The v2 key (R22) is what makes replay pose
+            the question by content.
+        **transport_kwargs: passed to the adapter's builder — wire
+            configuration only (``endpoint``, ``opener``). ⚠ Measured
+            2026-09-22: before R21, ``temperature`` was a named argument here
+            and never reached the adapter, so a non-zero temperature was
+            stamped on every answer and never sent.
     """
     if mode not in MODES:
         raise UnknownMode(f"mode must be one of {MODES!r}, got {mode!r}")
@@ -220,20 +236,22 @@ def build_client(
         transport = adapters.build_brokered_transport(
             vendor_id,
             broker_url=broker_url,
-            model_id=model_id,
             **transport_kwargs,
         )
     else:
         transport = adapters.build_transport(
             vendor_id,
             resolve_credential=resolver,
-            model_id=model_id,
             **transport_kwargs,
         )
     live = LiveLLM(
         transport,
         model_id=model_id,
         model_version=model_version,
+        resolve_prompt=resolve_prompt,
+        tool_name=tool_name,
+        tool_description=tool_description,
+        max_tokens=max_tokens,
         # The resolved level, not the argument: at levels 1 and 3 it may have
         # come from the resolver rather than from an explicit keyword, and the
         # answer must state the level actually in force.
