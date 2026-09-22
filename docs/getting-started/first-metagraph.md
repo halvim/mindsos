@@ -1,12 +1,12 @@
 ---
 last_confirmed_phase: 05a
-verified_at: unverified
+verified_at: f50f079
 ---
 
 # Your first metagraph
 
 This walkthrough creates a metagraph with two contained graphs and a
-metaedge between them. Assumes Phase 05a Docker setup
+metaedge between them. Assumes the Docker stack
 (`docker compose up -d`) is running.
 
 ## 1. Create the metagraph

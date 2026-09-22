@@ -1,7 +1,7 @@
 ---
 title: MindsOS
 last_confirmed_phase: 38
-verified_at: unverified
+verified_at: f50f079
 ---
 
 # MindsOS
@@ -14,16 +14,18 @@ The stack:
   reconstruction. No reasoning.
 - **Layer 2 — Knowledge.** A metagraph whose contained graphs are
   knowledge roles (ontology, lexicon, concepts, alignments,
-  memories, problem-trace, capacity-state, …). Global (shared) plus
-  per-user Local.
+  episodic-memories, problem-trace, capacity-state, …). Global
+  (shared) plus per-user Local. The full closed set is in
+  [role-graphs](concepts/role-graphs.md).
 - **Layer 3 — Intellectual Capacity.** Functions that acquire and
   manipulate knowledge — perception, comprehension, derivation,
   retrieval, scoring, trace, signalling, learning-methods. Fixed,
   not learned.
-- **Layer 4 — Intelligence.** Applied knowledge. In design; out of
-  scope for the L0–L3 release.
+- **Layer 4 — Intelligence.** Applied knowledge — the per-session
+  orchestrator, the task lifecycle, replan and dispatch
+  (`mindsos_intelligence`).
 - **Layer 5 — Mental Model.** A per-task metagraph of L2 instances
-  acting as working memory. In design; out of scope.
+  acting as working memory, retained as Episodes.
 
 Orthogonally:
 
@@ -61,7 +63,8 @@ Orthogonally:
 
 ## Status
 
-L0–L3 are shipped. L4 + L5 + FOL are out of scope for the present
-plan; a separate follow-up plan will cover them. Phase 38 is the
-final numbered phase of the L0–L3 rollout (Phase 37 retired
-2026-05-19).
+All five layers and the Server layer are shipped. The numbered-phase
+rollout ran to Phase 50 (`confirmation_docs/PHASE_NN_CONFIRMED.md` is
+the per-phase record; Phase 37 was retired 2026-05-19); core work since
+then runs on `feat/*` branches with `<name>-confirmed` tags rather than
+phase numbers, per `RULES.md`. FOL remains a sister project.

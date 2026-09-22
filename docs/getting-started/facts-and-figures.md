@@ -1,10 +1,11 @@
 ---
-verified_at: unverified
+verified_at: f50f079
 ---
 
-# Facts and figures (Phase 48)
+# Facts and figures
 
-Quick-reference tables for the L4/L5 substance shipped through Phase 48.
+Quick-reference tables for the L4/L5 substance, as shipped through Phase 48;
+packages added since are listed below.
 
 ## Layers and packages
 
@@ -17,7 +18,7 @@ Quick-reference tables for the L4/L5 substance shipped through Phase 48.
 | L4 Intelligence | `mindsos_intelligence` | orchestrator + MM substrate + dispatch |
 | L5 Mental Model | (in `mindsos_intelligence` + L2) | per-task working memory → retained Episodes |
 
-Plus three off-axis packages: `mindsos_instances` (MM instancing vocabulary, ADR-0132), `mindsos_admin` (admin/promotion operations), and `mindsos_cli` — **8 top-level packages** in total.
+Plus the off-axis packages: `mindsos_instances` (MM instancing vocabulary, ADR-0132), `mindsos_admin` (admin/promotion operations), `mindsos_cli`, `mindsos_llm` (the external-model client — transport, config, decoding, record/replay; no cognition) and `mindsos_broker` (the reference credential broker, ADR-0210 level 2). `ls -d mindsos_*/` is the count.
 
 ## The six-phase task lifecycle
 

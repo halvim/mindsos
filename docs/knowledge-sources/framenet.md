@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 15a
-verified_at: unverified
+verified_at: f50f079
 ---
 
 # FrameNet concepts source
