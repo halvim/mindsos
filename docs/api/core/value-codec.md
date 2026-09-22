@@ -1,7 +1,7 @@
 ---
 last_confirmed_phase: 50
 source: mindsos_core/persistence/value_codec.py
-verified_at: unverified
+verified_at: 4aac114
 ---
 
 # `mindsos_core.persistence.value_codec`

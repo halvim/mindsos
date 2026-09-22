@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 10
-verified_at: unverified
+verified_at: 4aac114
 ---
 
 # `mindsos_core` — `MetagraphSnapshot`
@@ -17,9 +17,10 @@ from mindsos_core import MetagraphSnapshot
 
 Per ADR-0129 the **sole supported caller in v1 is `mindsos_server.release.release_update`** — used to bracket the canonical-Global FalkorDB write inside a release-ship operation under `RELEASE_SHIP_LOCK`. Other callers should use the WAL graph (ADR-0122) for multi-statement write safety.
 
-Phase 10 ships:
-* Docstring + module-level deprecation note on `mindsos_core.metagraph_snapshot`.
-* No CI lint rule yet (deferred to Phase 18+ per Q lock).
+Phase 10 shipped the docstring and module-level deprecation note on
+`mindsos_core.metagraph_snapshot`. The CI lint rule that would enforce the
+single-caller rule was never built — no workflow or architecture test
+mentions the module — so the rule is prose, honoured by convention.
 
 ## API surface — 2 methods
 

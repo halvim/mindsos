@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 07
-verified_at: unverified
+verified_at: 4aac114
 ---
 
 # `mindsos_core.persistence.WriteAheadLog`
@@ -83,5 +83,6 @@ n=N)` — wraps a real `Client` and raises `PersistenceError` on the
 N-th call. Used by `tests/phase_07/test_wal.py::test_whole_batch_refused`
 to verify the WAL commit step is skipped when the underlying write
 fails. **NOTE**: this does NOT simulate a real mid-batch crash (that
-requires a subprocess-crash fixture deferred to Phase 11); the
+requires a subprocess-crash fixture, which was never built — nothing
+under `tests/_shared/` provides one); the
 wrapper at Client surface refuses the entire batch.

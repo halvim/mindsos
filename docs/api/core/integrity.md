@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 07
-verified_at: unverified
+verified_at: 4aac114
 ---
 
 # Integrity scanner — `verify_invariants` + `verify_invariants_graph`
@@ -65,9 +65,9 @@ orphan_hyperedges: ['he-abc123']
 Exit codes per P64 A: `0` clean / `1` CLI usage error / `2` system
 error (DB unreachable) / `3` drift findings.
 
-## Forward-compat note
+## `--source=db --metagraph M`
 
-The Phase 07 `--source=db` partial scanner closes when Phase 08 ships
-the metagraph_loader — that unlocks the full 5-bucket scanner against
-FalkorDB. At that point, `verify --source=db --metagraph M` becomes
-supported and the `[skipped]` line goes away.
+The partial `--source=db` scan above is the `--graph G` path. Since the
+metagraph loader shipped, `verify --source=db --metagraph M` loads via
+`load_metagraph` and runs the full 5-bucket scanner against FalkorDB, so
+no bucket is skipped on that path.

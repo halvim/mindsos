@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 09
-verified_at: unverified
+verified_at: 4aac114
 ---
 
 # `mindsos_core` — XRef API
@@ -87,6 +87,7 @@ def iter_xrefs(
     target_metagraph_id: Optional[str] = None,
     target_id: Optional[str] = None,
     ref_type: Optional[str] = None,
+    include_deprecated: bool = False,
 ) -> Iterator[XRef]:
     ...
 ```

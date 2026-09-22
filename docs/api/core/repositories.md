@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 07
-verified_at: unverified
+verified_at: 4aac114
 ---
 
 # Repositories — `GraphRepository`, `MetagraphRepository`, `InstanceRepository`
@@ -25,7 +25,10 @@ repo.remove_node(graph_id, node_id, removed_by="alice@example.com")
 `expected_version` is supplied the MATCH predicate carries it; zero
 rows ⇒ `OptimisticConcurrencyConflict`. `remove_*` writes a
 per-(graph, element) `:Tombstone` row then DETACH-DELETEs the
-element (P69 A). Read-path soft-delete filter lands in Phase 10.
+element (P69 A). The read-path soft-delete filter has since shipped: the
+loaders and the `iter_*` methods take `include_deprecated=False`, and it
+keys on `deprecated_at`, not on the `:Tombstone` rows (nothing reads
+those except clean-up deletes).
 
 ### Persist-time check (ADR-0123 §2)
 

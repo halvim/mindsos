@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 04-v2
-verified_at: unverified
+verified_at: 4aac114
 ---
 
 # `mindsos_core.schema.Schema`
