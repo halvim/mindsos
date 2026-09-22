@@ -730,9 +730,25 @@
       "what": "docs/concepts/user-local-authoring.md cites `strict_support.py` (an 'inventory output' step of ADR-0149's tightening rule); no such file is tracked (git ls-files: 0). tests/architecture/test_live_doc_references_resolve.py did not report it - a bare backticked filename with no directory looks unchecked by claim_inventory's path class.",
       "spec": "Measure first: census bare backticked *.py / *.md / *.toml names in LIVE+INDEX pages and resolve each by basename against the tree; read the misses by name (a name can be true of another repo or a generated file). Then guard first (RED at the predicted count) inside claim_inventory, the sweep, and a designated mutation.",
       "consumer": "none - the doc-fix program's reference class (Rule 1 does not gate a defect)."
+    },
+    {
+      "name": "phase-15a-admin-import-tests-need-a-live-db-but-carry-no-integration-mark",
+      "status": "OPEN 2026-09-22, measured during PR #243. NOT BUILT.",
+      "what": "tests/phase_15a/test_admin_import_cli.py's test_admin_import_dolce_text_output, test_admin_import_dolce_json_output_is_valid, test_admin_import_oewn_json_output and test_admin_import_framenet_json_output fail on the box with PersistenceError: Failed to connect to FalkorDB at localhost:6379. They need a live DB and carry no pytest.mark.integration, so `pytest -m 'not integration'` still collects them - they were missed when PR #222 marked the other 9. Measured baseline on plain main f50f079: 4 failed / 85 passed.",
+      "spec": "Read each of the four first - the fix may be a fixture (the others use tests/_shared/falkordb_fixture.py) rather than a mark. If it is a mark: add it, then prove `pytest -m 'not integration' tests/phase_15a` green on the box and the four still collected WITHOUT the marker expression, so the mark cannot silently delete coverage.",
+      "consumer": "none - a defect in an already-published surface (Rule 1 does not gate it)."
     }
   ],
   "recent": [
+    {
+      "kind": "docs",
+      "name": "Verification batch 5: docs/index.md, getting-started, knowledge-sources and the two api/knowledge pages (verified_at f50f079) - 43/106 verified",
+      "sha": "f96938f (squash of feat/verify-entry-pages @ 0e9b0b6, PR #243). Parent f50f079 IS the branch base, so the squash tree equals the branch tip: RULES 12.2(a) discharged by the empty branch-tip vs squash diff (compare = exactly the 10 doc files).",
+      "tag": "none",
+      "gate": "CI on PR #243: SUCCESS. LINUX box, tools/gate.sh at 0e9b0b6: tests/architecture + test_adr_status_consistency + tests/phase_12 + tests/phase_15a = 408 passed, 4 failed. THE 4 ARE PRE-EXISTING AND NOT THIS SHIP'S: test_admin_import_{dolce_text,dolce_json,oewn_json,framenet_json} die with PersistenceError: Failed to connect to FalkorDB at localhost:6379, the same 4 fail on plain main f50f079 (4 failed / 85 passed), and nothing in tests/phase_15a reads docs. Inventory at 0e9b0b6: 43 verified / 63 unverified of 106.",
+      "what": "Six pages false, four clean. *** THE FRONT PAGE WAS THE WORST: docs/index.md said L4 and L5 are 'in design; out of scope' and that 'Phase 38 is the final numbered phase' - both shipped (Phases 46-48, rollout ran to 50, core work now on feat/* per RULES) - and it named the `memories` role, renamed episodic_memories at Phase 39. *** install.md: `git checkout phase-00` is the THIRD COMMAND of first-time setup and there is no such tag (tags are phase-NN-confirmed), so the install runbook fails where a new reader starts - the #1 harm class again, found in the page a newcomer opens first. *** facts-and-figures.md: '8 top-level packages'; there are ten (mindsos_llm, mindsos_broker missing) - replaced by `ls -d mindsos_*/`, not by a fresh number. whats-new-v4.md read as a status page (one line now says it is a v4 release note). api/knowledge/identifiers.md: '~23 *_iri builders' - measured 27 builders + 2 readers, count dropped. first-metagraph.md: dated 'Assumes Phase 05a Docker setup'. *** A NEW PROBE: tools-free CLI-verb checker (typer command tree from the AST; every `mindsos …` line in a fence resolved to a real command path and its real flags). IT NEEDED THREE FIXES BEFORE IT STOPPED LYING - no nested groups (admin import dolce), no keyword-named commands, no app.command(name=…)(fn) registration - and it called three true pages false. Same lesson as 4b: a probe's first answer is not evidence until a fabricated page proves each check.",
+      "docs": "docs/index.md; docs/getting-started/{facts-and-figures,first-metagraph,install,whats-new-v4}.md; docs/knowledge-sources/{dolce,framenet,oewn}.md; docs/api/knowledge/{identifiers,ref-types}.md (verified_at f50f079)"
+    },
     {
       "kind": "docs",
       "name": "Verification batch 4b: the twelve docs/api/core persistence and loader pages read against the tree (verified_at 4aac114) - 33/106 verified",
