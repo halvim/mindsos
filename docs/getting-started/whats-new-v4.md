@@ -1,15 +1,16 @@
 ---
 title: What's new in v4
 last_confirmed_phase: 38
-verified_at: unverified
+verified_at: f50f079
 ---
 
 # What's new in v4
 
 MindsOS v4 is the L0–L3 release — Server, Core, Knowledge, and
-Intellectual Capacity. L4 (Intelligence) and L5 (Mental Model) plus
-FOL are explicitly out of scope; a separate follow-up plan covers
-them.
+Intellectual Capacity. It is a release note, not a status page: L4
+(Intelligence) and L5 (Mental Model) were out of scope for v4 and have
+since shipped (Phases 46–48; see [Facts and figures](facts-and-figures.md)).
+FOL remains a sister project.
 
 This page is a terse summary of what the **38-phase rollout**
 (Phase 00 → Phase 38, with Phase 37 retired) actually delivered.

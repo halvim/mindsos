@@ -1,13 +1,14 @@
 ---
 last_confirmed_phase: 12
-verified_at: unverified
+verified_at: f50f079
 ---
 
 # `mindsos_knowledge.identifiers`
 
 Phase 12 shipped the L2 IRI vocabulary (14 builders covering ADR-0045);
-subsequent phases added builders for the Phase-43/50/SubMind roles, so
-the module now exposes ~23 `*_iri` builders. It also provides a
+later work added a builder per new role, so the module's `*_iri` functions
+are the current list (`identifiers.py` is the source; `parse_iri` and
+`is_version_qualified_iri` are readers, not builders). It also provides a
 graph-name helper for alignment metagraphs, a table-driven parser,
 role constants, and ref-key helpers. The module is **pure library** —
 no L1 mutation, no metagraph, no persistence. KL writes are relocated

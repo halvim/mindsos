@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 12
-verified_at: unverified
+verified_at: f50f079
 ---
 
 # `mindsos_knowledge.REF_TYPES`

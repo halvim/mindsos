@@ -1,13 +1,13 @@
 ---
 last_confirmed_phase: 00
-verified_at: unverified
+verified_at: f50f079
 ---
 
 # Install
 
 MindsOS ships as a Docker Compose stack: one slim `mindsos` CLI image plus a
-pinned `falkordb` sidecar. Phase 00's deliverable is the runtime envelope —
-later phases bring the L1–L3 packages online inside this same stack.
+pinned `falkordb` sidecar. That envelope shipped at Phase 00 and every layer
+since runs inside the same stack.
 
 ## Prerequisites
 
@@ -20,7 +20,6 @@ later phases bring the L1–L3 packages online inside this same stack.
 ```sh
 git clone git@github.com:halvim/mindsos.git
 cd mindsos
-git checkout phase-00
 
 # Generate locked Python deps (one-time per requirements.in change):
 ./tools/lock.sh
@@ -42,13 +41,14 @@ docker compose run --rm mindsos doctor --self-test
 the runtime Python version, and the FalkorDB ping result. `doctor --self-test`
 exits non-zero on any drift between runtime state and `mindsos_cli/manifest.toml`.
 
-## Run the Phase 00 test suite
+## Run the test suite
 
 ```sh
-docker compose run --rm mindsos-test pytest tests/phase_00 -v
+docker compose run --rm mindsos-test pytest -q
 ```
 
-This is the canonical pass-criterion command for the phase.
+In-container tests are the canonical gate; `tests/phase_00` alone checks the
+envelope this page sets up.
 
 ## Note on volume ownership
 
