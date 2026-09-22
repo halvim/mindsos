@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 10
-verified_at: unverified
+verified_at: 5be37bb
 ---
 
 # `Metagraph` API
@@ -97,17 +97,15 @@ See [Soft-delete API](soft-delete.md) for the full setter matrix.
   `validate_user_properties(scope="metagraph")` on assignment via the
   constructor and `update_*_properties`.
 
-## Slim-port deferral list
+## What the 05a slim port deferred
 
-Not in 05a; lands in subsequent phases:
+Shipped since, and documented above: `mint_id(kind, content)`,
+`add_xref` / `iter_xrefs` / `remove_xref` (ADR-0128), `RemovalImpact` plus
+`force=True` on `remove_graph` (ADR-0135), `add_intergraph_edge`,
+`add_intergraph_hyperedge`, and `MetagraphSchema` attachment
+(`attach_schema` / `detach_schema`).
 
-* `Metagraph.mint_id(kind, content)` — Phase 05b (consumer = IntergraphEdge).
-* `add_xref` / `iter_xrefs` / `remove_xref` (ADR-0128) — Phase 09.
-* `instantiate_*` / `compose` (ADR-0024 / ADR-0025) — Phase 06
-  (`mindsos_instances` package).
-* `RemovalImpact` + `force=True` on `remove_graph` (ADR-0135) — Phase 10.
-* Backward-compat aliases `_kl_active_graph_ids` / `user_id` — re-added
-  in Phase 14 / Phase 18.
-* `add_intergraph_edge` (binary) — Phase 05b.
-* `add_intergraph_hyperedge` (n-ary) — Phase 05c.
-* `MetagraphSchema` attachment — Phase 05b.
+Never built: `instantiate_*` / `compose` (ADR-0024 / ADR-0025) — no such
+method exists on `Metagraph` or in `mindsos_instances` — and the
+backward-compat aliases `_kl_active_graph_ids` / `user_id`, which the
+class docstring still lists but the class does not define.

@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 05a
-verified_at: unverified
+verified_at: 5be37bb
 ---
 
 # `MetaHyperEdge` API
