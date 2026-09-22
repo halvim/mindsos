@@ -50,6 +50,7 @@ def _store(*readings):
                 model_version="v-1",
                 credential_level=level,
                 temperature=0.0,
+                resolve_prompt=lambda **_: "read the document", tool_name="extract", tool_description="pull the fields out",
             ),
             store,
         ).read(prompt_iri="prompt:p", prompt_version=1, source_text=text)

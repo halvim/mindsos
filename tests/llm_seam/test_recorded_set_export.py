@@ -45,6 +45,7 @@ def _captured(model_id="m-1", model_version="v-1", temperature=0.0, text="the do
             model_version=model_version,
             credential_level=credential_level,
             temperature=temperature,
+            resolve_prompt=lambda **_: "read the document", tool_name="extract", tool_description="pull the fields out",
         ),
         store,
     )

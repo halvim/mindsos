@@ -30,6 +30,7 @@ from mindsos_llm.credentials import (
     Resolver,
     static_resolver,
 )
+from mindsos_llm.live import TRANSPORT_CALL_KEYS
 from mindsos_llm.seam import (
     NO_ANSWER,
     NO_PROPERTIES,
@@ -69,10 +70,6 @@ def _tool_block(name: str = "extract", payload: Mapping[str, Any] = None) -> Dic
     return {"type": "tool_use", "name": name, "input": dict(payload or ANSWER)}
 
 
-def _prompt(**_: Any) -> str:
-    return "read the document"
-
-
 def _build(**over: Any):
     seen: List[Any] = []
 
@@ -82,10 +79,6 @@ def _build(**over: Any):
 
     kwargs: Dict[str, Any] = dict(
         resolve_credential=static_resolver(lambda: FAKE_KEY),
-        model_id="a-model",
-        resolve_prompt=_prompt,
-        tool_name="extract",
-        tool_description="pull the fields out",
         opener=opener,
     )
     kwargs.update(over)
@@ -94,10 +87,14 @@ def _build(**over: Any):
 
 def _call(transport, **over: Any):
     kwargs = dict(
-        prompt_iri="prompt:p",
-        prompt_version=1,
+        prompt_text="read the document",
         source_text="the document says seven days",
         extraction_schema=SCHEMA,
+        tool_name="extract",
+        tool_description="pull the fields out",
+        model_id="a-model",
+        temperature=0.0,
+        max_tokens=1024,
         timeout_s=9.5,
     )
     kwargs.update(over)
@@ -106,18 +103,19 @@ def _call(transport, **over: Any):
 
 # ── 1 ── the call shape ────────────────────────────────────────────────
 
-def test_the_transport_requires_all_five_keywords_with_no_defaults():
-    """``LiveLLM`` passes all five every time. A default would let a caller
-    that forgot the document get an answer about nothing."""
+def test_the_transport_requires_every_call_keyword_with_no_defaults():
+    """``LiveLLM`` passes every one every time. A default would let a caller
+    that forgot the document get an answer about nothing — or, since R21, let
+    the adapter fall back to a model setting the client never stamped."""
     transport, _ = _build()
-    for missing in (
-        "prompt_iri", "prompt_version", "source_text",
-        "extraction_schema", "timeout_s",
-    ):
-        kwargs = dict(
-            prompt_iri="prompt:p", prompt_version=1, source_text="doc",
-            extraction_schema=SCHEMA, timeout_s=1.0,
-        )
+    full = dict(
+        prompt_text="read", source_text="doc", extraction_schema=SCHEMA,
+        tool_name="extract", tool_description="d", model_id="m",
+        temperature=0.0, max_tokens=8, timeout_s=1.0,
+    )
+    assert set(full) == set(TRANSPORT_CALL_KEYS)
+    for missing in TRANSPORT_CALL_KEYS:
+        kwargs = dict(full)
         del kwargs[missing]
         with pytest.raises(TypeError):
             transport(**kwargs)
@@ -136,10 +134,6 @@ def test_a_bare_credential_is_refused_at_BUILD_time():
     with pytest.raises(ValueError):
         anthropic.build_transport(
             resolve_credential=FAKE_KEY,  # type: ignore[arg-type]
-            model_id="a-model",
-            resolve_prompt=_prompt,
-            tool_name="extract",
-            tool_description="d",
         )
 
 
@@ -353,9 +347,9 @@ def test_the_request_FORCES_the_tool_and_sends_the_injected_schema():
     assert body["messages"][0]["content"] == "the document says seven days"
 
 
-def test_the_prompt_comes_from_the_injected_resolver_and_no_words_live_here():
-    transport, seen = _build(resolve_prompt=lambda **_: "INJECTED-PROMPT-TEXT")
-    _call(transport)
+def test_the_prompt_is_the_words_the_client_handed_and_no_words_live_here():
+    transport, seen = _build()
+    _call(transport, prompt_text="INJECTED-PROMPT-TEXT")
     body = json.loads(seen[0][0].data.decode("utf-8"))
     assert body["system"] == "INJECTED-PROMPT-TEXT"
     source = open(anthropic.__file__, encoding="utf-8").read()
@@ -363,9 +357,9 @@ def test_the_prompt_comes_from_the_injected_resolver_and_no_words_live_here():
 
 
 def test_an_empty_prompt_is_a_fault_not_an_empty_system_message():
-    transport, _ = _build(resolve_prompt=lambda **_: "   ")
+    transport, _ = _build()
     with pytest.raises(TransportCallFailed) as caught:
-        _call(transport)
+        _call(transport, prompt_text="   ")
     assert str(caught.value) == NO_ANSWER
 
 
@@ -385,10 +379,6 @@ def test_a_non_https_endpoint_is_refused_at_BUILD_time():
     with pytest.raises(ValueError):
         anthropic.build_transport(
             resolve_credential=static_resolver(lambda: FAKE_KEY),
-            model_id="a-model",
-            resolve_prompt=_prompt,
-            tool_name="extract",
-            tool_description="d",
             endpoint="http://api.example.com/v1/messages",
         )
 
@@ -406,10 +396,6 @@ def test_a_resolver_declaring_an_unsupported_level_is_refused_at_BUILD_time(leve
     with pytest.raises(ValueError):
         anthropic.build_transport(
             resolve_credential=Resolver(fetch=lambda: FAKE_KEY, level=level),
-            model_id="a-model",
-            resolve_prompt=_prompt,
-            tool_name="extract",
-            tool_description="d",
         )
 
 

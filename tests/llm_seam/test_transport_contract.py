@@ -43,6 +43,8 @@ WRONG_TYPE = lambda **_: 7
 def _verify(transport, **over):
     return verify_transport(
         transport, prompt_iri="prompt:p", prompt_version=1,
+        prompt_text="read the document", tool_name="extract",
+        tool_description="pull the fields out",
         source_text="the document", **over,
     )
 
@@ -93,7 +95,7 @@ def test_a_transport_returning_a_forbidden_type_FAILS_the_answer_check():
 def test_a_transport_with_the_wrong_signature_FAILS():
     report = _verify(lambda prompt_iri: ANSWER)
     assert not report.ok
-    assert _status(report, "accepts_the_five_keywords") == FAILED
+    assert _status(report, "accepts_the_specified_call") == FAILED
 
 
 def test_the_optional_checks_are_reported_SKIPPED_not_omitted():
@@ -167,8 +169,11 @@ def test_the_override_check_goes_RED_when_the_client_stops_stamping(monkeypatch)
 
     monkeypatch.setattr(
         contract, "_client",
-        lambda t: _NoStamp(t, model_id="probe", model_version="probe",
-                           credential_level=None, max_calls=8),
+        lambda t, **fr: _NoStamp(t, model_id="probe", model_version="probe",
+                                 credential_level=None, max_calls=8,
+                                 resolve_prompt=lambda **_: fr["prompt_text"],
+                                 tool_name=fr["tool_name"],
+                                 tool_description=fr["tool_description"]),
     )
     report = _verify(GOOD)
     check = {c.name: c for c in report.checks}[OVERRIDE]
@@ -222,7 +227,8 @@ def test_the_declared_stamped_set_is_what_a_live_call_actually_stamps():
     A field added to the client's stamp and not to the tuple reddens this;
     so does one removed from the client and left in the tuple."""
     bare = LiveLLM(lambda **_: {"answer": "42"}, model_id="m",
-                   model_version="v", credential_level=None, max_calls=2)
+                   model_version="v", credential_level=None, max_calls=2,
+                   resolve_prompt=lambda **_: "read the document", tool_name="extract", tool_description="pull the fields out")
     payload = bare.read(prompt_iri="prompt:p", prompt_version=1,
                         source_text="doc")
     assert set(contract.STAMPED_ABOVE_THE_TRANSPORT) == set(payload) - {"answer"}

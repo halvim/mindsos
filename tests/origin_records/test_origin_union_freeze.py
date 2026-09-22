@@ -109,6 +109,7 @@ def _llm(transport):
     return LiveLLM(
         transport, model_id="probe-model", model_version="2026-01-01",
         credential_level=1,
+        resolve_prompt=lambda **_: "read the document", tool_name="extract", tool_description="pull the fields out",
     )
 
 

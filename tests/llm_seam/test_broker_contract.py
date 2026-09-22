@@ -56,8 +56,19 @@ SCHEMA = {"type": "object", "properties": {"amount": {"type": "number"}}}
 ANSWER = {"amount": 7}
 BROKER_ONLY_CREDENTIAL = "sk-only-the-broker-ever-holds-this"
 
+#: What the model receives besides the document and the schema. Handed to
+#: the transport on every CALL by the client (plan R21, ADR-0210 am-7) — the
+#: adapter is no longer built with any of it.
 WIRE = dict(
-    resolve_prompt=lambda **_: "a prompt",
+    prompt_text="a prompt",
+    tool_name="extract",
+    tool_description="extract the fields",
+    model_id="a-model",
+    temperature=0.0,
+    max_tokens=1024,
+)
+FRAMING = dict(
+    prompt_text="a prompt",
     tool_name="extract",
     tool_description="extract the fields",
 )
@@ -136,8 +147,8 @@ def restore_registry():
 
 def _call(transport, **over):
     kw = dict(
-        prompt_iri="p", prompt_version=1, source_text="a document",
-        extraction_schema=SCHEMA, timeout_s=10,
+        source_text="a document", extraction_schema=SCHEMA, timeout_s=10,
+        **WIRE,
     )
     kw.update(over)
     return transport(**kw)
@@ -366,9 +377,8 @@ def test_exactly_one_of_a_resolver_or_a_broker(over):
     """
     with pytest.raises(ValueError, match="exactly one of"):
         anthropic._build(
-            model_id="m", max_tokens=1, temperature=0.0,
             endpoint=anthropic.ENDPOINT, opener=lambda *a, **k: None,
-            **over, **WIRE,
+            **over,
         )
 
 
@@ -391,7 +401,7 @@ def test_a_brokered_request_carries_the_contract_headers_and_NO_CREDENTIAL(recor
     server, url = _recording_server(recorded)
     try:
         transport = adapters.build_brokered_transport(
-            "anthropic", broker_url=url, model_id="a-model", **WIRE
+            "anthropic", broker_url=url
         )
         assert _call(transport) == ANSWER
     finally:
@@ -414,7 +424,7 @@ def test_something_that_is_not_a_broker_answering_200_is_refused(recorded):
     server, url = _recording_server(recorded, echo_version=None)
     try:
         transport = adapters.build_brokered_transport(
-            "anthropic", broker_url=url, model_id="a-model", **WIRE
+            "anthropic", broker_url=url
         )
         with pytest.raises(BrokerContractViolated):
             _call(transport)
@@ -429,7 +439,7 @@ def test_a_broker_that_fails_is_an_outage_in_the_fixed_prose(recorded):
     server, url = _recording_server(recorded, status=500)
     try:
         transport = adapters.build_brokered_transport(
-            "anthropic", broker_url=url, model_id="a-model", **WIRE
+            "anthropic", broker_url=url
         )
         with pytest.raises(TransportCallFailed) as caught:
             _call(transport)
@@ -487,7 +497,7 @@ def test_the_credential_reaches_the_VENDOR_and_never_the_client():
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
         transport = adapters.build_brokered_transport(
-            "anthropic", broker_url=url, model_id="a-model", **WIRE
+            "anthropic", broker_url=url
         )
         assert _call(transport) == ANSWER
     finally:
@@ -511,12 +521,13 @@ def test_the_shipped_contract_harness_passes_against_the_BROKERED_transport(reco
     server, url = _recording_server(recorded)
     try:
         transport = adapters.build_brokered_transport(
-            "anthropic", broker_url=url, model_id="a-model", **WIRE
+            "anthropic", broker_url=url
         )
         report = contract.verify_transport(
             transport,
             prompt_iri="prompt:p",
             prompt_version=1,
+            **FRAMING,
             source_text="a document",
             extraction_schema=SCHEMA,
         )

@@ -252,15 +252,19 @@ def refuse_unasked_keys(
     return answer
 
 
-def require_prompt(resolve_prompt: Callable[..., str], **kwargs: Any) -> str:
-    """Resolve the prompt through the injected resolver, or refuse.
+def require_prompt_text(prompt_text: Any) -> str:
+    """Return the prompt words the client handed over, or refuse.
 
-    The only source of prompt words. Nothing in this package inlines one.
+    ⚠ **The words are RESOLVED by the client, not here** (plan R21, ADR-0210
+    am-7). Until 2026-09-22 this function called a resolver the deployment
+    injected into the ADAPTER, so the words sent were chosen below the layer
+    that stamps the answer, and nothing the answer carried could show them.
+    The client now resolves them and hands them over; the transport only
+    refuses words that are not words. Nothing in this package inlines one.
     """
-    system = resolve_prompt(**kwargs)
-    if not isinstance(system, str) or not system.strip():
+    if not isinstance(prompt_text, str) or not prompt_text.strip():
         raise TransportCallFailed(NO_ANSWER)
-    return system
+    return prompt_text
 
 
 def build_headers(
@@ -356,7 +360,7 @@ __all__ = [
     "default_opener",
     "refuse_unasked_keys",
     "require_https",
-    "require_prompt",
+    "require_prompt_text",
     "require_resolver",
     "scrub",
     "send",

@@ -70,7 +70,7 @@ from ..seam import (
     default_opener,
     refuse_unasked_keys,
     require_https,
-    require_prompt,
+    require_prompt_text,
     require_resolver,
     send,
 )
@@ -106,12 +106,6 @@ def _build(
     *,
     resolver: Optional[Resolver],
     broker_url: Optional[str],
-    model_id: str,
-    resolve_prompt: Callable[..., str],
-    tool_name: str,
-    tool_description: str,
-    max_tokens: int,
-    temperature: float,
     endpoint: str,
     opener: Optional[Callable[..., Any]],
 ) -> Callable[..., Mapping[str, Any]]:
@@ -129,27 +123,34 @@ def _build(
             "exactly one of resolve_credential or broker_url: a credentialled "
             "call needs a resolver, and a brokered call must not have one"
         )
-    if not tool_name or not tool_description:
-        raise ValueError("the forced tool needs a name and a description")
     url = endpoint if resolver is not None else broker_url
     open_url = opener or default_opener()
 
     def transport(
         *,
-        prompt_iri: str,
-        prompt_version: int,
+        prompt_text: str,
         source_text: str,
         extraction_schema: Optional[Mapping[str, Any]],
+        tool_name: str,
+        tool_description: str,
+        model_id: str,
+        temperature: float,
+        max_tokens: int,
         timeout_s: float,
     ) -> Mapping[str, Any]:
-        # ⚠ No defaults on any of the five. ``LiveLLM`` passes all five on
-        # every call, and a default here would let a caller that forgot the
+        # ⚠ No defaults on any keyword. ``LiveLLM`` passes every one on every
+        # call, and a default here would let a caller that forgot the
         # document get an answer about nothing instead of a TypeError.
+        #
+        # ⚠ **Everything the model receives arrives HERE, from the client**
+        # (plan R21, ADR-0210 am-7). This closure adds wire syntax and the
+        # credential and nothing else: it resolves no prompt, holds no model
+        # id and no temperature of its own, so what the client stamps on the
+        # answer is what it handed over, not a second configuration that
+        # nothing checks agrees with this one.
         import urllib.request  # local: the seam owns the network policy
 
-        system = require_prompt(
-            resolve_prompt, prompt_iri=prompt_iri, prompt_version=prompt_version
-        )
+        system = require_prompt_text(prompt_text)
         declared = declared_properties(extraction_schema)
         body = json.dumps(
             {
@@ -225,12 +226,6 @@ def _build(
 def build_transport(
     *,
     resolve_credential: Resolver,
-    model_id: str,
-    resolve_prompt: Callable[..., str],
-    tool_name: str,
-    tool_description: str,
-    max_tokens: int = 1024,
-    temperature: float = 0.0,
     endpoint: str = ENDPOINT,
     opener: Optional[Callable[..., Any]] = None,
 ) -> Callable[..., Mapping[str, Any]]:
@@ -241,13 +236,14 @@ def build_transport(
             a credential — see that module for why the indirection is the
             mechanism rather than a style choice. ⚠ Not optional either: level
             2 has its own entry point rather than a ``None`` accepted here.
-        model_id: Passed to the provider. ``LiveLLM`` stamps its own copy onto
-            the payload for provenance; this one only reaches the wire.
-        resolve_prompt: ``(prompt_iri, prompt_version) -> str``. **The only
-            source of prompt words**, injected so a prompt can be shown in full
-            without that meaning *read our source*.
-        tool_name, tool_description: The forced tool's identity and its
-            sentence, injected for the same reason.
+        ⚠ **No model id, temperature, token ceiling, prompt resolver or tool
+        framing is taken here** (plan R21, ADR-0210 am-7). They used to be, and
+        ``LiveLLM`` held its own model id and temperature beside them, so the
+        values stamped on an answer were a configuration claim nothing checked
+        against the values sent — measured 2026-09-22, ``build_client`` never
+        passed its ``temperature`` here at all, so every non-zero temperature
+        was stamped and never sent. The client now hands every one of them to
+        the transport on each call.
         opener: Defaults to ``urllib.request.urlopen``. Injected so every guard
             runs with no network and no credential — and ⚠ so that the DEFAULT
             path is the one no guard exercises, which is where the fourth
@@ -263,12 +259,6 @@ def build_transport(
     return _build(
         resolver=resolver,
         broker_url=None,
-        model_id=model_id,
-        resolve_prompt=resolve_prompt,
-        tool_name=tool_name,
-        tool_description=tool_description,
-        max_tokens=max_tokens,
-        temperature=temperature,
         endpoint=require_https(endpoint),
         opener=opener,
     )
@@ -277,12 +267,6 @@ def build_transport(
 def build_brokered_transport(
     *,
     broker_url: str,
-    model_id: str,
-    resolve_prompt: Callable[..., str],
-    tool_name: str,
-    tool_description: str,
-    max_tokens: int = 1024,
-    temperature: float = 0.0,
     opener: Optional[Callable[..., Any]] = None,
 ) -> Callable[..., Mapping[str, Any]]:
     """Build the level-2 transport: the same request, sent unsigned to a broker.
@@ -305,12 +289,6 @@ def build_brokered_transport(
     return _build(
         resolver=None,
         broker_url=require_broker_endpoint(broker_url),
-        model_id=model_id,
-        resolve_prompt=resolve_prompt,
-        tool_name=tool_name,
-        tool_description=tool_description,
-        max_tokens=max_tokens,
-        temperature=temperature,
         endpoint=ENDPOINT,
         opener=opener,
     )

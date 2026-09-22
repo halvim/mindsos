@@ -24,7 +24,8 @@ a live provider will not do on demand — pass them and they run, omit them
 and they are reported skipped:
 
     report = verify_transport(my_transport, prompt_iri=..., prompt_version=1,
-                              source_text="...")
+                              prompt_text="...", tool_name="...",
+                              tool_description="...", source_text="...")
     print(report)
     report.raise_if_failed()
 """
@@ -67,6 +68,14 @@ UNVERIFIABLE_PROPERTIES: Tuple[Tuple[str, str], ...] = (
     ("credential_not_retained_on_the_composed_request",
      "requires reaching inside the transport; a harness that injects an "
      "opener asserts it in the one configuration where it holds"),
+    # Plan R21 / ADR-0210 am-7. The client hands the transport everything
+    # the model receives and stamps what it handed over; whether the wire
+    # then carries exactly that — no substituted model, no rewritten prompt,
+    # no temperature of its own — happens after the hand-off, where no
+    # harness that only calls the transport can see.
+    ("transport_sends_exactly_what_it_was_handed",
+     "what reaches the provider is composed inside the transport, after the "
+     "client's hand-off; a harness that only calls it cannot see the wire"),
 )
 
 
@@ -155,7 +164,9 @@ class TransportReport:
         )
 
 
-def _client(transport: Any) -> LiveLLM:
+def _client(
+    transport: Any, *, prompt_text: str, tool_name: str, tool_description: str
+) -> LiveLLM:
     # ``credential_level=None`` is a decision, not an omission: this harness
     # probes somebody else's transport and cannot know the terms its
     # credential was obtained under. ``LiveLLM`` takes no default precisely so
@@ -165,6 +176,9 @@ def _client(transport: Any) -> LiveLLM:
         model_id="contract-probe",
         model_version="contract-probe",
         credential_level=None,
+        resolve_prompt=lambda **_: prompt_text,
+        tool_name=tool_name,
+        tool_description=tool_description,
         max_calls=8,
     )
 
@@ -174,18 +188,30 @@ def verify_transport(
     *,
     prompt_iri: str,
     prompt_version: int,
+    prompt_text: str,
+    tool_name: str,
+    tool_description: str,
     source_text: str,
     extraction_schema: Optional[Mapping[str, Any]] = None,
     failing_transport: Any = None,
     garbage_transport: Any = None,
     wrong_type_transport: Any = None,
 ) -> TransportReport:
-    """Run every contract check that can be run against ``transport``."""
+    """Run every contract check that can be run against ``transport``.
+
+    ⚠ ``prompt_text``, ``tool_name`` and ``tool_description`` are the words
+    the probe sends (plan R21): the client resolves and hands them over, so
+    the transport under test no longer supplies them itself.
+    """
     checks = []
     payload = None
+    framing = dict(
+        prompt_text=prompt_text, tool_name=tool_name,
+        tool_description=tool_description,
+    )
 
     try:
-        payload = _client(transport).read(
+        payload = _client(transport, **framing).read(
             prompt_iri=prompt_iri,
             prompt_version=prompt_version,
             source_text=source_text,
@@ -197,7 +223,7 @@ def verify_transport(
         # wrongly, and reporting the first as the second is what sent the
         # earlier version of this harness green on a broken transport.
         checks.append(Check(
-            "accepts_the_five_keywords", FAILED, exc.violation,
+            "accepts_the_specified_call", FAILED, exc.violation,
         ))
         # ⚠ SKIPPED, NEVER FAILED, and for the reason the comment above
         # gives: a transport that would not accept the call has not
@@ -207,24 +233,24 @@ def verify_transport(
             "answer_is_text_or_a_mapping", SKIPPED, _NO_ANSWER_TO_INSPECT,
         ))
     except MalformedResponse:
-        checks.append(Check("accepts_the_five_keywords", PASSED))
+        checks.append(Check("accepts_the_specified_call", PASSED))
         checks.append(Check(
             "answer_is_text_or_a_mapping", FAILED,
             "returned text that does not decode to a JSON object",
         ))
     except TransportContractError as exc:
-        checks.append(Check("accepts_the_five_keywords", PASSED))
+        checks.append(Check("accepts_the_specified_call", PASSED))
         checks.append(Check(
             "answer_is_text_or_a_mapping", FAILED, exc.violation,
         ))
     except LLMCallFailed:
-        checks.append(Check("accepts_the_five_keywords", PASSED))
+        checks.append(Check("accepts_the_specified_call", PASSED))
         checks.append(Check(
             "answer_is_text_or_a_mapping", SKIPPED,
             "the call failed; re-run when the provider is reachable",
         ))
     else:
-        checks.append(Check("accepts_the_five_keywords", PASSED))
+        checks.append(Check("accepts_the_specified_call", PASSED))
         checks.append(Check("answer_is_text_or_a_mapping", PASSED))
         # ⚠ ``mode`` and ``credential_level`` joined this list with ADR-0210
         # decisions 5 and 6. They belong to THIS check by its own name: both
@@ -259,7 +285,7 @@ def verify_transport(
     # ``forging_transport=`` would read SKIPPED for everyone who did not know
     # to pass one — the same silence the check exists to end.
     try:
-        forged = _client(_forging_transport).read(
+        forged = _client(_forging_transport, **framing).read(
             prompt_iri=prompt_iri,
             prompt_version=prompt_version,
             source_text=source_text,
@@ -288,7 +314,7 @@ def verify_transport(
         ))
     else:
         try:
-            _client(failing_transport).read(
+            _client(failing_transport, **framing).read(
                 prompt_iri=prompt_iri, prompt_version=prompt_version,
                 source_text=source_text, extraction_schema=extraction_schema,
             )
@@ -312,7 +338,7 @@ def verify_transport(
         ))
     else:
         try:
-            _client(garbage_transport).read(
+            _client(garbage_transport, **framing).read(
                 prompt_iri=prompt_iri, prompt_version=prompt_version,
                 source_text=source_text, extraction_schema=extraction_schema,
             )
@@ -340,7 +366,7 @@ def verify_transport(
         ))
     else:
         try:
-            _client(wrong_type_transport).read(
+            _client(wrong_type_transport, **framing).read(
                 prompt_iri=prompt_iri, prompt_version=prompt_version,
                 source_text=source_text, extraction_schema=extraction_schema,
             )

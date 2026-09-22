@@ -5,9 +5,20 @@ shape that rots: every one of its claims is a statement about this tree, and
 nothing would notice the day one stopped being true. This file is the
 enforcement, and each test pins ONE measured claim:
 
-* **No prompt text crosses the transport seam.** This is why a prompt edition
-  is AUTHORED rather than recorded — no run can write text it never sees. The
-  claim is read off the call ``LiveLLM.read`` builds, by AST, never from prose.
+* **The seam's call carries the prompt WORDS and never the prompt's NAME.**
+  ⚠ **REPOINTED 2026-09-22 by plan R21 / ADR-0210 am-7 (plan item I-17).**
+  This test used to pin amendment 4's measurement *"no prompt text crosses the
+  transport seam"*. That was true, and it was the defect: the words were
+  resolved by a resolver injected into the ADAPTER, below the client that
+  stamps the answer, so no answer could name what was asked. R21 moves
+  resolution to the client, which now hands the transport everything the
+  model receives. The claim is kept, inverted, not deleted: the words MUST
+  cross, and ``prompt_iri`` / ``prompt_version`` must NOT — a transport that
+  can see the name can fetch its own words. Still read off the call
+  ``LiveLLM.read`` builds, by AST, never from prose. (Amendment 5's
+  consequence — a prompt edition is written as an INPUT record, not recorded
+  off an answer — is unchanged: the recorder still reads answers, and an
+  answer carries a digest of the words, not the words.)
 * **``prompts`` is dual-scope.** ⚠ **Repointed by ADR-0210 am-5**: this test used
   to assert it of ``policies``, which am-4 wrongly had prompt editions reusing.
   The owner's 2026-09-14 ruling (prompt editions are not Local-only) needs both
@@ -50,16 +61,26 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _LIVE = _REPO_ROOT / "mindsos_llm" / "live.py"
 _ADR = _REPO_ROOT / "docs" / "decisions" / "adr" / "0210-llm-communication-layering.md"
 
-#: The seam's call, as amendment 4 measured it. Every name here is metadata
-#: ABOUT a prompt; none of them is the prompt.
+#: The seam's call as plan R21 rules it: everything the model receives, and
+#: nothing that only names it. ⚠ **Hand-written, never imported** from
+#: ``mindsos_llm.live.TRANSPORT_CALL_KEYS`` — a checker's list derived from the
+#: code it checks cannot notice that code drifting. (Amendment 4's set was
+#: ``{prompt_iri, prompt_version, source_text, extraction_schema, timeout_s}``.)
 SEAM_CALL_KEYS = frozenset(
-    {"prompt_iri", "prompt_version", "source_text", "extraction_schema", "timeout_s"}
+    {
+        "prompt_text", "source_text", "extraction_schema", "tool_name",
+        "tool_description", "model_id", "temperature", "max_tokens",
+        "timeout_s",
+    }
 )
 
-#: A key whose value would BE prompt text rather than a pointer at it. A
-#: FLOOR, not a ceiling: a new spelling escapes this set, so add to it rather
-#: than arguing the call is fine.
-PROMPT_TEXT_SPELLINGS = ("prompt_text", "prompt_body", "prompt_source", "prompt")
+#: The key that carries the prompt WORDS. It must be in the call (R21).
+PROMPT_WORDS_KEY = "prompt_text"
+
+#: Keys that NAME a prompt rather than carry it. None may cross (R21): a
+#: transport that can see the name can resolve words of its own. A FLOOR, not
+#: a ceiling — a new spelling escapes it, so add to it.
+PROMPT_NAME_SPELLINGS = ("prompt_iri", "prompt_version", "prompt_id", "prompt_name")
 
 
 def _seam_call_keys(source: str) -> frozenset[str]:
@@ -90,31 +111,43 @@ def _seam_call_keys(source: str) -> frozenset[str]:
     )
 
 
-def test_no_prompt_text_crosses_the_transport_seam():
+def _seam_call_problems(got: frozenset[str]) -> list[str]:
+    """What is wrong with a transport call's key set, against R21."""
+    problems = []
+    if got != SEAM_CALL_KEYS:
+        problems.append(
+            f"key set {sorted(got)!r} != R21's {sorted(SEAM_CALL_KEYS)!r}"
+        )
+    if PROMPT_WORDS_KEY not in got:
+        problems.append("the prompt WORDS do not cross the seam")
+    named = sorted(k for k in got if k in PROMPT_NAME_SPELLINGS)
+    if named:
+        problems.append(f"the prompt's NAME crosses the seam: {named!r}")
+    return problems
+
+
+def test_the_seam_carries_the_prompt_words_and_never_the_prompt_name():
     got = _seam_call_keys(_LIVE.read_text(encoding="utf-8"))
-    assert got == SEAM_CALL_KEYS, (
-        "the transport call's key set changed. ADR-0210 am-4 rules that a "
-        "prompt edition is AUTHORED because no prompt text reaches a run; a "
-        f"new key may falsify that. Got {sorted(got)!r}"
-    )
-    assert not [k for k in got if k in PROMPT_TEXT_SPELLINGS], (
-        "a prompt BODY now crosses the seam. Amendment 4's ruling that the "
-        "recorder cannot write a prompt edition no longer holds — re-open it."
+    assert _seam_call_problems(got) == [], (
+        "plan R21 / ADR-0210 am-7: the client hands the transport everything "
+        "the model receives, and nothing that would let it resolve words of "
+        f"its own. {_seam_call_problems(got)!r}"
     )
 
 
-def test_the_checker_refuses_a_fabricated_call_that_carries_prompt_text():
+def test_the_checker_refuses_the_amendment_4_call_it_replaced():
+    """Born red against FABRICATED input: the pre-R21 call shape — a name,
+    no words — is exactly what this checker exists to refuse."""
     fabricated = (
         "class LiveLLM:\n"
         "    def read(self, **kw):\n"
-        "        call = dict(prompt_iri=1, prompt_version=2, prompt_text=3,\n"
+        "        call = dict(prompt_iri=1, prompt_version=2,\n"
         "                    source_text=4, extraction_schema=5, timeout_s=6)\n"
         "        return call\n"
     )
-    got = _seam_call_keys(fabricated)
-    assert "prompt_text" in got
-    assert got != SEAM_CALL_KEYS
-    assert [k for k in got if k in PROMPT_TEXT_SPELLINGS] == ["prompt_text"]
+    problems = _seam_call_problems(_seam_call_keys(fabricated))
+    assert any("do not cross" in p for p in problems)
+    assert any("prompt_iri" in p and "prompt_version" in p for p in problems)
 
 
 def _missing_realms(role: str, global_roles, local_roles) -> tuple[str, ...]:

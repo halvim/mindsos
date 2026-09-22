@@ -30,11 +30,17 @@ from mindsos_llm.contract import (
     verify_transport,
 )
 from mindsos_llm.credentials import static_resolver
+from mindsos_llm.live import LiveLLM
 from mindsos_llm.adapters.anthropic import CREDENTIAL_HEADER, VENDOR_ID
 
 SCHEMA = {"properties": {"days": {"type": "integer"}}}
 ANSWER = {"days": 7}
 KEY = "sk-not-a-real-key"
+FRAMING = dict(
+    prompt_text="extract the number of days",
+    tool_name="extract",
+    tool_description="extract the declared fields",
+)
 
 
 class _Response(io.BytesIO):
@@ -64,10 +70,6 @@ def _shipped_transport(**over):
     """The transport a deployment gets. No ``opener`` — that is the point."""
     kwargs = dict(
         resolve_credential=static_resolver(lambda: KEY),
-        model_id="claude-x",
-        resolve_prompt=lambda **_: "extract the number of days",
-        tool_name="extract",
-        tool_description="extract the declared fields",
     )
     kwargs.update(over)
     return adapters.build_transport(VENDOR_ID, **kwargs)
@@ -80,6 +82,7 @@ def test_the_shipped_adapter_passes_every_runnable_contract_check(wire):
         _shipped_transport(),
         prompt_iri="prompt:p",
         prompt_version=1,
+        **FRAMING,
         source_text="it took seven days",
         extraction_schema=SCHEMA,
     )
@@ -96,6 +99,7 @@ def test_the_verification_went_through_the_DEFAULT_opener(wire):
         _shipped_transport(),
         prompt_iri="prompt:p",
         prompt_version=1,
+        **FRAMING,
         source_text="it took seven days",
         extraction_schema=SCHEMA,
     )
@@ -112,6 +116,7 @@ def test_the_default_opener_path_scrubs_the_credential(wire):
         _shipped_transport(),
         prompt_iri="prompt:p",
         prompt_version=1,
+        **FRAMING,
         source_text="it took seven days",
         extraction_schema=SCHEMA,
     )
@@ -136,9 +141,56 @@ def test_the_contract_names_the_credential_property_it_cannot_verify(wire):
         _shipped_transport(),
         prompt_iri="prompt:p",
         prompt_version=1,
+        **FRAMING,
         source_text="it took seven days",
         extraction_schema=SCHEMA,
     )
     named = {c.name for c in report.checks if c.status == UNVERIFIABLE}
     assert "credential_not_retained_on_the_composed_request" in named
     assert named == {name for name, _ in UNVERIFIABLE_PROPERTIES}
+
+
+def test_the_shipped_adapter_sends_exactly_what_the_client_handed_it(wire):
+    """Plan R21 / ADR-0210 am-7, on core's OWN wire and the DEFAULT opener.
+
+    For a consumer's transport this property is ``unverifiable`` and the
+    harness says so by name. For the adapter core ships it is checkable, so it
+    is checked: every value the model receives is read back off the composed
+    request body and compared with what the client was built with — the prompt
+    words, the forced tool's name and sentence, the model, the temperature and
+    the token ceiling. **The temperature is non-zero on purpose**: until R21 a
+    non-zero temperature was stamped on the answer and never reached the wire,
+    because the adapter held a default of its own.
+
+    MUTATION: in ``adapters/anthropic.py`` send ``"temperature": 0.0`` instead
+    of ``float(temperature)`` — this test goes red and nothing else in the file
+    does.
+    """
+    client = LiveLLM(
+        _shipped_transport(),
+        model_id="claude-handed",
+        model_version="v-handed",
+        credential_level=1,
+        resolve_prompt=lambda **_: "THE-WORDS-THE-CLIENT-RESOLVED",
+        tool_name="extract",
+        tool_description="THE-SENTENCE-THE-CLIENT-HELD",
+        max_tokens=333,
+        temperature=0.7,
+    )
+    answer = client.read(
+        prompt_iri="prompt:p", prompt_version=1,
+        source_text="it took seven days", extraction_schema=SCHEMA,
+    )
+    assert len(wire) == 1
+    body = json.loads(wire[0].data.decode("utf-8"))
+    assert body["system"] == "THE-WORDS-THE-CLIENT-RESOLVED"
+    assert body["model"] == "claude-handed" == answer["model_id"]
+    assert body["temperature"] == 0.7 == answer["temperature"]
+    assert body["max_tokens"] == 333
+    assert body["tools"] == [{
+        "name": "extract",
+        "description": "THE-SENTENCE-THE-CLIENT-HELD",
+        "input_schema": SCHEMA,
+    }]
+    assert body["tool_choice"] == {"type": "tool", "name": "extract"}
+    assert body["messages"] == [{"role": "user", "content": "it took seven days"}]
