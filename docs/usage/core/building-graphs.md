@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 04
-verified_at: unverified
+verified_at: 2d94d0f
 ---
 
 # Building graphs
@@ -24,8 +24,9 @@ Phase 04 adds:
   preserves `ref:*` cross-graph reference keys; user-supplied
   `ref:*` values overwrite existing on collision.
 
-**State file format BUMPED to v=2** in Phase 04. Phase 03 wrote v=1;
-Phase 04 reads both v=1 (legacy) and v=2; writes v=2 on every save.
+**The state-file format has been bumped several times since.** Phase 03
+wrote v=1 and Phase 04 v=2; the CLI migrates forward on read and writes
+`mindsos_cli.migrations.graph.CURRENT_VERSION` on every save.
 v=1 → v=2 migration is one-way — see [Schemas → Migration from
 Phase 03](schema.md#migration-from-phase-03).
 

@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 08
-verified_at: unverified
+verified_at: 2d94d0f
 ---
 
 # `mindsos persistence` — Phase 08
@@ -90,9 +90,9 @@ FalkorDB:
   `orphan_hyperedges`, `dangling_tombstones`). The 2
   Metagraph-context buckets (`cross_graph_edges`, `orphan_metaedges`)
   report `[skipped — requires --source=memory --metagraph M]`.
-- `--source=db --metagraph M` is **refused** in Phase 07 (the
-  metagraph_loader lands in Phase 08); use `--source=memory` for
-  metagraph-scoped verify.
+- `--source=db --metagraph M` loads via `load_metagraph` and runs the
+  full 5-bucket scanner (it was refused until the metagraph loader
+  shipped).
 
 Exit codes per P64 A: `0` clean / `1` CLI usage error / `2` system
 error (DB unreachable on `--source=db`) / `3` drift findings.
@@ -259,9 +259,12 @@ three commands.
 
 ## Streaming load (programmatic)
 
-Phase 08 ships `iter_load_graph(client, graph_id, *, batch_size=10_000)`
-for memory-bounded reads of large Graphs (per ADR-0124). The streaming
-surface is **programmatic-only** (PB-10 A) — no `--stream` CLI flag.
+`iter_load_graph(client, graph_id, *, batch_size=10_000, …)` gives
+memory-bounded reads of large Graphs (per ADR-0124); it shipped at
+Phase 08 and has since grown `include_deprecated`, `report` and
+`unknown_edge_type_policy` — see [loaders](../../api/core/loaders.md)
+for the current signature. The streaming surface is
+**programmatic-only** (PB-10 A) — no `--stream` CLI flag.
 Intermediate yields are nodes-only; the final yield trails any deferred
 edges + hyperedges over the cumulative node set (RPB-1 A).
 
