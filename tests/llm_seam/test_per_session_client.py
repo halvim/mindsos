@@ -79,8 +79,13 @@ def test_capture_wraps_the_live_client_in_the_recorder():
 
 
 def test_replay_answers_from_the_file_and_builds_no_wire():
+    """⚠ Replay takes the prompt resolver and the framing too (plan R31): the
+    v2 key hashes the words' digest and the framing, and a deployment
+    replaying its own set hashes its CURRENT words. It still builds no wire
+    and takes no credential."""
     c = C.build_client(
-        vendor_id="anthropic", mode=C.MODE_REPLAY, store=RecordingStore(), **MODEL
+        vendor_id="anthropic", mode=C.MODE_REPLAY, store=RecordingStore(),
+        **MODEL, **WIRE,
     )
     assert isinstance(c, RecordedLLM)
 
