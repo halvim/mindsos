@@ -131,6 +131,8 @@ GUARDED: dict[str, tuple[str, str]] = {
                                     "every path / ADR number / link / symbol a live or index doc names resolves"),
     "live-page-verified-at": ("tests/architecture/test_live_pages_declare_verified_at.py",
                               "every live page declares verified_at: <sha> | unverified"),
+    "phase-promise-frame": ("tests/architecture/test_no_phase_promises.py",
+                            "no live line promises a numbered phase without saying how it turned out"),
     "retired-layout-frame": ("tests/architecture/test_no_retired_layout_frame.py",
                              "no live line presents the retired Model C layout as current"),
     "adr-role-registration": ("tests/architecture/test_every_named_role_is_registered_in_adr_0150.py",
