@@ -32,8 +32,15 @@ every call — so a transport now receives `prompt_text`, `source_text`,
 `max_tokens`, `timeout_s`, and no longer `prompt_iri` / `prompt_version`. That is
 a **breaking change for any transport a consumer wrote**, and for
 `verify_transport`, which now takes the words it probes with. Rows 7, 9 and 10
-below describe it. I-17's later gates add the digests and `request_key` v2;
-**I-12** adds **row 12**.
+below describe it. **I-17's second gate is BUILT** (R22, R30–R34): every answer
+stamps `prompt_digest`, `schema_digest`, `tool_name`, `tool_description`,
+`max_tokens` and `key_schema_version`; `request_key` v2 hashes what was asked by
+content (not the prompt's name); a replay client poses its question by digest —
+the deployment's own replay hashes its CURRENT words, and a third party's
+`ImportedSet.replay_config()` (rows 5, 6) hands over digests and framing, never
+the words; a v1 set refuses a replay config rather than missing every read.
+I-17's third gate puts the schema text, the digests and the framing on the origin
+record; **I-12** adds **row 12**.
 
 ⚠ **`model_version` is a configured label, not a fact about the call** (R35): no
 provider is sent it, so unlike `model_id` and `temperature` it is stamped as

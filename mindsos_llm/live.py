@@ -67,7 +67,7 @@ from .exceptions import (
     TransportContractError,
     TransportSignatureError,
 )
-from .recording import RecordingStore, request_key
+from .recording import RecordingStore, text_digest, what_was_asked
 from .seam import require_prompt_text
 
 #: The call a transport receives: **everything the model receives**, and
@@ -243,24 +243,36 @@ class LiveLLM:
             # ``exceptions``' module docstring — this message is printed
             # on a customer's page.
             raise LLMCallFailed() from exc
-        payload = dict(decode_response(response))
-        # Provenance is stamped here, never taken from the response.
-        payload["model_id"] = self._model_id
-        payload["model_version"] = self._model_version
-        payload["prompt_iri"] = prompt_iri
-        payload["prompt_version"] = int(prompt_version)
-        payload["temperature"] = self._temperature
-        payload["request_key"] = request_key(
+        # Provenance is stamped here, never taken from the response — and it
+        # names the question BY CONTENT (plan R20-R22): the digest of the
+        # words just SENT, the schema's digest, the framing just handed over.
+        stamps = what_was_asked(
             prompt_iri=prompt_iri,
             prompt_version=prompt_version,
+            prompt_digest=text_digest(prompt_text),
+            extraction_schema=extraction_schema,
+            tool_name=self._tool_name,
+            tool_description=self._tool_description,
+            max_tokens=self._max_tokens,
             model_id=self._model_id,
             model_version=self._model_version,
             temperature=self._temperature,
             source_text=source_text,
         )
-        payload["recorded"] = False
-        payload["mode"] = self.MODE
-        payload["credential_level"] = self._credential_level
+        stamps["recorded"] = False
+        stamps["mode"] = self.MODE
+        stamps["credential_level"] = self._credential_level
+        try:
+            payload = dict(decode_response(response))
+        except MalformedResponse as exc:
+            # ⚠ An undecodable answer is still an answer to a question that
+            # WAS asked (plan R33): the reader records this refusal as the
+            # model's conclusion (R26), so it must be able to say what was
+            # asked. The stamps ride on the exception; the message stays
+            # fixed prose.
+            exc.asked = dict(stamps)
+            raise
+        payload.update(stamps)
         return payload
 
 
@@ -300,7 +312,13 @@ class CapturingLLM:
         return self._store
 
     def read(self, **kwargs: Any) -> Mapping[str, Any]:
-        response = dict(self._inner.read(**kwargs))
+        try:
+            response = dict(self._inner.read(**kwargs))
+        except MalformedResponse as exc:
+            # The same override, on the one failure that carries stamps (R33).
+            if exc.asked is not None:
+                exc.asked = {**exc.asked, "mode": self.MODE}
+            raise
         response["mode"] = self.MODE
         key = response.get("request_key")
         if key:

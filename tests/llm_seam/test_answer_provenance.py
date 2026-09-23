@@ -128,7 +128,7 @@ def test_a_replayed_answer_says_replay_and_reports_NO_credential_level():
     """
     store = RecordingStore({})
     captured = CapturingLLM(_live(1), store).read(**CALL)
-    replayed = RecordedLLM(store, model_id="a-model", model_version="1").read(**CALL)
+    replayed = RecordedLLM(store, model_id="a-model", model_version="1", **CLIENT_FRAMING).read(**CALL)
 
     assert replayed["mode"] == "replay"
     assert "credential_level" in replayed, "absent is not the same as None"
@@ -195,7 +195,7 @@ def test_mode_and_recorded_can_never_contradict_each_other():
     payloads = [
         _live(1).read(**CALL),
         CapturingLLM(_live(1), store).read(**CALL),
-        RecordedLLM(store, model_id="a-model", model_version="1").read(**CALL),
+        RecordedLLM(store, model_id="a-model", model_version="1", **CLIENT_FRAMING).read(**CALL),
     ]
     assert {p["mode"] for p in payloads} == set(C.MODES), (
         "the three payloads must cover all three modes, or this guard checks "
@@ -230,7 +230,7 @@ def test_MODES_is_exactly_the_union_of_the_classes_that_serve_them():
 
 
 def test_the_request_key_does_not_depend_on_the_mode_or_the_level():
-    """MUTATION: add a seventh parameter to ``request_key``.
+    """MUTATION: add a tenth parameter to ``request_key``.
 
     ⚠ **Asked of the SIGNATURE, not of a list of six strings.** The key is
     documented as *"everything that materially determines a reading"*, and
@@ -238,16 +238,21 @@ def test_the_request_key_does_not_depend_on_the_mode_or_the_level():
     client configured at level 2, and a captured answer must replay at all —
     both of which break the moment either value enters the hash. Nothing
     pinned the key's input set before this ship.
+
+    ⚠ **v2 (plan R22, R30, 2026-09-22):** the set is what was asked BY
+    CONTENT — the prompt name and version left it, the words' and schema's
+    digests and the framing entered it. Mode and level still do not.
     """
     assert set(inspect.signature(recording.request_key).parameters) == {
-        "prompt_iri", "prompt_version", "model_id", "model_version",
-        "temperature", "source_text",
+        "prompt_digest", "schema_digest", "tool_name", "tool_description",
+        "max_tokens", "model_id", "model_version", "temperature",
+        "source_text",
     }
 
     store = RecordingStore({})
     captured = CapturingLLM(_live(1), store).read(**CALL)
     # A DIFFERENT level, and the same question: it must still hit.
-    replayed = RecordedLLM(store, model_id="a-model", model_version="1").read(**CALL)
+    replayed = RecordedLLM(store, model_id="a-model", model_version="1", **CLIENT_FRAMING).read(**CALL)
     assert replayed["request_key"] == captured["request_key"]
     assert _live(3).read(**CALL)["request_key"] == captured["request_key"]
 

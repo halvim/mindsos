@@ -12,12 +12,19 @@ from __future__ import annotations
 import pytest
 
 from mindsos_llm import RecordedResponseMiss, RecordingStore, RecordedLLM, request_key
+from mindsos_llm.recording import schema_digest, text_digest
+
+WORDS = "read the purchase date"
+FRAMING = dict(tool_name="extract", tool_description="pull the fields out")
 
 
 def _key(**over):
     args = dict(
-        prompt_iri="prompt:claims.purchase_date",
-        prompt_version=1,
+        prompt_digest=text_digest(WORDS),
+        schema_digest=schema_digest(None),
+        tool_name="extract",
+        tool_description="pull the fields out",
+        max_tokens=1024,
         model_id="model-x",
         model_version="2026-05-01",
         temperature=0.0,
@@ -27,6 +34,11 @@ def _key(**over):
     return request_key(**args)
 
 
+def _replay(store):
+    return RecordedLLM(store, model_id="model-x", model_version="2026-05-01",
+                       resolve_prompt=lambda **_: WORDS, **FRAMING)
+
+
 def test_request_key_is_deterministic():
     assert _key() == _key()
 
@@ -34,8 +46,11 @@ def test_request_key_is_deterministic():
 @pytest.mark.parametrize(
     "field, value",
     [
-        ("prompt_version", 2),
-        ("prompt_iri", "prompt:claims.purchase_date.reworded"),
+        ("prompt_digest", text_digest("read the purchase date, reworded")),
+        ("schema_digest", schema_digest({"properties": {"d": {}}})),
+        ("tool_name", "extract_v2"),
+        ("tool_description", "pull every field out"),
+        ("max_tokens", 2048),
         ("model_id", "model-y"),
         ("model_version", "2026-06-01"),
         ("temperature", 0.7),
@@ -50,9 +65,7 @@ def test_every_determinant_of_a_reading_changes_the_key(field, value):
 
 
 def test_a_miss_raises_rather_than_falling_through():
-    llm = RecordedLLM(
-        RecordingStore({}), model_id="model-x", model_version="2026-05-01"
-    )
+    llm = _replay(RecordingStore({}))
     with pytest.raises(RecordedResponseMiss):
         llm.read(
             prompt_iri="prompt:claims.purchase_date",
@@ -74,7 +87,7 @@ def test_replayed_reading_is_stamped_recorded_and_cannot_lie_about_the_model():
             }
         }
     )
-    llm = RecordedLLM(store, model_id="model-x", model_version="2026-05-01")
+    llm = _replay(store)
     reading = llm.read(
         prompt_iri="prompt:claims.purchase_date",
         prompt_version=1,

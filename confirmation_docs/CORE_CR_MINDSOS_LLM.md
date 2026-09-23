@@ -440,6 +440,9 @@ with the *same* values, and **nothing in that file tells them what they were.**
 Every read misses, and a total miss reads as *"the set is broken"* rather than
 *"you configured the client differently"*. An exported set therefore carries a
 manifest and `ImportedSet.replay_config()` hands back the exact kwargs.
+⚠ **v2 (2026-09-22, plan R22/R31):** the key now hashes what was asked BY
+CONTENT, and `replay_config()` also hands back the tool framing and the
+per-prompt DIGESTS — never the prompt words.
 
 **The manifest is DERIVED from the payloads, never supplied.** A manifest a
 caller fills in by hand is a claim about a recording rather than a property of
@@ -676,8 +679,10 @@ predicate, not the sentence** (this document's third stale-prose finding).
    omits the prompt WORDS (it carries only the IRI and version), the extraction
    schema, the forced tool's name and description, and `max_tokens`. Key **v2**
    hashes the prompt and schema digests plus the framing, and
-   `KEY_SCHEMA_VERSION` bumps so a v1 set misses loudly. Everything this section
-   says about v1 describes what ships today.
+   `KEY_SCHEMA_VERSION` bumps so a v1 set misses loudly. ⚠ **BUILT 2026-09-22
+   (I-17 gate 2):** v2 ships; the prompt's NAME left the key (R30), a replay
+   poses its question by digest (R31), and a set's version is derived from its
+   payloads (R34). What this section says about v1 is the record.
 
 **Findings, each with a disposition (RULES §12.4):**
 

@@ -35,7 +35,8 @@ from mindsos_capacity.identifiers import (
 )
 from mindsos_intelligence.mm import MentalModel
 from mindsos_intelligence.pipeline_execution import execute_pipeline
-from mindsos_llm import RecordingStore, RecordedLLM, request_key
+from mindsos_llm import RecordingStore, RecordedLLM
+from mindsos_llm.recording import text_digest, what_was_asked
 
 SOURCE_DS = datastate_iri("claims.submission_email")
 VALUE_DS = datastate_iri("claims.hospital_stay_asserted")
@@ -45,6 +46,10 @@ EMAIL = "I am sorry this is late. I was in hospital for three weeks."
 
 MODEL_ID = "model-x"
 MODEL_VERSION = "2026-05-01"
+#: What the model is asked besides the document (plan R21, R22): the replay
+#: client hashes the digest of these words and this framing into the v2 key.
+WORDS = "read whether the customer says they were in hospital"
+FRAMING = dict(tool_name="extract", tool_description="pull the fields out", max_tokens=1024)
 PROMPT_IRI = "prompt:claims.hospital_stay"
 PROMPT_VERSION = 3
 
@@ -102,16 +107,20 @@ def _reader():
 
 
 def _llm(fields):
-    key = request_key(
+    key = what_was_asked(
         prompt_iri=PROMPT_IRI,
         prompt_version=PROMPT_VERSION,
+        prompt_digest=text_digest(WORDS),
+        extraction_schema=None,
         model_id=MODEL_ID,
         model_version=MODEL_VERSION,
         temperature=0.0,
         source_text=EMAIL,
-    )
+        **FRAMING,
+    )["request_key"]
     store = RecordingStore({key: {"fields": fields}})
-    return RecordedLLM(store, model_id=MODEL_ID, model_version=MODEL_VERSION)
+    return RecordedLLM(store, model_id=MODEL_ID, model_version=MODEL_VERSION,
+                       resolve_prompt=lambda **_: WORDS, **FRAMING)
 
 
 def _run(fields):

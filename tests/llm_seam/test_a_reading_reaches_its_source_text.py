@@ -44,7 +44,8 @@ from mindsos_capacity.identifiers import (
 )
 from mindsos_intelligence.mm import MentalModel
 from mindsos_intelligence.pipeline_execution import execute_pipeline
-from mindsos_llm import RecordingStore, RecordedLLM, request_key
+from mindsos_llm import RecordingStore, RecordedLLM
+from mindsos_llm.recording import text_digest, what_was_asked
 
 SOURCE_DS = datastate_iri("excision.submission_email")
 VALUE_DS = datastate_iri("excision.hospital_stay_asserted")
@@ -55,6 +56,10 @@ OTHER_EMAIL = "I am sorry this is late. I was on holiday for three weeks."
 
 MODEL_ID = "model-x"
 MODEL_VERSION = "2026-05-01"
+#: What the model is asked besides the document (plan R21, R22): the replay
+#: client hashes the digest of these words and this framing into the v2 key.
+WORDS = "read whether the customer says they were in hospital"
+FRAMING = dict(tool_name="extract", tool_description="pull the fields out", max_tokens=1024)
 PROMPT_IRI = "prompt:excision.hospital_stay"
 PROMPT_VERSION = 3
 
@@ -118,18 +123,23 @@ def _run():
         source_identity_phrase="their submission email",
         expected_basis=BASIS_STATED,
     )
-    key = request_key(
+    key = what_was_asked(
         prompt_iri=PROMPT_IRI,
         prompt_version=PROMPT_VERSION,
+        prompt_digest=text_digest(WORDS),
+        extraction_schema=None,
         model_id=MODEL_ID,
         model_version=MODEL_VERSION,
         temperature=0.0,
         source_text=EMAIL,
-    )
+        **FRAMING,
+    )["request_key"]
     llm = RecordedLLM(
         RecordingStore({key: {"fields": ANSWER}}),
         model_id=MODEL_ID,
         model_version=MODEL_VERSION,
+        resolve_prompt=lambda **_: WORDS,
+        **FRAMING,
     )
     mm = MentalModel(session_id="s", user_id="u")
     result = execute_pipeline(
@@ -180,14 +190,25 @@ def _source_text_of(graph, record_node):
 
 
 def _key_from(record, source_text):
-    return request_key(
+    """Recompute the v2 key from the record plus the source text found.
+
+    ⚠ I-17 gate 2 (plan R22): the prompt digest, the schema and the framing
+    are hashed into the key, and the origin record does not carry them until
+    gate 3 (R23, R32). Until then they are this file's own constants — which
+    still proves what this file claims: only the source text actually read
+    reproduces the record's key. Gate 3 reads them off the record instead.
+    """
+    return what_was_asked(
         prompt_iri=record["prompt_iri"],
         prompt_version=record["prompt_version"],
+        prompt_digest=text_digest(WORDS),
+        extraction_schema=None,
         model_id=record["model_id"],
         model_version=record["model_version"],
         temperature=record["temperature"],
         source_text=source_text,
-    )
+        **FRAMING,
+    )["request_key"]
 
 
 def _record_node(graph):

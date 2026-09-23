@@ -263,7 +263,8 @@ def test_a_replayed_reading_cannot_present_as_live():
     payload = _read(live)
     store.put(payload["request_key"], payload)
     replayed = RecordedLLM(
-        store, model_id="m", model_version="2026-01-01"
+        store, model_id="m", model_version="2026-01-01",
+        resolve_prompt=lambda **_: "read the document", tool_name="extract", tool_description="pull the fields out",
     ).read(prompt_iri="prompt:p", prompt_version=1, source_text="doc")
     assert payload["recorded"] is False and replayed["recorded"] is True
     assert replayed["request_key"] == payload["request_key"]
