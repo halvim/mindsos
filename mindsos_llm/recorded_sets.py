@@ -10,11 +10,12 @@ meaning "never reproducible".
 
 ⚠ **THE BUG THIS MODULE ACTUALLY FIXES IS NOT THE SCOPE, IT IS THE KEY.**
 ``RecordedLLM`` looks an answer up by :func:`~.recording.request_key`, a hash
-over the prompt IRI and version, **the model id and version**, the temperature
-and the exact source text. So a third party handed a bare
+over **what was asked, by content** (v2, plan R22): the prompt words' digest,
+the schema's digest, the tool framing, **the model id and version**, the
+temperature and the exact source text. So a third party handed a bare
 ``{key: response}`` file cannot replay it: they must construct
-``RecordedLLM(store, model_id=…, model_version=…, temperature=…)`` with the
-*same* values, and **nothing in that file tells them what those were**. Every
+``RecordedLLM`` with the *same* values, and **nothing in that file tells them
+what those were**. Every
 read would miss, loudly and for the wrong reason — a replay miss reads as "the
 set is wrong", not as "you configured the client differently". An exported set
 therefore carries a manifest, and :meth:`ImportedSet.replay_config` hands back
@@ -60,7 +61,16 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Tuple
 
-from .recording import KEY_SCHEMA_VERSION, RecordingStore
+from .recording import (
+    KEY_SCHEMA_VERSION,
+    UNSTAMPED_KEY_SCHEMA_VERSION,
+    RecordingStore,
+)
+
+#: The framing a v2 answer stamps and a v2 key hashes (plan R22, R32). Part of
+#: a set's IDENTITY from v2 on: one replay client carries one framing, so a set
+#: holding two cannot be replayed by one client, exactly as with two models.
+FRAMING = ("tool_name", "tool_description", "max_tokens")
 
 #: Bumped when the envelope's shape changes. An unknown version is refused
 #: rather than best-guessed: a set read under the wrong assumptions replays
@@ -124,9 +134,18 @@ def _declared_levels(store: RecordingStore) -> set:
 
 
 def _derive_manifest(store: RecordingStore) -> Dict[str, Any]:
-    """Read the manifest OUT of the payloads. Nothing here is supplied."""
+    """Read the manifest OUT of the payloads. Nothing here is supplied.
+
+    ⚠ ``key_schema_version`` is DERIVED (plan R34). It used to be this
+    module's constant, so every set was described as keyed under the version
+    the READER was built with — a false claim the day the key changed, while
+    ``mindsos_knowledge.recorded_sets`` said it was "derived from the file's
+    bytes". Each payload states its version; an unstamped one predates the
+    stamp and is v1; a set mixing versions refuses.
+    """
     identities = set()
     prompts = set()
+    versions = set()
     for key, payload in _payloads(store):
         missing = [f for f in REQUIRED_PROVENANCE if f not in payload]
         if missing:
@@ -141,27 +160,58 @@ def _derive_manifest(store: RecordingStore) -> Dict[str, Any]:
                 f"{payload['request_key']!r}. The key is the question; a "
                 "payload filed under a different one answers something else."
             )
-        identities.add(
-            (
-                str(payload["model_id"]),
-                str(payload["model_version"]),
-                float(payload["temperature"]),
+        version = str(payload.get("key_schema_version", UNSTAMPED_KEY_SCHEMA_VERSION))
+        versions.add(version)
+        identity = {
+            "model_id": str(payload["model_id"]),
+            "model_version": str(payload["model_version"]),
+            "temperature": float(payload["temperature"]),
+        }
+        prompt = {
+            "prompt_iri": str(payload["prompt_iri"]),
+            "prompt_version": int(payload["prompt_version"]),
+        }
+        if version != UNSTAMPED_KEY_SCHEMA_VERSION:
+            missing = [f for f in FRAMING + ("prompt_digest",) if f not in payload]
+            if missing:
+                raise RecordedSetRefused(
+                    f"response {key!r} states key_schema_version {version!r} "
+                    f"but is missing {missing!r}, which every v2 answer carries."
+                )
+            identity.update(
+                tool_name=str(payload["tool_name"]),
+                tool_description=str(payload["tool_description"]),
+                max_tokens=int(payload["max_tokens"]),
             )
+            prompt["prompt_digest"] = str(payload["prompt_digest"])
+        identities.add(json.dumps(identity, sort_keys=True))
+        prompts.add(json.dumps(prompt, sort_keys=True))
+    if len(versions) > 1:
+        raise RecordedSetRefused(
+            f"this set mixes key schema versions {sorted(versions)!r}. One "
+            "client computes one key, so part of the set would always miss - "
+            "split it by version."
         )
-        prompts.add((str(payload["prompt_iri"]), int(payload["prompt_version"])))
     return {
         "responses": len(store),
-        "key_schema_version": KEY_SCHEMA_VERSION,
+        "key_schema_version": (
+            next(iter(versions)) if versions else KEY_SCHEMA_VERSION
+        ),
+        # Sorted by the SAME keys as before v2, extended — an export written by
+        # an earlier build must still derive to the manifest it carries.
         "identities": sorted(
-            [
-                {"model_id": m, "model_version": v, "temperature": t}
-                for m, v, t in identities
-            ],
-            key=lambda d: (d["model_id"], d["model_version"], d["temperature"]),
+            (json.loads(i) for i in identities),
+            key=lambda d: (
+                d["model_id"], d["model_version"], d["temperature"],
+                d.get("tool_name", ""), d.get("tool_description", ""),
+                d.get("max_tokens", 0),
+            ),
         ),
         "prompts": sorted(
-            [{"prompt_iri": i, "prompt_version": v} for i, v in prompts],
-            key=lambda d: (d["prompt_iri"], d["prompt_version"]),
+            (json.loads(p) for p in prompts),
+            key=lambda d: (
+                d["prompt_iri"], d["prompt_version"], d.get("prompt_digest", ""),
+            ),
         ),
     }
 
@@ -252,6 +302,12 @@ class ImportedSet:
     def replay_config(self) -> Dict[str, Any]:
         """The exact keyword arguments ``RecordedLLM`` needs for this set.
 
+        ⚠ Returns ``prompt_digests`` rather than prompt words (plan R31): the
+        v2 key hashes the digest, so a third party replays an export without
+        being handed the prompts. ⚠ Refuses a set keyed under another
+        ``key_schema_version``, and a set in which one prompt edition was
+        asked with two wordings.
+
         ⚠ Raises when the set holds more than one model identity. A single
         client cannot replay it: the keys were computed with different model
         ids, so some reads would hit and others would miss, and a partial
@@ -262,15 +318,39 @@ class ImportedSet:
         if len(identities) != 1:
             raise RecordedSetRefused(
                 f"this set holds {len(identities)} model identities "
-                f"{identities!r}. request_key hashes the model id, version and "
-                "temperature, so ONE RecordedLLM can replay exactly one of "
-                "them - split the set, or build one client per identity."
+                f"{identities!r}. request_key hashes the model id, version, "
+                "temperature and tool framing, so ONE RecordedLLM can replay "
+                "exactly one of them - split the set, or build one client per "
+                "identity."
             )
+        version = self.manifest.get("key_schema_version")
+        if version != KEY_SCHEMA_VERSION:
+            raise RecordedSetRefused(
+                f"this set was keyed under key_schema_version {version!r}; this "
+                f"build computes {KEY_SCHEMA_VERSION!r}, so every read would "
+                "miss. Re-capture it (plan R22: an old set misses loudly, and "
+                "this is the loud part)."
+            )
+        digests: Dict[Tuple[str, int], str] = {}
+        for entry in self.manifest.get("prompts") or []:
+            at = (entry["prompt_iri"], int(entry["prompt_version"]))
+            if at in digests and digests[at] != entry["prompt_digest"]:
+                raise RecordedSetRefused(
+                    f"prompt {at!r} was asked with two different wordings in "
+                    "this set - the edition was changed in place between "
+                    "captures. One client resolves one wording per edition; "
+                    "split the set."
+                )
+            digests[at] = entry["prompt_digest"]
         only = identities[0]
         return {
             "model_id": only["model_id"],
             "model_version": only["model_version"],
             "temperature": only["temperature"],
+            "tool_name": only["tool_name"],
+            "tool_description": only["tool_description"],
+            "max_tokens": only["max_tokens"],
+            "prompt_digests": digests,
         }
 
 

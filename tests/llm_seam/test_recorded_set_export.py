@@ -22,7 +22,7 @@ from mindsos_llm.recorded_sets import (
     export_set,
     import_set,
 )
-from mindsos_llm.recording import RecordingStore
+from mindsos_llm.recording import RecordingStore, text_digest
 from mindsos_llm.replay import RecordedLLM
 
 ANSWER = {"fields": [{"name": "days", "value": 7, "quote": "seven days"}]}
@@ -67,14 +67,20 @@ def test_an_exported_set_replays_with_NO_client_and_NO_credential():
 
 
 def test_replay_config_is_what_a_third_party_would_otherwise_have_to_GUESS():
-    """⚠ The actual bug. request_key hashes model id, version and temperature;
-    a bare map tells a reader none of them, so every lookup misses and reads as
-    a broken recording rather than a misconfigured client."""
+    """⚠ The actual bug. request_key hashes model id, version, temperature,
+    the tool framing and the prompt words' digest; a bare map tells a reader
+    none of them, so every lookup misses and reads as a broken recording rather
+    than a misconfigured client. ⚠ Plan R31: the DIGEST is handed over, never
+    the words — a third party replays without being given the prompt."""
     loaded = import_set(export_set(_captured(model_id="m-9", model_version="v-3")))
     assert loaded.replay_config() == {
         "model_id": "m-9",
         "model_version": "v-3",
         "temperature": 0.0,
+        "tool_name": "extract",
+        "tool_description": "pull the fields out",
+        "max_tokens": 1024,
+        "prompt_digests": {("prompt:p", 1): text_digest("read the document")},
     }
 
 
@@ -82,7 +88,7 @@ def test_a_wrongly_configured_client_MISSES_which_is_why_the_manifest_exists():
     from mindsos_llm.exceptions import RecordedResponseMiss
 
     loaded = import_set(export_set(_captured(model_id="m-1")))
-    wrong = RecordedLLM(loaded.store, model_id="m-2", model_version="v-1")
+    wrong = RecordedLLM(loaded.store, **{**loaded.replay_config(), "model_id": "m-2"})
     with pytest.raises(RecordedResponseMiss):
         wrong.read(prompt_iri="prompt:p", prompt_version=1, source_text="the doc")
 
@@ -92,11 +98,15 @@ def test_a_wrongly_configured_client_MISSES_which_is_why_the_manifest_exists():
 def test_the_manifest_is_read_out_of_the_payloads_not_supplied():
     exported = json.loads(export_set(_captured(model_id="m-1", model_version="v-1")))
     assert exported["manifest"]["identities"] == [
-        {"model_id": "m-1", "model_version": "v-1", "temperature": 0.0}
+        {"model_id": "m-1", "model_version": "v-1", "temperature": 0.0,
+         "tool_name": "extract", "tool_description": "pull the fields out",
+         "max_tokens": 1024}
     ]
     assert exported["manifest"]["prompts"] == [
-        {"prompt_iri": "prompt:p", "prompt_version": 1}
+        {"prompt_iri": "prompt:p", "prompt_version": 1,
+         "prompt_digest": text_digest("read the document")}
     ]
+    assert exported["manifest"]["key_schema_version"] == "2"
     assert exported["manifest"]["responses"] == 1
 
 

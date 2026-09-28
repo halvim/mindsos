@@ -151,10 +151,11 @@ def build_client(
             client, not the adapter** (plan R21, ADR-0210 am-7): the client
             hands every one of them to the transport on each call, so the
             values stamped on an answer are the values sent. Required for
-            ``live`` and ``capture`` (``LiveLLM`` refuses a missing one).
-            ⚠ ``replay`` does not use them yet: its key is still v1, which
-            hashes none of them. The v2 key (R22) is what makes replay pose
-            the question by content.
+            every mode. ``replay`` needs them too: the v2 key hashes the
+            words' digest and the framing (plan R22), and a deployment
+            replaying its own set hashes its CURRENT words, so a reworded
+            prompt misses (R31). A third party replaying an export builds
+            ``RecordedLLM`` from ``ImportedSet.replay_config`` instead.
         **transport_kwargs: passed to the adapter's builder — wire
             configuration only (``endpoint``, ``opener``). ⚠ Measured
             2026-09-22: before R21, ``temperature`` was a named argument here
@@ -182,7 +183,11 @@ def build_client(
             store,
             model_id=model_id,
             model_version=model_version,
+            tool_name=tool_name,
+            tool_description=tool_description,
+            max_tokens=max_tokens,
             temperature=temperature,
+            resolve_prompt=resolve_prompt,
         )
 
     level = credential_level

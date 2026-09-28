@@ -28,7 +28,7 @@ stack does.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Mapping, Optional
 
 
 class LLMError(Exception):
@@ -140,6 +140,10 @@ class MalformedResponse(LLMError):
         super().__init__()
         #: Exactly what the transport returned, unmodified.
         self.raw = raw
+        #: What was asked, as the client stamps it on an answer (plan R33) —
+        #: set by the client that raised, never by a transport. ``None`` when
+        #: raised outside a client (``decode_response`` called directly).
+        self.asked: Optional[Mapping[str, Any]] = None
 
 
 class TransportContractError(LLMError):

@@ -743,7 +743,8 @@ the plan's §1, each citing its authority in the plan.
     a mixture refuses.
 11. **`model_version` is a configured label** (R35), not a fact about the call.
 
-**Build state.** I-17 ships in three gates: (1) the seam, clause 6 — **this
-amendment's first built part**; (2) clauses 4, 7 and 10; (3) the origin-record half
-of clause 4, and clauses 8 and 9. The amendment stays **Proposed** until I-12 ships,
+**Build state.** I-17 ships in three gates: (1) the seam, clause 6 — **built,
+PR #242**; (2) clauses 4 (the key and the answer's stamps), 7, 10, and the
+client halves of 8 and 9 — **built, I-17 gate 2**; (3) the origin-record half of
+clauses 4, 8 and 9. The amendment stays **Proposed** until I-12 ships,
 because clauses 1 and 5 are I-12's.

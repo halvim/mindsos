@@ -100,6 +100,15 @@ STAMPED_ABOVE_THE_TRANSPORT: Tuple[str, ...] = (
     "recorded",
     "mode",
     "credential_level",
+    # Plan R20-R22, R32, R34 (ADR-0210 am-7): the answer names what was
+    # asked BY CONTENT. A transport can no more supply these than the model
+    # id: they describe what the client handed it.
+    "prompt_digest",
+    "schema_digest",
+    "tool_name",
+    "tool_description",
+    "max_tokens",
+    "key_schema_version",
 )
 
 _FORGED = "forged-by-the-contract-probe"
