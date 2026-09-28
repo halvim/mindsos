@@ -3,7 +3,7 @@
 **Two channels, deliberately separate.** A failure here reaches a reader
 twice: as customer-visible prose (``str(exc)``, which
 ``execute_pipeline`` writes onto L-2's ``RunStopped`` node as
-``stopped_detail`` and a Decision Record prints) and as structured
+``stopped_detail`` and a printed run record shows) and as structured
 attributes that only code and a traceback see. They are not the same
 string and must never be merged — the precedent is
 ``policy_lookup_v0.PolicyStoreUnreachableError``, whose docstring states

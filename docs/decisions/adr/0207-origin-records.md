@@ -12,7 +12,7 @@ supersedes: none
 **Status is `Proposed`, not `Accepted`.** No consumer exists yet — there is no
 Record renderer and no policy lookup — and RULES §9 reserves `Accepted` for a
 decision someone has read against the code it governs. The shape was authored on
-a go-to-market branch (`feat/decision-records`) and RULES §8 says a subsystem
+a go-to-market branch and RULES §8 says a subsystem
 owns nothing architectural; landing the module in core is what this ADR records,
 not ratification of the field set.
 
@@ -25,7 +25,7 @@ here.)*
 
 ## Context
 
-Decision Records sells one sentence:
+A consumer's printed record has to be able to state one sentence:
 
 > *"Denied: elapsed days 47 against a limit of 30, from the claims policy,
 > version 4, in force since 12 March."*
@@ -78,7 +78,7 @@ supplies. Inside that list a missing value is a defect; outside it, normal.
 
 **2. Tokens branch, phrases print.** Every token has a paired registered phrase,
 and `assert_printable_phrase` refuses anything containing `:` at registration. A
-Decision Record forbids every IRI and every MindsOS term, and code must never
+printed run record forbids every IRI and every MindsOS term, and code must never
 branch by parsing English. This is the shipped `FindVerdict.reason` / `.detail`
 split.
 
@@ -139,7 +139,7 @@ registers it. The module is deliberately **not** exported from
 
 **Registration is Global or Local.** A producer registered with a session places
 its DataStates and capacity in that user's Local metagraph; without one, Global.
-Local-first is the Decision Records trial: prove the shape without touching the
+Local-first is the trial rule: prove the shape without touching the
 Global catalog, and promote deliberately.
 
 ## Consequences
@@ -191,11 +191,11 @@ beyond this module and is tracked as
 
 ## Amendment 1 — a capacity carries the phrase that names it (2026-08-12)
 
-**Amendment status:** Proposed. **Opened by:** `decision-records-capacity-printable-phrase`.
+**Amendment status:** Proposed. **Opened by:** the capacity-printable-phrase design.
 
 Rule 2 above — *tokens branch, phrases print* — was written for the values a
 producer reports on. It applies unchanged to the **producer itself**, and probe
-D showed the gap by rendering all four Decision Records run graphs and finding
+D showed the gap by rendering all four probe run graphs and finding
 that nothing in a graph can name a capacity: a `CapacityInstance` carries the
 capacity IRI and nothing else, and the criterion writes no origin record (ADR-0208
 D3). So *"decided by…"* and *"stopped at…"* had no prose to use.
@@ -221,7 +221,7 @@ persist custom fields"* is no longer true: it persists `printable_phrase` when
 one is declared. The rejection itself **still stands** — *the catalog is mutable
 and separately persisted, so an archived Episode would render the wrong prose
 with no drift signal.* That is exactly why the renderer must never read the
-catalog: `decision-records-run-manifest` **snapshots the phrase into the run
+catalog: the run manifest **snapshots the phrase into the run
 graph when the run starts**, and the Record renders from that snapshot. The
 registered property exists so the manifest has something to copy, not so a
 renderer can reach back for it.
@@ -293,7 +293,7 @@ classification, turns the gate red. Shown red by mutation on all four paths.
 
 ## Amendment 3 — a producer advertises only what a record can carry (2026-08-13)
 
-**Amendment status:** Proposed. **Opened by:** `decision-records-map-manifest`,
+**Amendment status:** Proposed. **Opened by:** the map-manifest design,
 closing the OPEN question amendment 2 left on `source_unreachable`.
 
 Amendment 2 classified `source_unreachable` as degenerate and then wrote:

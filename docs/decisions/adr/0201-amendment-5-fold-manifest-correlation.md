@@ -15,7 +15,7 @@ class of fact amendment 4 built the manifest for.
 **1. Which member produced which verdict.** The fold's seeded list preserves
 member order, and the shipped renderer correlated member ↔ verdict by full
 verdict-value equality against that list. Two demo findings (N-F1/N-F2,
-`decision-records` bijection ship) proved value-equality is not injective —
+a consumer's bijection ship) proved value-equality is not injective —
 and shape (a) makes the breaking case *legal*: two members that both refuse
 in-band may carry identical refusal values, while their pages must differ.
 A value contract ("a refusal value must identify its member") was proposed

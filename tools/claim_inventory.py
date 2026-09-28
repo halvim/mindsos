@@ -76,8 +76,6 @@ OUT_OF_IMAGE = "not-in-image"    # tracked, but no test image copies it
 #: claim-inventory-owner-rulings, ruling 1). A new live plan is added HERE.
 LIVE_CONFIRMATION_DOCS = frozenset({
     "CORE_RECONCILIATION_PLAN.md",
-    "DECISION_RECORDS_V0_PLAN.md",
-    "DECISION_RECORDS_AGREED_CHANGES.md",
 })
 
 

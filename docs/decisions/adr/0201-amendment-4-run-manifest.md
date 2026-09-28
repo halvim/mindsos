@@ -1,14 +1,14 @@
 # ADR-0201 — Amendment 4: the run manifest, and where it is minted
 
-**Status:** Accepted (2026-08-13). Records `decision-records-run-manifest`
-(shipped, PR #153) and `decision-records-map-manifest` (this CR), which corrects
+**Status:** Accepted (2026-08-13). Records the run-manifest design
+(shipped, PR #153) and the map-manifest design (this CR), which corrects
 where the node is minted and completes its contents.
 
 ## Context
 
 ADR-0201 defines the capacity-MM instance vocabulary: `CapacityInstance`,
 `DataStateInstance`, `PRODUCES`/`CONSUMES`, and (with the terminal-node CR)
-`RunStopped`. A Decision Record is rendered **from that graph and nothing
+`RunStopped`. A printed run record is rendered **from that graph and nothing
 else**, and probe D established by sketching a renderer over four real run
 graphs that exactly three symbols cannot be turned into prose from it:
 

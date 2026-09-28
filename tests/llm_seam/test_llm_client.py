@@ -4,7 +4,7 @@
 :func:`test_a_provider_failure_never_reaches_the_customers_page`. The
 archived seam built its outage message as ``f"the model call for
 {prompt_iri!r} ... {type(exc).__name__}: {exc}"``. That string becomes
-``stopped_detail`` on L-2's ``RunStopped`` node and the Decision Records
+``stopped_detail`` on L-2's ``RunStopped`` node and a consumer's
 renderer prints it, so a provider's own error text — a URL, an
 authorization message, whatever the vendor's library happened to write —
 rendered on a customer's page. The critic reproduced it from its own

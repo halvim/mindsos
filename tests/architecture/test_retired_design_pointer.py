@@ -1,6 +1,6 @@
 """Guard — a live file naming a retired design must name the design that replaced it.
 
-**The failure this exists to stop, in full.** On 2026-08-20 the Decision Records
+**The failure this exists to stop, in full.** On 2026-08-20 a consumer
 lane asked how an input enters MindsOS and how the system decides what to do with
 it. It searched the tree thoroughly and answered, with file:line evidence,
 ``process -> hint -> derive_goal -> map`` per ``mindsos_intelligence/phase_1.py``

@@ -104,7 +104,6 @@ def test_every_doc_reading_architecture_guard_is_registered():
     ("confirmation_docs/PHASE_46_DESIGN_LOG.md", "record"),
     ("confirmation_docs/X_2026-09-12.md", "record"),
     ("confirmation_docs/CORE_RECONCILIATION_PLAN.md", "live"),
-    ("confirmation_docs/DECISION_RECORDS_V0_PLAN.md", "live"),
     ("confirmation_docs/INTERGRAPH_EDGES_DESIGN.md", "record"),
     ("confirmation_docs/sub/CORE_RECONCILIATION_PLAN.md", "record"),
     ("projects/wsd/ANALYSIS.md", "not-in-image"),

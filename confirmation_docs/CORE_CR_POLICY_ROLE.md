@@ -1,10 +1,10 @@
 # CORE CR — the policy role (`policies`)
 
 **Filed:** 2026-08-09. **Status:** BUILT on `feat/policy-role`, pre-filtered, **not gated**.
-**Base:** `origin/main` `ab30f5b` (current main, deliberately **not** the Decision Records
+**Base:** `origin/main` `ab30f5b` (current main, deliberately **not** the consumer
 slice pin — core work should not ride a GTM lane's frozen pin).
 **ADR:** amends **ADR-0150**, amendment number **unassigned** (the §21 precedent).
-**Requested by:** the Decision Records v0 slice (work item A, the policy store).
+**Requested by:** an external consumer's v0 slice (work item A, the policy store).
 
 ---
 
@@ -13,7 +13,7 @@ slice pin — core work should not ride a GTM lane's frozen pin).
 A 17th L2 role, `policies`: **dated, versioned editions of an authority**, dual-scope,
 `append_only`, one NodeType (`PolicyEdition`), zero edge types.
 
-The Decision Records slice needs a limit and its version to enter a derivation as
+The consumer slice needs a limit and its version to enter a derivation as
 **produced DataStates** from a real lookup capacity — `CapacityMMWriter.record` writes only
 `(capacity_iri, input IRIs, outputs)`, so anything read from a context snapshot never
 reaches the grounding graph and the acceptance gate fails at step one. That forces a store

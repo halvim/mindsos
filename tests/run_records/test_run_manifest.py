@@ -1,6 +1,6 @@
 """The run manifest — the three things a run's own nodes cannot say about it.
 
-Probe D sketched a generic renderer over all four Decision Records run graphs
+Probe D sketched a generic renderer over all four run graphs
 and recorded every symbol it could not turn into prose. There were exactly
 three, and none of them is a value:
 
@@ -38,8 +38,8 @@ from mindsos_capacity.identifiers import (
 )
 from mindsos_intelligence.execution import LeafPipelineNotFound
 
-from ._dr_driver import decision_record_plan, run_decision_record
-from ._dr_fixtures import (
+from ._run_driver import record_plan, run_record
+from ._fixtures import (
     DS_AS_OF_DATE,
     CAP_DECISION,
     CAP_LOOKUP,
@@ -63,7 +63,7 @@ def _the_manifest(graph):
 
 
 def _clean():
-    return run_decision_record(build_kl_with_both(), INITIAL_2024, request_id="mf")
+    return run_record(build_kl_with_both(), INITIAL_2024, request_id="mf")
 
 
 # ── shape ─────────────────────────────────────────────────────────────
@@ -128,7 +128,7 @@ def test_a_leaf_run_carries_the_callers_case_label():
     """Threaded from ``execution.run`` and never invented by core. Two runs of
     the same plan over different dates are otherwise indistinguishable on the
     page."""
-    run = run_decision_record(
+    run = run_record(
         build_kl_with_both(), INITIAL_2024, request_id="mf-label",
         case_label="the 2024 return",
     )
@@ -189,7 +189,7 @@ def test_the_phrase_is_snapshotted_not_looked_up_later():
     the run must not change what the run recorded."""
     run = _clean()
     before = dict(_the_manifest(run.graph).value[MANIFEST_CAPACITY_PHRASES])
-    second = run_decision_record(build_kl_with_both(), INITIAL_2024, request_id="mf2")
+    second = run_record(build_kl_with_both(), INITIAL_2024, request_id="mf2")
     assert _the_manifest(second.graph).value[MANIFEST_CAPACITY_PHRASES] == before
 
 
@@ -226,7 +226,7 @@ def test_the_closed_stop_vocabulary_is_carried_in_full():
 
 
 def test_an_outage_leaves_a_stop_whose_token_the_manifest_can_translate():
-    run = run_decision_record(None, INITIAL_2024, request_id="mf-outage")
+    run = run_record(None, INITIAL_2024, request_id="mf-outage")
     graph = run.graph
     stopped = [n for n in graph.nodes.values() if n.type_name == NODE_TYPE_RUN_STOPPED]
     assert len(stopped) == 1
@@ -243,9 +243,9 @@ def test_run_4_leaves_a_graph_instead_of_only_an_exception():
     minted first, so there is now something to render."""
     graphs = []
     with pytest.raises(LeafPipelineNotFound):
-        run_decision_record(
+        run_record(
             build_kl_with_both(), INITIAL_2024, request_id="mf-noroute",
-            plan=decision_record_plan(starts=(DS_FILING_RECORD,)),
+            plan=record_plan(starts=(DS_FILING_RECORD,)),
             graphs=graphs,
         )
     assert len(graphs) == 1, "an unroutable run must still leave its graph"

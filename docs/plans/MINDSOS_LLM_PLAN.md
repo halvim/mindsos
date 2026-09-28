@@ -392,8 +392,8 @@ amendment.)*
   confirmed by the owner.
 - **2026-09-16** — **ADR-0210 amendment 5 WITHDRAWS amendment 4's clause 1**, approved by
   the owner. (a) A prompt edition does **not** reuse `policies`: that role was created by a
-  CONSUMER of this system (Decision Records) and its own file says the store's identity is
-  part of the claim a Record makes, so a module generic to any text interpretation does not
+  CONSUMER of this system, and its own file says the store's identity is
+  part of the claim a printed run record makes, so a module generic to any text interpretation does not
   borrow it. `prompts` is a role of its own, dual-scope, closed set 17 → 18. (b) *"No run
   can write a prompt edition"* does not follow from *"no prompt text crosses the seam"* —
   R2 says L3 writes what L2 holds, and the text arrives as an input record.

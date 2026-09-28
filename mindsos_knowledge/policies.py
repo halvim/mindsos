@@ -20,7 +20,7 @@ tie-break rule that could be right: picking the newer states an authority the
 customer's own store does not agree on. :class:`AmbiguousEditionsError` names
 both, and the caller decides. Deliberately NOT mapped to the
 ``no_source_in_force`` refusal — that reason means *there is no edition*, and a
-Decision Record that said so here would be false.
+printed run record that said so here would be false.
 
 **Append-only, at this door.** ``validate_mutation_discipline`` is still uncalled
 system-wide, so the role's declared ``append_only`` remains unenforced in
@@ -94,7 +94,7 @@ class EditionExistsError(PolicyStoreError):
     """An edition already exists at this ``(policy_id, version)``.
 
     The role is ``append_only``: an edition is never rewritten, because a
-    Decision Record rendered a year later must still resolve the edition that
+    run record rendered a year later must still resolve the edition that
     was in force when it ran.
     """
 

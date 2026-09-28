@@ -12,9 +12,9 @@
 >
 > ⚠ **RESTORED TO `main` 2026-08-14, AND READ THIS FIRST.**
 >
-> This manual was written on `feat/decision-records`, which was archive-tagged
+> This manual was written on a consumer branch, which was archive-tagged
 > per RULES §10.1. For three days two live plan documents
-> (`DECISION_RECORDS_V0_PLAN.md` §6, `DECISION_RECORDS_DEMO_PLAN.md` §5 Phase 7)
+> (the consumer's own plans)
 > cited it as the source of limitations **S-2** and **S-3** while the file
 > existed on **no branch** — anyone following the citation from `main` found
 > nothing, and S-2 was read as an undecided question when the manual's own §11
@@ -33,7 +33,7 @@
 >
 > ~~**The CODE this manual describes is NOT on `main`.**~~ `mindsos_llm`, the
 > `comprehension` reader family and `LiveLLM` live only on the tag
-> `archive/decision-records-llm-seam`. Every `[BUILT]` marker below means
+> the LLM-seam archive tag. Every `[BUILT]` marker below means
 > *built on that tag*, not *present on `main`*. `origin_v0` is the exception:
 > it was lifted to `main` as plan item 1 (`a310958`, tag
 > `origin-records-confirmed`) and its refusal vocabulary has since been
@@ -79,9 +79,9 @@
 
 **A manual for the `mindsos_llm` package and the `comprehension` reader family.**
 
-Branch `feat/decision-records` · **rev 3**, 2026-08-08 · written against `origin/main` `5c6c5db`
+Branch a consumer branch · **rev 3**, 2026-08-08 · written against `origin/main` `5c6c5db`
 
-Rev 3 folds in everything agreed with the Decision Records planning lane: the origin
+Rev 3 folds in everything agreed with the consumer's planning lane: the origin
 record moved out of this family into `origin_v0`; `_reading` became `_origin`; readings
 are coerced to their declared shape; a transport failure became a refusal rather than an
 exception; and registration can be Local instead of Global.
@@ -286,7 +286,7 @@ One call does five things:
 
 **`session=` decides Global or Local.** With a session, everything lands in
 that user's Local metagraph and nothing touches the Global catalog. That is
-the Decision Records trial: prove the shape, then promote deliberately.
+the trial rule: prove the shape, then promote deliberately.
 
 > **Limitation L-14 — a Local trial is all-or-nothing.**
 > *Kind: expressiveness.*
@@ -299,7 +299,7 @@ the Decision Records trial: prove the shape, then promote deliberately.
 
 Why a factory rather than a fixed list of readers: a single "read the whole
 document" capacity would produce one opaque blob. The route-finder would have
-nothing to compose through, and the Decision Record would have nothing specific
+nothing to compose through, and the run record would have nothing specific
 to cite. One reader per value keeps both.
 
 > **Limitation S-1 — one model call per extracted value.**
@@ -331,7 +331,7 @@ to cite. One reader per value keeps both.
 > value handed in as a pipeline start has no path back to the source document,
 > and the product claim *"traceable to the document it came from"* is false for
 > it — permanently, with no warning.
-> **Owned by the Decision Records lane**, who are adding a guard that makes the
+> **Owned by the consumer lane**, who are adding a guard that makes the
 > renderer raise rather than quietly attribute an untraceable value.
 > The reader side needs nothing: its outputs hang off a capacity that consumes
 > the document, so they become traceable the moment the document does.
@@ -357,7 +357,7 @@ in any other category receives `None` and cannot reach a model.
 
 If no client had been bound at boot, the dispatcher **raises here**. It does not
 let the reader decline. A missing client is our configuration error, not a fact
-about the world, and a Decision Record must never carry a refusal caused by our
+about the world, and a run record must never carry a refusal caused by our
 own misconfiguration.
 
 > **Limitation L-9 — there is no general way to declare "this capacity uses an
@@ -478,7 +478,7 @@ PRODUCES edges. Everything above is now *in the graph*, not beside it.
 > capacity that fails, or declines, or asks a question, returns early and leaves
 > **no node at all**. I worked around this for readings by making refusal an
 > ordinary successful return carrying an empty value — but a genuine capacity
-> *failure* still leaves the graph silent, and a Decision Record would have to
+> *failure* still leaves the graph silent, and a run record would have to
 > explain it from outside the run.
 
 > **Limitation L-7 — there is no adjacency index on a graph.**
@@ -670,7 +670,7 @@ With a transport, changing provider is one line at boot.
 
 **Credentials never enter MindsOS.** API keys live in the transport's closure.
 No capacity, no context, no graph node ever holds one, so no credential can leak
-into a Decision Record or a persisted Episode.
+into a run record or a persisted Episode.
 
 **The seam is testable.** Every test in `tests/llm_seam/` substitutes a small
 function for the transport. Nothing is mocked, nothing is patched — the seam is
@@ -761,7 +761,7 @@ model?" is one registry query. Cost: L-9.
 
 **`temperature` defaults to 0.** It is one of the things that determines a
 reading, so it belongs in the request key and on the record. Zero by default
-because a Decision Record naming a temperature of 0.9 invites a question nobody
+because a run record naming a temperature of 0.9 invites a question nobody
 wants to answer.
 
 **`max_calls` is mandatory.** A batch over a few hundred decisions, at several
@@ -823,7 +823,7 @@ quoting it. Offsets always point into the untouched document.
 The grounding writer records a capacity's **declared outputs and nothing else**.
 Provenance returned any other way — a side field, a log line, an attribute on
 the value — never becomes a node, and can therefore never legally appear in a
-Decision Record.
+run record.
 
 ### 7.10 A separate origin type per reader **[BUILT]**
 
@@ -843,7 +843,7 @@ provenance and the graph would wire the wrong producer.
 
 > **Limitation L-4 — `NeedsInput.missing` is an identifier, not a phrase.**
 > *Kind: rendering.*
-> It carries a DataState IRI. A Decision Record forbids every IRI and every
+> It carries a DataState IRI. A run record forbids every IRI and every
 > MindsOS term, so anything using `NeedsInput` needs a registered phrase behind
 > it — the same tokens-branch / phrases-print split this seam uses.
 
@@ -907,7 +907,7 @@ branch by parsing English. Registration rejects a phrase containing `:`.
 > flag, cost, latency, description and the placeholder flag. Custom registration
 > fields — origin, the registered phrases — are not on the node. So this seam
 > copies them onto each reading record instead.
-> The Decision Records lane argues this is **correct**: a Record must state what
+> The consumer lane argues this is **correct**: a Record must state what
 > was true when the decision ran, not what is true when someone opens it, and
 > the L3 catalog is separately persisted and mutable, so reading it at render
 > time would silently show the wrong origin for an archived Episode. Recorded
@@ -1034,7 +1034,7 @@ against the code on the development machine. The build gate has not run.
 ## 10. Two more things a reader should know
 
 **Live readings are not reproducible (S-8).** The same document may read
-differently on two runs. This does not break a Decision Record — a Record states
+differently on two runs. This does not break a run record — a Record states
 what happened on the run that produced it — but the answer to *"why did it say
 something different?"* has to exist before the first demonstration. The honest
 framing is that MindsOS offers **verifiability**, not reproducibility: every
@@ -1052,22 +1052,22 @@ here is agreed, and a go-to-market branch owns nothing architectural. Each entry
 that survives review should be filed as a real change request outside this
 manual; this list is a starting point, not the record.
 
-### 11.1 MindsOS limitations found by designing Decision Records
+### 11.1 MindsOS limitations found by designing a consumer
 
 | ID | Limitation | Kind | Proposed change | Owner |
 |---|---|---|---|---|
 | **L-1** | One value per DataState type per run | expressiveness + authoring cost | Give the executor's blackboard and the grounding index a compound key — the DataState IRI plus an occurrence discriminator the capacity declares. A capacity that consumes "two dates" then declares two operands of one type instead of forcing two types. The operand-arity machinery (ADR-0198) already models same-type operands on the input side; this is the same idea on the value side. | core |
-| **L-2** | Nothing is recorded unless the step succeeded | expressiveness | Have `execute_pipeline` write a terminal node on **every** non-success return — failure, decline, cancellation — before returning. One node type, carrying the capacity, the closed reason and the detail. Without it, no refusal can ever be rendered from the graph. | core (Decision Records lane calls this Phase 0) |
+| **L-2** | Nothing is recorded unless the step succeeded | expressiveness | Have `execute_pipeline` write a terminal node on **every** non-success return — failure, decline, cancellation — before returning. One node type, carrying the capacity, the closed reason and the detail. Without it, no refusal can ever be rendered from the graph. | core (consumer lane calls this Phase 0) |
 | **L-3** | `NeedsInput` short-circuits output validation, so it leaves no node | expressiveness | Let a body return `NeedsInput` **alongside** its declared outputs rather than instead of them, so the partial work and the question both reach the graph. | core |
 | **L-4** | `NeedsInput.missing` is a DataState IRI | rendering | Add a registered human phrase beside the identifier — tokens branch, phrases print. Same split this seam uses for `origin_party`. | core |
-| **L-5** | `seed()` mints start values with no incoming edge | traceability, silent | Link every seeded value to the run's grounding root, or refuse to seed a value that is not reachable from it. A guard that fails a Record naming an unreachable value is the minimum. | Decision Records lane |
-| **L-6** | Registration metadata does not persist to the capacity node | traceability, **contested** | Two positions on record: persist declared metadata onto the node, or accept that denormalising onto each record is correct for an archive. Do not resolve this in a manual. | core, with the Decision Records lane |
+| **L-5** | `seed()` mints start values with no incoming edge | traceability, silent | Link every seeded value to the run's grounding root, or refuse to seed a value that is not reachable from it. A guard that fails a Record naming an unreachable value is the minimum. | consumer lane |
+| **L-6** | Registration metadata does not persist to the capacity node | traceability, **contested** | Two positions on record: persist declared metadata onto the node, or accept that denormalising onto each record is correct for an archive. Do not resolve this in a manual. | core, with the consumer lane |
 | **L-7** | No adjacency index on a graph; every provenance hop is a full edge scan | runtime cost | Maintain per-node incoming and outgoing edge indexes on `Graph`, updated in `add_edge` / `remove_edge`. Measure first: one Record over a twenty-reading run is the cheap experiment. | core |
 | **L-8** | DataState names allow one dot only | authoring cost, minor | Either allow a qualified third segment, or document the constraint where people meet it. Today it silently shapes naming conventions. | core |
 | **L-9** | No general way to declare that a capacity uses an external resource | expressiveness | Leave the category rule alone until a second external resource exists. Then a declared-capability mechanism, resolved at dispatch the way `reads_mm` is. Building it now would be speculative. | core, deferred |
 | **L-10** | All 13 L4 catalog capacities are placeholders, so the full lifecycle yields one milestone and one pipeline | expressiveness | Out of scope here. Recorded because it bounds what any demonstration can honestly claim about planning. | core, existing CR |
-| **L-11** | Stored parameter values have no version history, and the only store is the *learned*-parameters store where Local shadows Global | correctness | An append-only versioned store with an in-force date, read through a lookup capacity so the version enters the derivation. Found by the Decision Records lane; also the answer to S-6. | Decision Records lane |
-| **L-12** | A refusal at find time has no grounding graph at all | expressiveness | A Record shape rendered from the finder's verdict, since nothing executed. Found by the Decision Records lane. | Decision Records lane |
+| **L-11** | Stored parameter values have no version history, and the only store is the *learned*-parameters store where Local shadows Global | correctness | An append-only versioned store with an in-force date, read through a lookup capacity so the version enters the derivation. Found by the consumer lane; also the answer to S-6. | consumer lane |
+| **L-12** | A refusal at find time has no grounding graph at all | expressiveness | A Record shape rendered from the finder's verdict, since nothing executed. Found by the consumer lane. | consumer lane |
 | **L-13** | The capacity index stores `(Node, Graph, declaration)` tuples | trap | Anything iterating the index and expecting declarations silently sees nothing — it cost me a guard that appeared to work. A typed accessor would remove the class. | core, minor |
 
 ### 11.2 Limitations of this seam
@@ -1087,7 +1087,7 @@ manual; this list is a starting point, not the record.
 
 | ID | Was | How it closed |
 |---|---|---|
-| **L-2** *(reading half)* | Nothing recorded unless the step succeeded | A reading refusal is now an ordinary successful return carrying an empty value plus a filled-in origin record, so it reaches the graph. A genuine capacity *failure* still leaves nothing — the general fix is the Decision Records lane's Phase 0. |
+| **L-2** *(reading half)* | Nothing recorded unless the step succeeded | A reading refusal is now an ordinary successful return carrying an empty value plus a filled-in origin record, so it reaches the graph. A genuine capacity *failure* still leaves nothing — the general fix is the consumer lane's Phase 0. |
 | **S-4** *(bounded)* | `basis` is a model self-report | Not renamed — the planning lane made `basis` the field claim 2 is sold on, so the open question is whether the **claim** is right, not the field name. `expected_basis` is registered and bounds the damage. |
 | **S-5** | `origin_method` misnamed | Renamed to `read_by_model`. |
 | **new** | A transport failure had no refusal reason at all | `model_unreachable` + `environment_fault`. |

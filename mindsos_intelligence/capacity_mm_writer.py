@@ -202,7 +202,7 @@ class CapacityMMWriter:
         ``LeafPipelineNotFound`` out of ``_compose_pipeline`` and writes
         nothing, so an unroutable request had no graph at all — not even a
         ``RunStopped``. With the manifest minted first, every run leaves a
-        graph, and run 4 of ``DECISION_RECORDS_V0_PLAN.md`` becomes
+        graph, and a run stopped before its first capacity becomes
         renderable without a caller-supplied grounding root (item 4a, which
         this absorbs).
 

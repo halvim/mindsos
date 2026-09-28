@@ -23,7 +23,7 @@ from mindsos_knowledge.policies import (
 )
 from mindsos_knowledge.schemas.policies import NODE_POLICY_EDITION
 
-from ._dr_fixtures import (
+from ._fixtures import (
     EDITION_2023,
     EDITION_2024,
     POLICY_ID,
@@ -40,7 +40,7 @@ def test_the_edition_in_force_is_not_the_latest_edition():
     """THE test. Ask about 2023 with a 2024 edition present.
 
     "The latest" answers 29,200 and is wrong for every question about the past.
-    A Decision Record rendered a year after the fact resolves the edition that
+    A run record rendered a year after the fact resolves the edition that
     was in force when it ran, or it misstates the authority it cites.
     """
     kl = build_kl_with_both()

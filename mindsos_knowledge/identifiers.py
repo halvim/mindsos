@@ -96,13 +96,13 @@ ROLE_LEARNED_PIPELINES = "learned-pipelines"
 # first use).
 ROLE_INSTALLED_CAPACITIES = "installed-capacities"
 
-# CORE CR: the policy role (Decision Records) — dated, versioned editions of
+# CORE CR: the policy role — dated, versioned editions of
 # an AUTHORITY per ADR-0150 §amendment-12 (closed set 16 -> 17; Global +
 # Local, append-only).
 #
 # **Why a role and not ``dataset:<name>``.** A dataset is a corpus a brain
 # owns; a policy is an authority a decision cites. That is not cosmetic here:
-# a Decision Record states *which authority, which edition, in force when*, so
+# a printed run record states *which authority, which edition, in force when*, so
 # the store's identity is part of the claim being made. The parametric
 # ``dataset:`` prefix also exists because dataset SHAPES differ per brain
 # (ADR-0150 §am-9: "core owns no dataset shape") — whereas an in-force window

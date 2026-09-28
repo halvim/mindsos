@@ -1,6 +1,6 @@
 """Origin records v0 — where a value came from, for any producer.
 
-**Not a comprehension concept.** A Decision Record must say where *every*
+**Not a comprehension concept.** A printed run record must say where *every*
 value came from, and the most load-bearing origin statement in the product
 — *"from the claims policy, version 4, in force since 12 March"* — is
 produced by a ``decision``-family lookup that never touches a language
@@ -30,8 +30,8 @@ producer proves it.
    record declares :data:`FIELD_PRODUCER_KIND` and
    :data:`FIELD_SUPPLIED_FIELDS` — what this producer *always* populates.
    Inside that list a missing value is a defect; outside it, normal.
-2. *Tokens branch, phrases print.* A Decision Record is read by claims
-   managers and lawyers and forbids every IRI and every MindsOS term, but
+2. *Tokens branch, phrases print.* A printed run record is read by
+   non-engineers and forbids every IRI and every MindsOS term, but
    code still needs something stable to switch on and must never switch by
    parsing English. Every token has a paired registered phrase. This is the
    shipped ``FindVerdict.reason`` / ``.detail`` split.

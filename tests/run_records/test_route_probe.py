@@ -1,4 +1,4 @@
-"""Decision Records v0 — the day-one route probe.
+"""The day-one route probe.
 
 ⚠ **RETIREMENT ASSESSED 2026-08-12 (item 4) — DO NOT DELETE YET, and here is
 why, so the next lane decides on facts rather than an impression.** Items 3 and 4
@@ -44,8 +44,7 @@ and hand it to ``execution.run(..., mm=...)``, which selects
 ``ConjunctionFinder`` by arity and grounds the run —
 ``tests/phase_48/test_map_member_multiinput.py`` does exactly that and is
 gated. The run driver therefore needs no core change and does not call
-the finder directly. Detail:
-``confirmation_docs/DECISION_RECORDS_V0_PLAN.md`` §1.1.
+the finder directly.
 
 **Realms.** Everything Local (owner decision, 2026-08-09), superseding the
 slice plan's mixed-realm table — that table is unbuildable as written:
@@ -620,9 +619,8 @@ def test_l4_cannot_express_plural_starts_this_is_D_A():
 
     So the accurate statement is narrower: **no planner-emitted plan can
     express plural starts.** A caller that builds its own ``PlanResult``
-    can, which is why the Decision Records run driver needs no core change
-    and never calls the finder directly
-    (``confirmation_docs/DECISION_RECORDS_V0_PLAN.md`` §1.1).
+    can, which is why the run driver needs no core change
+    and never calls the finder directly.
 
     When core lands the planner passthrough, this test goes red. That is
     the signal to retire the probe.

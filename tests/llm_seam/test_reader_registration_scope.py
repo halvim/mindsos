@@ -10,7 +10,7 @@ second name, which is how two sources of truth for one contract begin.
 What is genuinely new is reader-specific: scope, and the no-decide guard
 seen from the reader's side.
 
-**Local first is the Decision Records trial.** Nothing enters the Global
+**Local first is the trial rule.** Nothing enters the Global
 catalog until the shape is proven. Note the standing limit: today
 ``pipeline._view_for`` returns Global *or* Local and never both, so a
 Local trial means the whole path must be Local until a two-tier union view

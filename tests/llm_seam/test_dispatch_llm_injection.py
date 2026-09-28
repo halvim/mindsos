@@ -98,7 +98,7 @@ def test_the_declaration_travels_and_not_the_category():
 
 def test_a_declared_capacity_with_no_client_bound_is_a_deployment_error():
     # Not a don't-know: a body that silently declined here would put an
-    # unexplained refusal into a Decision Record.
+    # unexplained refusal into a printed run record.
     with pytest.raises(LLMUnavailableError):
         _dispatch(CATEGORY_COMPREHENSION, None, consults_llm=True)
 

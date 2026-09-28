@@ -1,7 +1,7 @@
 """Two readers over one document wire back to the same document node.
 
 The failure this guards is silent: if the second reader's ``CONSUMES`` edge
-pointed at a re-minted document instance — or at nothing — the Decision Record
+pointed at a re-minted document instance — or at nothing — the run record
 would attribute one of the two values to the wrong source, or to no source, and
 the run would still report success. A reachability guard at the document does
 not catch it, because the document itself is fine; only the second reader's

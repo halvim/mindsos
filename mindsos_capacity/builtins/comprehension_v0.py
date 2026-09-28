@@ -13,7 +13,7 @@ to this family. This module is one **producer** of that shape:
 
 **One reader per extracted value, not one general extractor.** A single
 "read the whole document" capacity would produce one opaque payload: the
-finder would have nothing to compose through and a Decision Record nothing
+finder would have nothing to compose through and a run record nothing
 to cite. :func:`build_reader` is therefore a factory — a Skill registers
 one reader per value it needs. Note the shipped executor holds one value
 per DataState IRI, so two readers producing "a date" must produce two
@@ -70,7 +70,7 @@ registration moves Local.
 
 **Global or Local.** ``register_reader(session=...)`` registers into the
 caller's Local metagraph; without a session it registers Global. Local
-first is the Decision Records trial: nothing enters the Global catalog
+first is the trial rule: nothing enters the Global catalog
 until the shape is proven. Note that today ``pipeline._view_for`` returns
 Global *or* Local and never both, so a Local trial means the **whole**
 path must be Local until the two-tier union view lands.
@@ -237,7 +237,7 @@ class SourceTextUnavailable(RuntimeError):
     """A reader was asked to read a document that is absent or empty.
 
     ``str(exc)`` is FIXED PROSE: ``execute_pipeline`` writes it onto L-2's
-    ``RunStopped`` node and a Decision Record prints it, so it names no
+    ``RunStopped`` node and a printed run record shows it, so it names no
     DataState, no IRI and no internal token (the rule
     ``mindsos_llm.exceptions`` states for the client's errors,
     and the reason ``PolicyStoreUnreachableError`` states it too).
@@ -637,7 +637,7 @@ def register_reader(
     """Register one reader's DataStates and capacity. Idempotent.
 
     ``session`` registers into that user's **Local** metagraph; omit it to
-    register Global. Local-first is the Decision Records trial — nothing
+    register Global. Local-first is the trial rule — nothing
     reaches the Global catalog until the shape is proven. Remember that
     ``pipeline._view_for`` sees Global *or* Local and never both, so a
     Local trial means the whole path must be Local until the two-tier

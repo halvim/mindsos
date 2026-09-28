@@ -133,7 +133,7 @@ Completing them is DAG construction, which is `ConjunctionFinder`'s.
 
 ## 9. Not built — the handoff
 
-**Ranked for the 2026-08 refocus: core plus the Decision Records demo. Brains, dream and
+**Ranked for the 2026-08 refocus: core plus the first external demo. Brains, dream and
 skill packaging come after.** The order below is *not* the order these were decided in;
 that order assumed the brains were live consumers. Each entry states what is broken, what
 was decided and why, what it blocks and what it does **not**, and what to verify before
@@ -158,7 +158,7 @@ test pinned to a no-op reads as coverage of a rule it does not enforce. The hone
 enforcement is an **architecture guard** of the kind the repo already runs: no `mindsos_*`
 source may read `.pipeline` off a finder result without a `.found` guard in the same block.
 
-**Why it moves to the top now.** The Decision Records demo puts new L4 consumers on the
+**Why it moves to the top now.** The first external demo puts new L4 consumers on the
 finder's output. This guard is what stops the next one from repeating the defect, and it is
 the cheapest item on this list.
 

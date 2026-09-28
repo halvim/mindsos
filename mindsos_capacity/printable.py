@@ -1,4 +1,4 @@
-"""The one rule for prose a Decision Record is allowed to print.
+"""The one rule for prose a printed run record is allowed to print.
 
 **Why this is its own module.** The rule was written inside
 ``builtins/origin_v0.py`` because origin records were its first user. It has
@@ -43,7 +43,7 @@ IDENTIFIER_MARKERS = (":", "datastate:", "capacity:")
 def printable_phrase_problem(phrase: Any, field_name: str) -> Optional[str]:
     """Return why ``phrase`` may not be printed, or ``None`` if it may.
 
-    A Decision Record is read by claims managers and lawyers. It forbids
+    A printed run record is read by non-engineers such as auditors and lawyers. It forbids
     every IRI and every MindsOS term, and catching that at registration beats
     catching it in front of a lawyer.
     """

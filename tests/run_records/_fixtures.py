@@ -1,11 +1,11 @@
-"""Shared setup for the Decision Records lookup + criterion tests.
+"""Shared setup for the policy lookup + criterion tests.
 
 **This module holds content, not mechanism.** The as-of selection lives in
 ``mindsos_knowledge.policies`` and the lookup capacity in
 ``mindsos_capacity.builtins.policy_lookup_v0``, both core (RULES §8). What is
 here is one authority, one criterion and one prose vocabulary — a particular
-question somebody is asking, which core does not own and must not ship. When the
-Decision Records demo gains a home of its own, this moves there unchanged.
+question somebody is asking, which core does not own and must not ship; it is
+test content only.
 
 **The reader is the shipped one, since item 5.** It is built by
 ``structured_ingest_v0.build_structured_ingest_reader`` — a real declared shape,
