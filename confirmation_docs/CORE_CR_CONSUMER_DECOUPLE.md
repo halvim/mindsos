@@ -17,9 +17,8 @@ adds the guard that keeps it out.
    the general need ("a printed run record"). No behaviour change.
 2. **Tests.** The package moved whole to `tests/run_records/` (its shared fixtures and driver are
    imported by most of its files, so a per-capacity split would duplicate them).
-   `_dr_driver` → `_run_driver`, `_dr_fixtures` → `_fixtures`, `DecisionRecordRun` → `RecordRun`,
-   `decision_record_plan` → `record_plan`, `run_decision_record` → `run_record`, one test renamed
-   (`test_every_record_capacity_declares_one`). The tests themselves are unchanged.
+   The driver, fixtures and their helpers got generic names, and one test was renamed; the diff
+   of this commit is the map. The tests themselves are unchanged.
 3. **Docs, history included** (owner ruling D1-b): ADRs 0150, 0201 am-4/am-5, 0207, 0208, 0210 and
    the ADR index, the confirmation records, RULES, HANDOFF, BRANCHES, CLAUDE.md, `projects/README.md`,
    the LLM plan and the LLM seam manual. RULES passages are restated for "an external consumer"
