@@ -536,3 +536,19 @@ amendment.)*
   **Approval:** delegated by the owner's brief for this chat (*"rule what you can
   against the §1 end state and cite the authority for every clause"*); the open
   question above is NOT ruled and changes no gate-1 code.
+
+- **2026-09-22 (gate 2)** — **I-17 gate 1 merged as PR #242** (full gate 5386
+  passed / 0 failed at `b8a8ac8`, collect 5391, ids +5/−4 read back by name, the
+  designated mutation red at exactly the predicted test). **Passes re-run after
+  the step; one boundary refined, no ruling reversed:** gate 2 carries the
+  ANSWER's half of R32 and R33 (the framing stamps; the stamps riding on
+  `MalformedResponse`) and gate 3 the RECORD's half, because a stamp nothing
+  records is gate 2's claim and a record field is gate 3's. ⚠ **Consequence,
+  recorded rather than hidden:** between gates 2 and 3 the origin record cannot
+  recompute a v2 key on its own, so R27's premise guard
+  (`tests/llm_seam/test_a_reading_reaches_its_source_text.py`) takes the words,
+  schema and framing from its OWN constants for one gate — it still proves that
+  only the source text actually read reproduces the record's key — and gate 3
+  reads them off the record. **Approval:** delegated by the owner's brief
+  (rulings R29–R35 above); no new ruling.
+
