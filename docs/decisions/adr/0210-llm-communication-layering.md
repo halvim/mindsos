@@ -745,6 +745,9 @@ the plan's §1, each citing its authority in the plan.
 
 **Build state.** I-17 ships in three gates: (1) the seam, clause 6 — **built,
 PR #242**; (2) clauses 4 (the key and the answer's stamps), 7, 10, and the
-client halves of 8 and 9 — **built, I-17 gate 2**; (3) the origin-record half of
-clauses 4, 8 and 9. The amendment stays **Proposed** until I-12 ships,
+client halves of 8 and 9 — **built, PR #245**; (3) the origin-record half of
+clauses 4, 8 and 9 — **built, I-17 gate 3**: the record carries `prompt_digest`,
+`extraction_schema` (text), `schema_digest`, `tool_name`, `tool_description`,
+`max_tokens` and `key_schema_version` (ADR-0207 am-2's freeze classifies them
+WRITTEN and STRUCTURAL by derivation), on the undecodable-answer refusal too. The amendment stays **Proposed** until I-12 ships,
 because clauses 1 and 5 are I-12's.

@@ -39,8 +39,11 @@ content (not the prompt's name); a replay client poses its question by digest �
 the deployment's own replay hashes its CURRENT words, and a third party's
 `ImportedSet.replay_config()` (rows 5, 6) hands over digests and framing, never
 the words; a v1 set refuses a replay config rather than missing every read.
-I-17's third gate puts the schema text, the digests and the framing on the origin
-record; **I-12** adds **row 12**.
+**I-17's third gate is BUILT** (R23, R32, R33): a model reader's origin record
+carries the schema text, both digests, the framing and the key version, so a
+stored conclusion's `request_key` can be recomputed from the record plus its
+source text — including a refusal for an undecodable answer, which until then
+carried no model identity, mode or level at all. **I-12** adds **row 12**.
 
 ⚠ **`model_version` is a configured label, not a fact about the call** (R35): no
 provider is sent it, so unlike `model_id` and `temperature` it is stamped as
