@@ -45,7 +45,7 @@ is left to build"*. The 2026-09-05 ruling that made it the completion criterion 
 
 ---
 
-## 2. THE DESIGN RULINGS — OWNER, 2026-09-13, 2026-09-18 and 2026-09-21; DELEGATED, 2026-09-20 and 2026-09-22
+## 2. THE DESIGN RULINGS — OWNER, 2026-09-13, 2026-09-18, 2026-09-21 and 2026-09-29; DELEGATED, 2026-09-20 and 2026-09-22
 
 **R1 — L3 writes the L2 record, not L0.** *"it should be L3 as this is part of the
 reading text intelligence, not L0 server code."* Settles
@@ -308,6 +308,17 @@ client sent"* does not reach it. Named in the capability contract; not built.
 Making it a fact needs the provider's own reply, which is I-13's territory (OUT).
 Authority: R21's list; I-13.
 
+**R36 — core does NOT guarantee that the words sent are the stored prompt edition;
+it DETECTS a mismatch.** The deployment supplies the words (R21: the client resolves
+through an injected `resolve_prompt`), and core builds no client in production, so a
+guarantee would need a core-owned client builder — rejected. Instead the conclusion
+carries `prompt_digest` (I-17), and I-12's *shown* report verifies
+`text_digest(edition text) == prompt_digest`; when no stored edition matches, it
+says so ("no stored edition matches what ran") rather than showing the nearest one.
+§1's *every conclusion can be shown* therefore holds for deployments that resolve
+through the `prompts` role, and every other conclusion is identified and reported as
+unshowable — never shown falsely. **OWNER 2026-09-29** ("agreed", on option (a)).
+
 ## 3. THE ITEM LIST
 
 | id | item | filed as | state |
@@ -324,16 +335,16 @@ Authority: R21's list; I-13.
 | I-9 | prompt bodies have a home: a conclusion stamped `prompt_iri` + `prompt_version` can show the text it names | core-llm-prompt-text-has-no-home | DONE(a1687f2) |
 | I-10 | a recorded set has a home in the graph: pointer + provenance in L2 Local, payloads stay a FILE | core-llm-recorded-set-l2-pointer-owner | DONE(780ee1b) |
 | I-11 | `mode` and `credential_level` reach the origin record. Required under §1, no longer deferred; prerequisite discharged at `fe0e19a`. ⚠ **NOT blocked by I-8** — measured: `origin_v0.py` imports only `..identifiers` and `..printable`, so it has no L2 dependency, and the change is two names in `PRODUCER_DECLARED` plus two lines in `comprehension_v0._record` reading fields the answer already carries beside the seven at lines 353-359 | core-llm-l3-may-declare-answer-mode-and-level | DONE(44889a9) |
-| I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Specified 2026-09-21 by R19–R28**; blocked by I-17 | core-llm-excision-capability | TODO |
+| I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Specified 2026-09-21 by R19–R28**; I-17 DONE(933bc6d), so unblocked | core-llm-excision-capability | TODO |
 | I-13 | a transport's other keys survive into the answer | core-llm-transport-extra-keys-survive-into-the-answer | OUT(trigger: a consumer iterates an answer's keys, or a third-party transport's output is stored) |
 | I-14 | level 3 / hosted adapter, the old "slice 3" | core-llm-level-3-awaits-a-hosted-adapter | OUT(trigger: a consumer wants Bedrock, Vertex or Azure) |
 | I-15 | a capacity **declares** that it writes (R7): `writes=True` on the declaration, both invoke sites gate the `writeable` injection on it instead of on `outputs == ()`, and an AST guard reconciles the declaration against the body — the `context.llm` census shape. **Blocks I-10**, whose ruled declared output is unreachable without it | core-capacity-write-is-declared-not-inferred | DONE(8f1f7d4) |
-| I-17 | an answer names what was asked BY CONTENT (R20–R23): the client resolves and hands the transport everything the model receives, stamps the prompt and schema digests, `request_key` v2, and both digests plus the schema text reach the origin record. **Blocks I-12**, whose *shown* is unverifiable without it | core-llm-answer-names-what-was-asked | TODO |
+| I-17 | an answer names what was asked BY CONTENT (R20–R23): the client resolves and hands the transport everything the model receives, stamps the prompt and schema digests, `request_key` v2, and both digests plus the schema text reach the origin record. **Blocks I-12**, whose *shown* is unverifiable without it | core-llm-answer-names-what-was-asked | DONE(933bc6d) |
 | I-16 | I-9's writer gets its installer. Measured 2026-09-17: nothing in the tree calls `build_write_prompt_edition`, and `install_learn_parameter_capacities` is the precedent it skipped — so a `DONE` item is a declaration L4 cannot route to | core-llm-prompt-edition-has-no-installer | DONE(6e6514e) |
 
 **DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17.**
 
-**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 → I-12.**
+**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12.**
 I-9 and I-10 are blocked by I-8, the L2 record shape, and may ship in either order once
 it is ruled. ⚠ **I-9's dependency is the ROLE decision only** — measured: no prompt text crosses the
 transport seam, so the text is in no ANSWER. ⚠ **It does NOT follow that no run writes it**
@@ -526,8 +537,8 @@ amendment.)*
   origin-record fields, the undecodable-answer path included (R23, R32, R33).
   Marked in place: R2's *"a chat that opens a branch expecting to edit
   `mindsos_llm` has misread this plan"* (it is about records, not the seam), and
-  §4's *"L2 Local, never Global"* (the recorded set's rule). ⚠ **PUT TO THE OWNER,
-  OPEN:** must core GUARANTEE that the words sent are the stored prompt edition?
+  §4's *"L2 Local, never Global"* (the recorded set's rule). ⚠ **PUT TO THE OWNER
+  (RULED 2026-09-29 as R36: accept and detect):** must core GUARANTEE that the words sent are the stored prompt edition?
   The deployment supplies the words and core builds no client in production, so a
   deployment resolving words elsewhere yields conclusions that are identified and
   verifiable-as-mismatched but never shown — §1's *every* fails at the source.
@@ -551,4 +562,42 @@ amendment.)*
   only the source text actually read reproduces the record's key — and gate 3
   reads them off the record. **Approval:** delegated by the owner's brief
   (rulings R29–R35 above); no new ruling.
+
+- **2026-09-28 (gate 3)** — **I-17 gate 2 merged as PR #245** (`2b29252`, tag
+  `llm-answer-names-what-was-asked-confirmed`; full gate 5400 passed / 0 failed at
+  `2d9d811`, collect 5405, ids +16/−2 read back by name; mutations M2 and M3 exact,
+  M1 one red wider than predicted and the tree right — the extra red was a correct
+  consequence the prediction missed). **Passes re-run after the step; no ruling
+  reversed.** One addition inside R24's authority, not a new ruling: the record
+  also carries `key_schema_version`, because recomputing a key needs the key
+  function it was computed under (R34 put it on the answer). **Gate 3 builds**
+  R23/R32/R33's record half; R27's premise guard now recomputes the key from the
+  record alone. ⚠ **I-11 correction, measured:** I-11 (`44889a9`) put `mode` and
+  `credential_level` on every record a DECODED answer produced; a refusal for an
+  undecodable answer carried neither (it was written with no response at all).
+  R33 closes it. **Approval:** delegated (R29–R35); no new ruling.
+
+- **2026-09-29 (I-17 DONE)** — **gate 3 merged as PR #246** (`933bc6d`, tag
+  `llm-record-names-what-was-asked-confirmed`; full gate 5402 passed / 0 failed at
+  `1f9ab18`, collect 5407, ids +2/−0 read back by name). **I-17 is `DONE(933bc6d)`**
+  across three gates, one claim each: #242 the seam (`6f04575`), #245 the answer and
+  key v2 (`2b29252`), #246 the record. ⚠ **Instrument findings, the tree right each
+  time:** two mutations (gate 2 M1, gate 3 M4) reddened one test more than predicted
+  — both a test that asserts the field's PRESENCE in passing; predictions have been
+  counting the test that claims a field and missing the ones that merely touch it.
+  Two sites my greps missed (a private-harness monkeypatch in gate 1, a replay built
+  through `build_client` in gate 2) were caught by the targeted run, not the gate.
+  **I-12 is next and last.** ADR-0210 am-7 stays Proposed until I-12 ships its
+  clauses 1 and 5. ⚠ **Owner question still open (see 2026-09-22):** whether core
+  must guarantee that the words sent are the stored prompt edition — it shapes
+  I-12's *shown* report. ⚠ **RULED as R36, OWNER 2026-09-29 — see below.**
+  **Approval:** delegated; no new ruling.
+
+- **2026-09-29 (R36)** — **OWNER ruling R36** (§2): core does not guarantee that the
+  words sent are the stored prompt edition; I-12 detects and reports a mismatch.
+  Recorded before I-12 starts so its chat can cite it. Passes re-run against R36: no
+  ruling reversed; R24 and R27 stand, and R36 fixes what I-12's *shown* says when
+  verification fails. Contradiction sweep of live docs: HANDOFF.md's *"the open items
+  are I-17 then I-12"* marked superseded; no other tracked doc contradicts I-17 as
+  built. **Approval:** OWNER, "agreed".
 

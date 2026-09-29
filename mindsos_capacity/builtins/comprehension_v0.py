@@ -78,6 +78,8 @@ path must be Local until the two-tier union view lands.
 
 from __future__ import annotations
 
+import json
+
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from ..bootstrap import ensure_datastate_graph
@@ -100,6 +102,13 @@ from .origin_v0 import (
     FIELD_CLAIMED_QUOTE,
     FIELD_CREDENTIAL_LEVEL,
     FIELD_EXPECTED_BASIS,
+    FIELD_EXTRACTION_SCHEMA,
+    FIELD_PROMPT_DIGEST,
+    FIELD_SCHEMA_DIGEST,
+    FIELD_TOOL_NAME,
+    FIELD_TOOL_DESCRIPTION,
+    FIELD_MAX_TOKENS,
+    FIELD_KEY_SCHEMA_VERSION,
     FIELD_MODEL_ID,
     FIELD_MODEL_VERSION,
     FIELD_MODE,
@@ -329,6 +338,16 @@ def reader_datastates(
 # ── The body ───────────────────────────────────────────────────────────
 
 
+def _schema_text(schema: Optional[Mapping[str, Any]]) -> str:
+    """The extraction schema as canonical JSON TEXT, for the origin record.
+
+    Canonical (sorted keys) because key order is wire syntax (plan R21);
+    verification re-parses it and re-hashes, so the exact spelling here is
+    not what is checked — the schema is.
+    """
+    return json.dumps(schema, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
 def _make_impl(
     *,
     source_datastate_iri: str,
@@ -361,6 +380,19 @@ def _make_impl(
             FIELD_RECORDED: resp.get("recorded"),
             FIELD_MODE: resp.get("mode"),
             FIELD_CREDENTIAL_LEVEL: resp.get("credential_level"),
+            # What was asked, by content (plan R23, R32, R34). The digests,
+            # framing and key version come off the ANSWER's stamps — what the
+            # client sent. The schema TEXT comes from this reader, which holds
+            # it; a shown schema is verified by re-hashing it against the
+            # answer's ``schema_digest``, so a reader whose copy differs from
+            # what was sent is caught, not trusted.
+            FIELD_EXTRACTION_SCHEMA: _schema_text(extraction_schema),
+            FIELD_PROMPT_DIGEST: resp.get("prompt_digest"),
+            FIELD_SCHEMA_DIGEST: resp.get("schema_digest"),
+            FIELD_TOOL_NAME: resp.get("tool_name"),
+            FIELD_TOOL_DESCRIPTION: resp.get("tool_description"),
+            FIELD_MAX_TOKENS: resp.get("max_tokens"),
+            FIELD_KEY_SCHEMA_VERSION: resp.get("key_schema_version"),
         }
         fields.update(extra)
         return build_origin_record(
@@ -434,10 +466,14 @@ def _make_impl(
             # here has read. This is the model's own answer about the
             # customer's document, which is the exact thing under audit.
             # Bounded, because a model can return a great deal of it.
+            # ⚠ ``exc.asked`` carries what the client asked (plan R33): an
+            # undecodable answer is still the model's conclusion (R26), and a
+            # record of it that cannot say what was asked cannot be shown.
             return _refuse(
                 REFUSAL_MALFORMED_RESPONSE,
                 "the model's answer could not be read. It returned: "
                 + _bounded(exc.raw),
+                getattr(exc, "asked", None),
             )
 
         # No ``isinstance(response, Mapping)`` branch: the client's
