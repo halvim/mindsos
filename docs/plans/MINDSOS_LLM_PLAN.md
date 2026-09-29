@@ -324,16 +324,16 @@ Authority: R21's list; I-13.
 | I-9 | prompt bodies have a home: a conclusion stamped `prompt_iri` + `prompt_version` can show the text it names | core-llm-prompt-text-has-no-home | DONE(a1687f2) |
 | I-10 | a recorded set has a home in the graph: pointer + provenance in L2 Local, payloads stay a FILE | core-llm-recorded-set-l2-pointer-owner | DONE(780ee1b) |
 | I-11 | `mode` and `credential_level` reach the origin record. Required under §1, no longer deferred; prerequisite discharged at `fe0e19a`. ⚠ **NOT blocked by I-8** — measured: `origin_v0.py` imports only `..identifiers` and `..printable`, so it has no L2 dependency, and the change is two names in `PRODUCER_DECLARED` plus two lines in `comprehension_v0._record` reading fields the answer already carries beside the seven at lines 353-359 | core-llm-l3-may-declare-answer-mode-and-level | DONE(44889a9) |
-| I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Specified 2026-09-21 by R19–R28**; blocked by I-17 | core-llm-excision-capability | TODO |
+| I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Specified 2026-09-21 by R19–R28**; I-17 DONE(933bc6d), so unblocked | core-llm-excision-capability | TODO |
 | I-13 | a transport's other keys survive into the answer | core-llm-transport-extra-keys-survive-into-the-answer | OUT(trigger: a consumer iterates an answer's keys, or a third-party transport's output is stored) |
 | I-14 | level 3 / hosted adapter, the old "slice 3" | core-llm-level-3-awaits-a-hosted-adapter | OUT(trigger: a consumer wants Bedrock, Vertex or Azure) |
 | I-15 | a capacity **declares** that it writes (R7): `writes=True` on the declaration, both invoke sites gate the `writeable` injection on it instead of on `outputs == ()`, and an AST guard reconciles the declaration against the body — the `context.llm` census shape. **Blocks I-10**, whose ruled declared output is unreachable without it | core-capacity-write-is-declared-not-inferred | DONE(8f1f7d4) |
-| I-17 | an answer names what was asked BY CONTENT (R20–R23): the client resolves and hands the transport everything the model receives, stamps the prompt and schema digests, `request_key` v2, and both digests plus the schema text reach the origin record. **Blocks I-12**, whose *shown* is unverifiable without it | core-llm-answer-names-what-was-asked | TODO |
+| I-17 | an answer names what was asked BY CONTENT (R20–R23): the client resolves and hands the transport everything the model receives, stamps the prompt and schema digests, `request_key` v2, and both digests plus the schema text reach the origin record. **Blocks I-12**, whose *shown* is unverifiable without it | core-llm-answer-names-what-was-asked | DONE(933bc6d) |
 | I-16 | I-9's writer gets its installer. Measured 2026-09-17: nothing in the tree calls `build_write_prompt_edition`, and `install_learn_parameter_capacities` is the precedent it skipped — so a `DONE` item is a declaration L4 cannot route to | core-llm-prompt-edition-has-no-installer | DONE(6e6514e) |
 
 **DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17.**
 
-**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 → I-12.**
+**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12.**
 I-9 and I-10 are blocked by I-8, the L2 record shape, and may ship in either order once
 it is ruled. ⚠ **I-9's dependency is the ROLE decision only** — measured: no prompt text crosses the
 transport seam, so the text is in no ANSWER. ⚠ **It does NOT follow that no run writes it**
@@ -565,4 +565,19 @@ amendment.)*
   `credential_level` on every record a DECODED answer produced; a refusal for an
   undecodable answer carried neither (it was written with no response at all).
   R33 closes it. **Approval:** delegated (R29–R35); no new ruling.
+
+- **2026-09-29 (I-17 DONE)** — **gate 3 merged as PR #246** (`933bc6d`, tag
+  `llm-record-names-what-was-asked-confirmed`; full gate 5402 passed / 0 failed at
+  `1f9ab18`, collect 5407, ids +2/−0 read back by name). **I-17 is `DONE(933bc6d)`**
+  across three gates, one claim each: #242 the seam (`6f04575`), #245 the answer and
+  key v2 (`2b29252`), #246 the record. ⚠ **Instrument findings, the tree right each
+  time:** two mutations (gate 2 M1, gate 3 M4) reddened one test more than predicted
+  — both a test that asserts the field's PRESENCE in passing; predictions have been
+  counting the test that claims a field and missing the ones that merely touch it.
+  Two sites my greps missed (a private-harness monkeypatch in gate 1, a replay built
+  through `build_client` in gate 2) were caught by the targeted run, not the gate.
+  **I-12 is next and last.** ADR-0210 am-7 stays Proposed until I-12 ships its
+  clauses 1 and 5. ⚠ **Owner question still open (see 2026-09-22):** whether core
+  must guarantee that the words sent are the stored prompt edition — it shapes
+  I-12's *shown* report. **Approval:** delegated; no new ruling.
 
