@@ -742,8 +742,12 @@ the plan's §1, each citing its authority in the plan.
 10. **`key_schema_version` is derived** (R34), per answer; unstamped means `"1"`,
     a mixture refuses.
 11. **`model_version` is a configured label** (R35), not a fact about the call.
+12. **Core detects, and does not guarantee, that the words sent are the stored
+    prompt edition** (R36, OWNER 2026-09-29). A shown edition verifies by
+    `text_digest(text) == prompt_digest`; with no match, I-12 reports "no stored
+    edition matches what ran" and shows nothing in its place.
 
-**Build state.** I-17 ships in three gates: (1) the seam, clause 6 — **built,
+**Build state.** ⚠ **I-17 DONE(933bc6d), 2026-09-29.** I-17 shipped in three gates: (1) the seam, clause 6 — **built,
 PR #242**; (2) clauses 4 (the key and the answer's stamps), 7, 10, and the
 client halves of 8 and 9 — **built, PR #245**; (3) the origin-record half of
 clauses 4, 8 and 9 — **built, I-17 gate 3**: the record carries `prompt_digest`,

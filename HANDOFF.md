@@ -262,7 +262,11 @@ Global); ⚠ **SUPERSEDED IN PART:** prompt editions are DUAL-SCOPE, the `prompt
 role (owner ruling 2026-09-14, ADR-0210 am-4/am-5, built `a1687f2`); only recorded
 sets are Local-only (`recorded-sets`, built `780ee1b`). **For current state read the
 plan, `docs/plans/MINDSOS_LLM_PLAN.md` — as of 2026-09-21 the open items are I-17
-then I-12.** ⚠ **I-12 was SPECIFIED 2026-09-21** (plan R19–R28, ADR-0210 am-7,
+then I-12.** ⚠ **SUPERSEDED 2026-09-29: I-17 is DONE(933bc6d)** (PRs #242, #245,
+#246 — an answer and its origin record name what was asked by content; rulings
+R29–R35) and **only I-12 is open**, with owner ruling **R36** (accept and detect:
+core does not guarantee the words sent are the stored edition; I-12's *shown* reports
+a mismatch). ⚠ **I-12 was SPECIFIED 2026-09-21** (plan R19–R28, ADR-0210 am-7,
 squash `84b8053`): *re-run without the model* means RE-DERIVE with a producer that
 declares `consults_llm=False`, never replay; *shown* is VERIFIABLE for everything that
 was asked, by content; and **I-17** — an answer names what was asked, by content — was

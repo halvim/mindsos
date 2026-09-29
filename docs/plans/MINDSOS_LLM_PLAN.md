@@ -45,7 +45,7 @@ is left to build"*. The 2026-09-05 ruling that made it the completion criterion 
 
 ---
 
-## 2. THE DESIGN RULINGS — OWNER, 2026-09-13, 2026-09-18 and 2026-09-21; DELEGATED, 2026-09-20 and 2026-09-22
+## 2. THE DESIGN RULINGS — OWNER, 2026-09-13, 2026-09-18, 2026-09-21 and 2026-09-29; DELEGATED, 2026-09-20 and 2026-09-22
 
 **R1 — L3 writes the L2 record, not L0.** *"it should be L3 as this is part of the
 reading text intelligence, not L0 server code."* Settles
@@ -308,6 +308,17 @@ client sent"* does not reach it. Named in the capability contract; not built.
 Making it a fact needs the provider's own reply, which is I-13's territory (OUT).
 Authority: R21's list; I-13.
 
+**R36 — core does NOT guarantee that the words sent are the stored prompt edition;
+it DETECTS a mismatch.** The deployment supplies the words (R21: the client resolves
+through an injected `resolve_prompt`), and core builds no client in production, so a
+guarantee would need a core-owned client builder — rejected. Instead the conclusion
+carries `prompt_digest` (I-17), and I-12's *shown* report verifies
+`text_digest(edition text) == prompt_digest`; when no stored edition matches, it
+says so ("no stored edition matches what ran") rather than showing the nearest one.
+§1's *every conclusion can be shown* therefore holds for deployments that resolve
+through the `prompts` role, and every other conclusion is identified and reported as
+unshowable — never shown falsely. **OWNER 2026-09-29** ("agreed", on option (a)).
+
 ## 3. THE ITEM LIST
 
 | id | item | filed as | state |
@@ -526,8 +537,8 @@ amendment.)*
   origin-record fields, the undecodable-answer path included (R23, R32, R33).
   Marked in place: R2's *"a chat that opens a branch expecting to edit
   `mindsos_llm` has misread this plan"* (it is about records, not the seam), and
-  §4's *"L2 Local, never Global"* (the recorded set's rule). ⚠ **PUT TO THE OWNER,
-  OPEN:** must core GUARANTEE that the words sent are the stored prompt edition?
+  §4's *"L2 Local, never Global"* (the recorded set's rule). ⚠ **PUT TO THE OWNER
+  (RULED 2026-09-29 as R36: accept and detect):** must core GUARANTEE that the words sent are the stored prompt edition?
   The deployment supplies the words and core builds no client in production, so a
   deployment resolving words elsewhere yields conclusions that are identified and
   verifiable-as-mismatched but never shown — §1's *every* fails at the source.
@@ -579,5 +590,14 @@ amendment.)*
   **I-12 is next and last.** ADR-0210 am-7 stays Proposed until I-12 ships its
   clauses 1 and 5. ⚠ **Owner question still open (see 2026-09-22):** whether core
   must guarantee that the words sent are the stored prompt edition — it shapes
-  I-12's *shown* report. **Approval:** delegated; no new ruling.
+  I-12's *shown* report. ⚠ **RULED as R36, OWNER 2026-09-29 — see below.**
+  **Approval:** delegated; no new ruling.
+
+- **2026-09-29 (R36)** — **OWNER ruling R36** (§2): core does not guarantee that the
+  words sent are the stored prompt edition; I-12 detects and reports a mismatch.
+  Recorded before I-12 starts so its chat can cite it. Passes re-run against R36: no
+  ruling reversed; R24 and R27 stand, and R36 fixes what I-12's *shown* says when
+  verification fails. Contradiction sweep of live docs: HANDOFF.md's *"the open items
+  are I-17 then I-12"* marked superseded; no other tracked doc contradicts I-17 as
+  built. **Approval:** OWNER, "agreed".
 
