@@ -5,7 +5,7 @@
 > A chat must claim its lane here before pushing.
 
 Every project lives under `projects/<name>/`. Core-contributors merge to `main`;
-demos live on `demo/*` branches and never edit `mindsos_*` — **except Decision Records, which became its own repository on 2026-08-18 (RULES §1)**.
+demos live on `demo/*` branches and never edit `mindsos_*` — **or in a repository of their own, installing core by tag (RULES §1)**.
 
 ## Worktrees
 
@@ -25,14 +25,10 @@ drift RULES §1 was corrected for. Do not restore a home column entry without `l
 | `MindsOS-arc-viz/`        | `arc-solver-viz`   | demo             | unverified                       |
 | `MindsOS-bongard/`        | `demo/bongard`     | demo             | unverified                       |
 | `nilm_brain/`             | `nilm_brain`       | long-lived       | unverified                       |
-| ~~`MindsOS-dr/`~~        | ~~`demo/decision-records`~~ | **RETIRED 2026-08-18** | the demo left the repo — `github.com/halvim/mindsos-decision-records` |
 
-**Decision Records LEFT THIS REPO on 2026-08-18** (owner ruling, RULES §1). Code, docs and
-the demo plan now live in `github.com/halvim/mindsos-decision-records`, which installs core
-as a distribution pinned by TAG in its `requirements.txt`. Nothing of the demo remains on
-`main`, `demo/decision-records` is retired, and its `dr-*-confirmed` tags stay as the
-history. Core's build order for the lane's PREREQUISITES stays here:
-`confirmation_docs/DECISION_RECORDS_V0_PLAN.md`.
+**A demo may live in its own repository** (owner ruling 2026-08-18, RULES §1), installing core
+as a distribution pinned by TAG in its `requirements.txt`. Core does not list or track such a
+demo; its tags in this repo stay as history.
 
 ⚠ **THE PIN MECHANISM CHANGED WITH IT, and the old failure is why.** The pin used to be a
 line in this file and in `STATE.json`, checked by `git diff --stat <pin>..HEAD -- 'mindsos_*'`.
@@ -45,16 +41,6 @@ The pin is the tag in the demo repo's `requirements.txt`, the answer is what is 
 to a checkout instead. A pin that IS a dependency cannot go stale without the install going
 stale with it.
 
-⚠ **THE DECISION RECORDS CRITIC LANE IS RE-CREATED, 2026-08-17** — owner
-ruling, plan §0.4 item 8(a): an independent reviewer exists and no ship past
-step 1 merges without a stage-2 hold. Worktree `_MindsOS-dr-critic` on
-**`feat/dr-critic-2`**, branched from tag `dr-critic-probes-archive`
-(`13e2ba2`) so the probes returned with it — `probe_gate_diff.py` included.
-First round: coordination §117.1, verify-only. The closure this block replaces
-(2026-08-17, RULES §10.1 satisfied, probes archived at the same tag) remains
-true as history; reasoning of record: §114–§117 of the coordination file
-(untracked, shared checkout).
-
 On demand (create when the work starts):
 `git worktree add ../MindsOS-fol -b fol-1 main` (also dwf, skill_acquisition, maintenance).
 Then point that Cowork chat's project at the new folder.
@@ -66,7 +52,6 @@ Then point that Cowork chat's project at the new folder.
 | `main`        | Operational system (the product)         | `mindsos_*`, `docs/`, `confirmation_docs/`, `projects/`, `tests/` | Always green on the Linux gate        |
 | `demo/robot`  | Robot demo, installed on top of main     | `robot_demo/ demo_ui/ sim/ web/ metagraph_visualizer/` + robot docs | NEVER edits `mindsos_*`; merges main in |
 | `demo/arc`    | ARC demo, installed on top of main       | `intelligence_demo/ run_spike`                                    | NEVER edits `mindsos_*`; merges main in |
-| ~~`demo/decision-records`~~ | **RETIRED 2026-08-18** — the demo is its own repository | — | tags `dr-*-confirmed` remain as history |
 
 ## Short-lived branches (off `main`, squash-merge back, then delete)
 

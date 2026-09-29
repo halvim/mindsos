@@ -212,8 +212,8 @@ ADRs follow a lightweight Nygard/MADR-style format: **Context**, **Decision**, *
 | [0201-am2](0201-amendment-2-slice-a.md) | per-run capacity graph + no run_ref default (Slice A) | Accepted | L5 | — |
 | [0201-am3](0201-amendment-3-slice-3.md) | knowledge-MM writer + DQ-1 provenance XRef (Slice 3) | Accepted | L5 | — |
 | [0201-am4](0201-amendment-4-run-manifest.md) | the run manifest, and where it is minted | Accepted | L5 | — |
-| [0201-am5](0201-amendment-5-fold-manifest-correlation.md) | the fold manifest carries the member correlation; the empty domain is a stop | Accepted | L5 | member_graph_ids, empty_domain, Decision Records |
-| [0201-am6](0201-amendment-6-partial-results.md) | partial results — a member stops in place; a truncated domain is a stop | Accepted | L5 | partial_domain, stopped, conceded, Decision Records |
+| [0201-am5](0201-amendment-5-fold-manifest-correlation.md) | the fold manifest carries the member correlation; the empty domain is a stop | Accepted | L5 | member_graph_ids, empty_domain |
+| [0201-am6](0201-amendment-6-partial-results.md) | partial results — a member stops in place; a truncated domain is a stop | Accepted | L5 | partial_domain, stopped, conceded |
 | [0201-am7](0201-amendment-7-declared-retry.md) | bounded member retry becomes a declared capacity property; the fatal set is never retried | Accepted | L5 | retryable, MEMBER_RETRY_CAP, LLM seam |
 | [0201](0201-capacity-mm-instance-vocabulary.md) | ADR-0201 — capacity-MM instance vocabulary + minting (DQ-2) | Accepted | L5 | — |
 | [0202](0202-per-task-chain-graphs-persist.md) | ADR-0202 — per-task chain graphs, persisted at consolidation (DQ-8) | Proposed | L5 | — |
@@ -221,9 +221,9 @@ ADRs follow a lightweight Nygard/MADR-style format: **Context**, **Decision**, *
 | [0204](0204-reduction-capability-family.md) | Reduction capability family (L4-support) — argmin / argmax / top_k / bottom_k / majority_vote | Accepted | L4-support | reduction-family, argmax, top_k, bottom_k, majority-vote, CR-reduction |
 | [0205](0205-abstraction-levels.md) | Abstraction levels — one graph at several resolutions | Accepted | L3 | — |
 | [0206](0206-planning-decomposition-confidence.md) | Planning as a loop — milestones, decomposition, and confidence | Proposed | L4 | — |
-| [0207](0207-origin-records.md) | Origin records — where a value came from, for any producer | Proposed | L3 | origin, origin_v0, provenance-record, Decision Records |
-| [0208](0208-policy-lookup-and-criterion.md) | Reading a stored authority as of a date — the policy lookup and the criterion it feeds | Proposed | L3 | policy lookup, as-of, policies role, Decision Records |
-| [0209](0209-member-level-in-band-refusal.md) | Member-level in-band refusal (shape (a)) — the type declares, the reducer decodes, plan construction enforces | Accepted | L3 | refusal_capable, decodes_refusals, shape (a), Decision Records |
+| [0207](0207-origin-records.md) | Origin records — where a value came from, for any producer | Proposed | L3 | origin, origin_v0, provenance-record |
+| [0208](0208-policy-lookup-and-criterion.md) | Reading a stored authority as of a date — the policy lookup and the criterion it feeds | Proposed | L3 | policy lookup, as-of, policies role |
+| [0209](0209-member-level-in-band-refusal.md) | Member-level in-band refusal (shape (a)) — the type declares, the reducer decodes, plan construction enforces | Accepted | L3 | refusal_capable, decodes_refusals, shape (a) |
 | [0210](0210-llm-communication-layering.md) | LLM communication as a cross-layer core capability — L0 holds the credential, `mindsos_llm` holds the wire, L3 mints one capacity per reading | Accepted | cross-layer | mindsos_llm, adapters, credential levels, vendor registry, replay |
 
 !!! note "ADRs 0058, 0059, 0113, 0116, 0117, 0119 — numbers not in use"

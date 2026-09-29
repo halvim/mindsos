@@ -26,11 +26,10 @@ edition, which is a different and wrong answer for any question about the
 past."* Nothing implemented that sentence, nothing wrote an edition, and no
 capacity read the store. `CapacityMMWriter.record` writes only
 `(capacity_iri, input IRIs, outputs)`, so a limit read inside a body and never
-declared as an output never reaches the grounding graph, and a Decision Record
+declared as an output never reaches the grounding graph, and a printed run record
 is rendered from that graph and nothing else.
 
-Item 3 of `confirmation_docs/DECISION_RECORDS_V0_PLAN.md` is that lookup, and
-the criterion capacity it feeds.
+This ADR records that lookup and the criterion capacity it feeds.
 
 ---
 
@@ -55,7 +54,7 @@ inheriting the VERDICT don't-know contract.
 `retrieval` is one of the thirteen bootstrapped `FUNCTIONAL_CATEGORIES` and its
 family rule is `OPTIONAL_RETURN`, which is what a lookup that may find nothing
 needs. Pinned by
-`tests/decision_records/test_policy_lookup_capacity.py::test_the_lookup_is_retrieval_and_gets_the_optional_return_contract`.
+`tests/run_records/test_policy_lookup_capacity.py::test_the_lookup_is_retrieval_and_gets_the_optional_return_contract`.
 
 ### D2 — The version lives in the limit's origin record, not as a second consumed input
 
@@ -148,8 +147,7 @@ saying out loud rather than leaving as an assumption.
 `mindsos_capacity/builtins/policy_lookup_v0.py` (a factory that builds a lookup
 for any authority) are core, because the next consumer of the store must not
 re-derive them (RULES §8). One particular threshold, one criterion and one prose
-vocabulary are content and live in `tests/decision_records/_dr_fixtures.py`
-until the demo has a home of its own.
+vocabulary are test content and live in `tests/run_records/_fixtures.py`.
 
 ### D10 — Append-only is enforced at the only door there is
 
@@ -170,7 +168,7 @@ store" in anything a customer reads** on the strength of this.
   `ConjunctionFinder` and grounded through `execute_pipeline` with the real
   `L4Dispatcher`. Run 2 waits on item 5's structured-ingest reader; the reader
   here is a marked stand-in.
-- Guards **G7** and **G8′** are re-homed from `tests/decision_records/test_route_probe.py`,
+- Guards **G7** and **G8′** are re-homed from `tests/run_records/test_route_probe.py`,
   which STATE marks for deletion the day L4 gains plural-start expressiveness.
   **G8′ is a gap-pin, not a guard, and is deleted the day DataStates go
   realm-free.**
@@ -208,7 +206,7 @@ the same way.*
 and the in-force window bounds the store holds. Both raised `ValueError`, and
 `policy_lookup_v0` caught them together and reported both as
 `PolicyStoreUnreachableError` / `source_unreachable`. The module said so about
-itself in a standing NOTE and filed it as `decision-records-as-of-date-validity`.
+itself in a standing NOTE and filed it as the as-of-date-validity design item.
 
 ⟹ **A caller supplying a date that is not a date, or no date at all, was told
 "this is a fault on our side and is never a finding about the case"** — a
@@ -245,7 +243,7 @@ the outage road.
 
 ### Why it was found
 
-The Decision Records demo put a dated policy lookup behind its routing rule, so
+An external demo put a dated policy lookup behind its routing rule, so
 an exposure stating no date printed the outage sentence on the two beats every
 showing traverses. Recorded because the ADR's rule was already sufficient to
 forbid it and nobody had read it in the mirror.

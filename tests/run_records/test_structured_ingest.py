@@ -41,7 +41,7 @@ from mindsos_capacity.builtins.structured_ingest_v0 import (
 from mindsos_capacity.family_rules import FamilyDontKnowShape
 from mindsos_capacity import family_rule_for
 
-from ._dr_fixtures import (
+from ._fixtures import (
     DS_FILING_RECORD,
     DS_GROSS_INCOME,
     DS_GROSS_INCOME_ORIGIN,

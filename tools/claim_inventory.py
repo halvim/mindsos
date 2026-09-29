@@ -76,8 +76,6 @@ OUT_OF_IMAGE = "not-in-image"    # tracked, but no test image copies it
 #: claim-inventory-owner-rulings, ruling 1). A new live plan is added HERE.
 LIVE_CONFIRMATION_DOCS = frozenset({
     "CORE_RECONCILIATION_PLAN.md",
-    "DECISION_RECORDS_V0_PLAN.md",
-    "DECISION_RECORDS_AGREED_CHANGES.md",
 })
 
 
@@ -135,6 +133,8 @@ GUARDED: dict[str, tuple[str, str]] = {
                              "no live line presents the retired Model C layout as current"),
     "adr-role-registration": ("tests/architecture/test_every_named_role_is_registered_in_adr_0150.py",
                               "every named L2 role in ALL_ROLES is registered in ADR-0150"),
+    "core-names-no-consumer": ("tests/architecture/test_core_names_no_consumer.py",
+                               "no core file names the external consumer (STATE recent[] excepted)"),
 }
 
 #: The extractor classes below that a guard holds at 0 false, and in which

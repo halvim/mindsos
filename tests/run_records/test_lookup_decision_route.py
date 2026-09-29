@@ -13,7 +13,7 @@ nothing had ever done is have a capacity body read L2 through ``context.kl`` —
 riskiest part of the design untested and hand the discovery to the run driver.
 
 Guards **G7** and **G8′** are re-homed here from
-``tests/decision_records/test_route_probe.py``. The probe is a diagnostic marked
+``tests/run_records/test_route_probe.py``. The probe is a diagnostic marked
 for deletion the day L4 gains plural-start expressiveness; deleting it must not
 silently delete two guards with it.
 """
@@ -47,7 +47,7 @@ from mindsos_intelligence.dispatch import L4Dispatcher
 from mindsos_intelligence.mm import MentalModel
 from mindsos_intelligence.pipeline_execution import execute_pipeline
 
-from ._dr_fixtures import (
+from ._fixtures import (
     CAP_DECISION,
     CAP_LOOKUP,
     CAP_READER,
@@ -304,7 +304,7 @@ def test_g3_an_unreadable_store_leaves_no_verdict_and_says_which_step_stopped():
     detail = str((stopped[0].properties or {}).get(PROP_RUN_STOPPED_DETAIL))
     assert POLICY_PHRASE in detail
     assert "source_unreachable" not in detail, (
-        "stopped_detail is printed by a Decision Record; the refusal token "
+        "stopped_detail is printed in a run record; the refusal token "
         "lives on PolicyStoreUnreachableError.refusal_reason, not in the text"
     )
     # **The other half of the same separation, added 2026-08-16.** Until

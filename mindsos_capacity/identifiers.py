@@ -327,7 +327,7 @@ PROP_CAPACITY_INSTANCE_TYPE = "capacity"
 # ``execute_pipeline`` used to write to ``capacity_mm`` ONLY on a successful
 # step: the cancelled / needs_input / failed returns all preceded
 # ``writer.record``. So a capacity failure left NO node in the grounding
-# graph, and a Decision Record renders from that graph and nothing else —
+# graph, and a printed run record renders from that graph and nothing else —
 # every refusal that is not a *reading* refusal was structurally
 # unrenderable. These are the vocabulary for the terminal node that closes
 # it. Like the instance markers above they are live-only and free-form:
@@ -392,7 +392,7 @@ PROP_RUN_STOPPED_BEFORE = "stopped_before"
 #: when the failure carried none, which is most of them.
 #:
 #: **Why a second property instead of putting the token in the detail.**
-#: ``stopped_detail`` is PRINTED by a Decision Record and is prose; a
+#: ``stopped_detail`` is PRINTED in a run record and is prose; a
 #: reason token is vocabulary and is branched on. The store-outage
 #: precedent already pins that separation from the other side —
 #: ``test_lookup_decision_route`` asserts the token is NOT in the printed
@@ -401,7 +401,7 @@ PROP_RUN_STOPPED_BEFORE = "stopped_before"
 #: else. (Coordination §87 T-F2 / ruling 2.)
 PROP_RUN_STOPPED_FAULT_REASON = "stopped_fault_reason"
 
-# ── Run manifest (Decision Records item 4c) ────────────────────────────
+# ── Run manifest ────────────────────────────────────────────
 #
 # Probe D rendered all four run graphs and recorded every symbol a generic
 # renderer could not turn into prose. There were exactly three, and they are

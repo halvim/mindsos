@@ -11,7 +11,7 @@ Two things are pinned here that would otherwise fail silently:
   and the renderer would be reading a field nobody declared.
 
 ADR-0207. Adapted from ``tests/llm_seam/test_origin_contract_and_scope.py``
-on ``feat/decision-records`` when ``origin_v0`` was lifted to core ahead of
+on a feature branch when ``origin_v0`` was lifted to core ahead of
 the LLM half. Two cases stayed behind because they exercise
 ``comprehension_v0.register_reader`` rather than this module:
 

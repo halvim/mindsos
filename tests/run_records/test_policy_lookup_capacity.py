@@ -52,7 +52,7 @@ from mindsos_knowledge.policies import (
     ROLE_POLICIES,
 )
 
-from ._dr_fixtures import (
+from ._fixtures import (
     CAP_DECISION,
     CAP_LOOKUP,
     DS_AS_OF_DATE,
@@ -132,7 +132,7 @@ def test_the_protocol_declares_the_surface_the_body_actually_uses():
 
 
 def test_a_source_phrase_that_is_an_identifier_is_refused_at_build_time():
-    """A Decision Record forbids every IRI and every MindsOS term. Catching it
+    """A printed run record forbids every IRI and every MindsOS term. Catching it
     here beats catching it in front of a lawyer."""
     with pytest.raises(OriginContractError):
         build_policy_limit_lookup(
@@ -405,12 +405,9 @@ def test_the_d15_walk_would_catch_an_opaque_operand():
 #
 # ``execute_pipeline`` writes ``str(exc)`` onto L-2's ``RunStopped`` node as
 # ``stopped_detail`` (``pipeline_execution.py``, the ``not result.success``
-# branch), and a Decision Record prints that node. So every message raised out
+# branch), and a printed run record shows that node. So every message raised out
 # of a lookup body is customer-facing text and is held to G6's bar, the same as
-# registered prose. Vocabulary from ``DECISION_RECORDS_DEMO_PLAN.md`` §4 —
-# which lives in the demo's own repo since 2026-08-18
-# (``github.com/halvim/mindsos-decision-records``, ``docs/``). The list below
-# is CORE's, copied deliberately: this test must not need that file to run.
+# registered prose. The list below is CORE's own.
 
 RECORD_FORBIDDEN = (
     "capacity", "pipeline", "datastate", "metagraph",

@@ -24,7 +24,7 @@ A project that wants MindsOS to consult an external model currently has to
 write the network-touching piece itself. `LiveLLM` takes a
 deployment-supplied callable and that callable was never written in core.
 One lane wrote it and hardened it through four adversarial rounds
-(`decision_records_demo/dr_transport.py`, 419 lines, 14 guards, run live);
+(an external consumer's transport module, 419 lines, 14 guards, run live);
 a second lane now needs the same thing and would otherwise copy it.
 
 **Owner ruling: LLM communication is MindsOS machinery, not a project's
@@ -49,7 +49,7 @@ Three docstrings on `main` say a vendor never enters MindsOS:
 * `mindsos_capacity/llm/live.py` — *"No provider SDK ships in this repo."*
 * `mindsos_capacity/llm/contract.py` — *"§6.4: no vendor inside MindsOS,
   credentials in the transport's closure, the gate has no network."*
-* `decision_records_demo/dr_transport.py` ¶1 — it lives outside core **by
+* that consumer's transport module ¶1 — it lives outside core **by
   design**, for that reason.
 
 **The invariant is restated, not quoted.** What was ever worth having is
@@ -338,7 +338,7 @@ ALREADY mints one capacity per reading — per-call `prompt_iri` /
 `retryable=True` — and its own docstring states decision 1's rationale
 verbatim: *"One reader per extracted value, not one general extractor. A
 single 'read the whole document' capacity would produce one opaque payload:
-the finder would have nothing to compose through and a Decision Record
+the finder would have nothing to compose through and a run record
 nothing to cite."*
 
 ⟹ **Decision 1 is satisfied by shipped code. 1b adds NO L3 capacity**, and
@@ -889,7 +889,7 @@ the store the credential came from.
 
 ## 9. ⚠ Three stale surfaces this CR must not inherit
 
-**Measured 2026-09-02, not reasoned.** The Decision Records repo pins
+**Measured 2026-09-02, not reasoned.** An external consumer's repo pins
 `policy-as-of-not-a-date-confirmed` → `96ba79d`, and
 `git ls-tree` shows that tag **carries `mindsos_capacity/llm/`**. The pin
 bump happened 2026-08-18 when the demo became its own repo
@@ -906,7 +906,7 @@ CR's own prompt:
   could"* close the conformance gap
 
 **All three are false.** The consequence for this CR: the conformance gap is
-closeable in the Decision Records repo's own gate **today, with zero core
+closeable in that consumer's own gate **today, with zero core
 change**, and slice 5 is therefore about core asserting the *properties*, not
 about being the first to run the harness. Per
 `feedback-grep-before-quoting-any-prose`, the corrections land in the same

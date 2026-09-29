@@ -36,9 +36,9 @@ from mindsos_capacity.identifiers import (
     RUN_STOPPED_STEP_FAILED,
 )
 
-from . import _dr_driver
-from ._dr_driver import decision_record_plan, run_decision_record
-from ._dr_fixtures import (
+from . import _run_driver
+from ._run_driver import record_plan, run_record
+from ._fixtures import (
     CAP_DECISION,
     CAP_LOOKUP,
     CAP_READER,
@@ -88,7 +88,7 @@ def test_the_driver_names_no_finder():
     import ast
     import inspect
 
-    tree = ast.parse(inspect.getsource(_dr_driver))
+    tree = ast.parse(inspect.getsource(_run_driver))
     referenced = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Name):
@@ -116,7 +116,7 @@ def test_the_driver_names_no_finder():
 
 
 def test_the_plan_declares_plural_starts_and_no_finder_override():
-    leaf = decision_record_plan().leaf_targets["mDecisionRecord"]
+    leaf = record_plan().leaf_targets["mRunRecord"]
     assert leaf["start_datastates"] == list(STARTS)
     assert "start_datastate" not in leaf
     assert "finder" not in leaf
@@ -126,14 +126,14 @@ def test_the_plan_declares_plural_starts_and_no_finder_override():
 
 
 def test_the_driven_route_reaches_the_verdict():
-    run = run_decision_record(build_kl_with_both(), INITIAL_2024)
+    run = run_record(build_kl_with_both(), INITIAL_2024)
     assert run.graph is not None, "no grounding graph — the run fell back to the notional record"
     assert run.value_of(DS_FILING_VERDICT) == VERDICT_MUST_FILE
     assert run.value_of(DS_FILING_THRESHOLD) == 29200
 
 
 def test_l4_composed_all_three_capacities():
-    run = run_decision_record(build_kl_with_both(), INITIAL_2024)
+    run = run_record(build_kl_with_both(), INITIAL_2024)
     composed = {
         (n.properties or {}).get(PROP_CAPACITY_INSTANCE_TYPE)
         for n in run.graph.nodes.values()
@@ -143,7 +143,7 @@ def test_l4_composed_all_three_capacities():
 
 
 def test_the_derivation_is_in_the_graph():
-    run = run_decision_record(build_kl_with_both(), INITIAL_2024)
+    run = run_record(build_kl_with_both(), INITIAL_2024)
     graph = run.graph
     decisions = _instances(
         graph, NODE_TYPE_CAPACITY_INSTANCE, PROP_CAPACITY_INSTANCE_TYPE, CAP_DECISION
@@ -161,7 +161,7 @@ def test_g7_holds_on_the_l4_driven_graph():
     """G7 again, and not redundantly. Item 3 asserts it over a pipeline this
     lane composed; here L4 composed it and ``_run_leaf_pipeline`` chose what to
     seed — a different seeding path, and the one the product actually runs."""
-    run = run_decision_record(build_kl_with_both(), INITIAL_2024)
+    run = run_record(build_kl_with_both(), INITIAL_2024)
     graph = run.graph
     has_incoming = {e.target.node_id for e in graph.edges.values()}
     parentless = {
@@ -182,7 +182,7 @@ def test_no_grounding_root_was_pre_minted():
     pass on a set comparison while the graph carried an orphan. This asserts the
     count, which is what G7 cannot see.
     """
-    run = run_decision_record(build_kl_with_both(), INITIAL_2024)
+    run = run_record(build_kl_with_both(), INITIAL_2024)
     for start in STARTS:
         assert len(
             _instances(
@@ -196,8 +196,8 @@ def test_g5_two_dates_over_one_store_give_two_records():
     """Run 5, driven. The as-of date is a start DataState, never read out of the
     document, or this silently becomes "two documents disagree"."""
     kl = build_kl_with_both()
-    old = run_decision_record(kl, INITIAL_2023, request_id="dr-2023")
-    new = run_decision_record(kl, INITIAL_2024, request_id="dr-2024")
+    old = run_record(kl, INITIAL_2023, request_id="dr-2023")
+    new = run_record(kl, INITIAL_2024, request_id="dr-2024")
     assert (old.value_of(DS_FILING_THRESHOLD), new.value_of(DS_FILING_THRESHOLD)) == (
         27700, 29200,
     )
@@ -215,7 +215,7 @@ def test_run_2_a_return_that_states_no_income_still_produces_a_record():
     plan claimed probe B had run it end to end — that was a throwaway that was
     never committed, which is the fourth time in this lane a claim rested on
     something not in the tree."""
-    run = run_decision_record(build_kl_with_both(), INITIAL_NO_INCOME, request_id="dr-run2")
+    run = run_record(build_kl_with_both(), INITIAL_NO_INCOME, request_id="dr-run2")
     assert run.value_of(DS_FILING_VERDICT) == VERDICT_NOT_DETERMINED
     record = run.value_of(DS_GROSS_INCOME_ORIGIN)
     assert record[FIELD_REFUSAL_REASON] == REFUSAL_FIELD_ABSENT
@@ -226,7 +226,7 @@ def test_run_2_the_refusal_is_graph_resident_and_names_the_missing_item():
     """**G4's reading half.** The plan's acceptance for run 2 is that the
     refusal is *graph-resident* and *names the missing item in prose* — both
     asserted structurally here rather than by string-matching a rendering."""
-    run = run_decision_record(build_kl_with_both(), INITIAL_NO_INCOME, request_id="dr-run2b")
+    run = run_record(build_kl_with_both(), INITIAL_NO_INCOME, request_id="dr-run2b")
     graph = run.graph
     produced = _instances(
         graph, NODE_TYPE_DATASTATE_INSTANCE, PROP_DATASTATE_INSTANCE_TYPE,
@@ -241,7 +241,7 @@ def test_run_2_the_income_instance_exists_and_carries_nothing():
     """A refused value is present-and-empty, never absent. A missing instance
     and a refused one are different facts and a Record must not confuse them —
     which is also why ``value_of`` raises rather than returning None."""
-    run = run_decision_record(build_kl_with_both(), INITIAL_NO_INCOME, request_id="dr-run2c")
+    run = run_record(build_kl_with_both(), INITIAL_NO_INCOME, request_id="dr-run2c")
     assert run.value_of(DS_GROSS_INCOME) is None
 
 
@@ -256,9 +256,9 @@ def test_three_not_determined_runs_are_told_apart_by_the_graph():
     pages. This is the precondition — that the material to tell them apart is
     in the graph at all."""
     runs = {
-        "absent": run_decision_record(build_kl_with_both(), INITIAL_NO_INCOME, request_id="d4a"),
-        "unreadable": run_decision_record(build_kl_with_both(), INITIAL_UNREADABLE_INCOME, request_id="d4b"),
-        "no_policy": run_decision_record(build_kl_with_both(), INITIAL_UNCOVERED, request_id="d4c"),
+        "absent": run_record(build_kl_with_both(), INITIAL_NO_INCOME, request_id="d4a"),
+        "unreadable": run_record(build_kl_with_both(), INITIAL_UNREADABLE_INCOME, request_id="d4b"),
+        "no_policy": run_record(build_kl_with_both(), INITIAL_UNCOVERED, request_id="d4c"),
     }
     assert {r.value_of(DS_FILING_VERDICT) for r in runs.values()} == {VERDICT_NOT_DETERMINED}
 
@@ -277,7 +277,7 @@ def test_three_not_determined_runs_are_told_apart_by_the_graph():
 
 
 def test_run_3_a_gap_in_the_policy_set_still_produces_a_record():
-    run = run_decision_record(build_kl(EDITION_2023), INITIAL_UNCOVERED)
+    run = run_record(build_kl(EDITION_2023), INITIAL_UNCOVERED)
     assert run.value_of(DS_FILING_VERDICT) == VERDICT_NOT_DETERMINED
     record = run.value_of(DS_FILING_THRESHOLD_ORIGIN)
     assert record[FIELD_ADMITTED] is False
@@ -288,7 +288,7 @@ def test_an_outage_stops_the_run_and_leaves_no_verdict():
     """L-2 through the L4 path. ``execution.run`` marks the PipelineRun failed
     and the terminal node names the capacity that stopped it — so even a run
     that produced nothing is renderable."""
-    run = run_decision_record(None, INITIAL_2024, request_id="dr-outage")
+    run = run_record(None, INITIAL_2024, request_id="dr-outage")
     graph = run.graph
     assert graph is not None, "an outage must still leave a graph, or L-2 bought nothing"
     assert _instances(
@@ -302,7 +302,7 @@ def test_an_outage_stops_the_run_and_leaves_no_verdict():
     detail = str((stopped[0].properties or {}).get(PROP_RUN_STOPPED_DETAIL))
     assert POLICY_PHRASE in detail
     assert "source_unreachable" not in detail, (
-        "stopped_detail is printed by a Decision Record; the refusal token "
+        "stopped_detail is printed in a run record; the refusal token "
         "lives on PolicyStoreUnreachableError.refusal_reason, not in the text"
     )
 
@@ -325,9 +325,9 @@ def test_a_single_start_plan_raises_rather_than_under_wiring():
     """
     from mindsos_intelligence.execution import LeafPipelineNotFound
 
-    plan = decision_record_plan(starts=(DS_FILING_RECORD,))
+    plan = record_plan(starts=(DS_FILING_RECORD,))
     with pytest.raises(LeafPipelineNotFound) as excinfo:
-        run_decision_record(
+        run_record(
             build_kl_with_both(),
             {DS_FILING_RECORD: INITIAL_2024[DS_FILING_RECORD]},
             plan=plan,

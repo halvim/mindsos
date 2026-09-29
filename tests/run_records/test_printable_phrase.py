@@ -26,7 +26,7 @@ from mindsos_capacity.printable import (
     printable_phrase_problem,
 )
 
-from ._dr_fixtures import (
+from ._fixtures import (
     CAP_DECISION,
     CAP_LOOKUP,
     CAP_READER,
@@ -69,7 +69,7 @@ def _cap(**kw):
 # ── the field ─────────────────────────────────────────────────────────
 
 
-def test_every_decision_records_capacity_declares_one():
+def test_every_record_capacity_declares_one():
     """All three, because a Record may have to name any of them — the
     criterion on the 'therefore' line, either producer on a stopped run."""
     for declaration in (reader_declaration(), lookup_declaration(), decision_declaration()):

@@ -174,7 +174,7 @@ def test_the_reading_record_is_a_node_in_the_run_graph():
     records = _instances_of(graph, RECORD_DS)
     assert len(records) == 1
     record = records[0].value
-    # Everything a Decision Record has to be able to state about the
+    # Everything a run record has to be able to state about the
     # reading is in the graph, not beside it.
     assert record["quote"] == "I was in hospital for three weeks"
     assert record["quote_offsets"][0] >= 0

@@ -3,7 +3,7 @@
 ``execute_pipeline`` used to write to ``capacity_mm`` ONLY on a successful
 step: the cancelled / needs_input / failed returns all preceded
 ``writer.record``. A capacity failure therefore left **no node in the
-grounding graph**, and a Decision Record renders from that graph and nothing
+grounding graph**, and a printed run record renders from that graph and nothing
 else — so every refusal that was not a *reading* refusal (which the seam makes
 an ordinary successful return carrying an empty value) was structurally
 unrenderable. Blocks runs 3 and 4 and guard G4.

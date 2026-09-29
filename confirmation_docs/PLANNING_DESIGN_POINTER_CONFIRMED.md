@@ -8,7 +8,7 @@ behaviour change; no capacity, schema or interface is added, removed or altered.
 
 ## 1. What this ship is for
 
-On **2026-08-20** the Decision Records lane asked how an input (an email, as text) enters
+On **2026-08-20** a consumer lane asked how an input (an email, as text) enters
 MindsOS and how the system decides what to do with it. It searched the tree thoroughly and
 answered, with `file:line` evidence:
 
@@ -165,8 +165,8 @@ one row in `RETIRED`.
 ## 7. Cost named — does this make ADR-0206 harder to change?
 
 Yes, by five sites, and they are listed in one place so the bill is legible: ADR-0172
-§amendment-2's **flip list**. Nothing here assumes the Decision Records lane's consumer-side
-work on `feat/dr-fields`; if that work becomes ADR-0206's first consumer and moves it from
+§amendment-2's **flip list**. Nothing here assumes a consumer lane's
+work on its own branch; if that work becomes ADR-0206's first consumer and moves it from
 `Proposed` to `Accepted`, the flip list is what to execute.
 
 ## 8. Gate

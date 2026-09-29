@@ -1,7 +1,7 @@
 """``mindsos_llm`` — request key, replay, and the provenance stamp.
 
 The substrate half of the external-model seam. Everything asserted here
-is about *not* letting a Decision Record misrepresent where a reading
+is about *not* letting a run record misrepresent where a reading
 came from: a replayed reading must say it was replayed, a recording file
 must not be able to claim a model it did not come from, and a miss must
 be loud rather than silently answered.

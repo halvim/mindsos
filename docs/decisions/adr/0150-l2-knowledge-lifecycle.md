@@ -844,7 +844,7 @@ record — what it skipped is this register's row.
 
 **2. `policies` — dual-scope (Global + Local).** Builder
 `build_policies_schema(strict, scope)`; discipline `append_only`. Consumer: a
-Decision Record states which authority, which edition, in force when, so dated
+printed run record states which authority, which edition, in force when, so dated
 versioned editions need a store of their own. ⚠ **This resolves a live
 placeholder:** `mindsos_knowledge/identifiers.py` carried the literal
 `§amendment-<N>` beside `ROLE_POLICIES` because the number was never assigned.

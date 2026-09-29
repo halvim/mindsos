@@ -2,7 +2,7 @@
 
 > **⚠️ 2026-08-10 — REFOCUS, ONE QUEUE, AND A BRANCH SWEEP. Read this before anything below.**
 >
-> **Priority, set by the owner:** fix the core and build the **Decision Records demo**. Brains,
+> **Priority, set by the owner:** fix the core and support the **first external demo**. Brains,
 > dream and skill packaging come **after**. Anything below that assumes brains are live
 > consumers is scheduled against the old focus.
 >
@@ -37,7 +37,7 @@
 > **Read the branch tips, not just `main`, before deriving anything.** Verify merge status
 > against the tree, never from a note — project memory had two branches wrong.
 >
-> **Next chat: the single-lane CORE + Decision Records chat.** ~~WSD_INSTALLATION_CHAT~~ — WSD is
+> **Next chat: the single-lane CORE chat.** ~~WSD_INSTALLATION_CHAT~~ — WSD is
 > deferred under the refocus; the pointer at the end of this file is stale and superseded by this
 > banner.
 
@@ -1218,7 +1218,6 @@ MindsOS/
     ├── dwf_mapping/
     ├── wsd/
     ├── fol/
-    ├── decision_records_demo/     ← Decision Records demo lane (sales evidence, not core)
     ├── amii_study/                ← undocumented
     ├── brain-viewer/              ← undocumented
     ├── maintenance/               ← undocumented
@@ -1325,4 +1324,4 @@ This handoff is the snapshot of where things stand entering Phase 39+. Per Phase
 *L4 architecture resolved at Chat A (2026-05-28). L5 architecture + retention model resolved at Chat B (2026-05-31). L1/L3 reframe ratified 2026-06-01. L2 schema-v2 ratified 2026-06-01. Phase map for Phases 39-49 authored at Chat C (2026-06-02).*
 
 ═══════════════════════════════════════════════════════════════════════
-*End of HANDOFF.md. Last reviewed 2026-06-10 (Phase 50 ship closure — SA-1 skill-install lifecycle; first downstream phase after the completed 39-49 plan). **SUPERSEDED 2026-08-10 — see the banner at the top of this file.** WSD is deferred under the refocus; the next chat is the single-lane CORE + Decision Records chat, and the live queue is `STATE.json` `pending_designs`, not this line.*
+*End of HANDOFF.md. Last reviewed 2026-06-10 (Phase 50 ship closure — SA-1 skill-install lifecycle; first downstream phase after the completed 39-49 plan). **SUPERSEDED 2026-08-10 — see the banner at the top of this file.** WSD is deferred under the refocus; the next chat is the single-lane CORE chat, and the live queue is `STATE.json` `pending_designs`, not this line.*

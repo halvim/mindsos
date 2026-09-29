@@ -1,7 +1,7 @@
 """Sentinel — the run-surface inventory, derived by grep, closed by this test.
 
 RULES §12 (the sweep) rests on a **mechanical** surface inventory: every gap in
-the Decision Records lane's ten-gap history had the shape *a quantified claim
+one consumer lane's ten-gap history had the shape *a quantified claim
 checked on one element of its domain* — "every run leaves a graph", verified on
 the leaf while ``_run_member_pipeline`` minted nothing (gap 7) and
 ``_run_fold_milestone`` grounded nothing (gap 10). Recalled surface lists are
@@ -179,7 +179,7 @@ EXPECTED_DIRECT_DISPATCH = {
 
 #: The only door persistence has (ADR-0207 D10 restated at the entry level):
 #: ``persist_capacity_mm`` is reached from consolidation and nowhere else —
-#: "rendered from the PERSISTED graph" is unmet until a Decision Records path
+#: "rendered from the PERSISTED graph" is unmet until a consumer's render path
 #: joins this census, and joining it must redden this sentinel first.
 EXPECTED_PERSISTENCE_CALLERS = {
     "mindsos_intelligence/consolidation.py": 1,
@@ -342,7 +342,7 @@ def test_external_client_consumer_census_is_exact():
         "a body reaching an outside-service client is a run surface: it can "
         "fail in ways no other step can (an outage, a ceiling, an answer that "
         "will not decode), and each of those has a different meaning on a "
-        f"Decision Record. Classify it here with its row. Got {got!r}"
+        f"printed run record. Classify it here with its row. Got {got!r}"
     )
 
 

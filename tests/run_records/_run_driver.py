@@ -1,4 +1,4 @@
-"""The Decision Records run driver — plan in, grounded run out.
+"""The run driver — plan in, grounded run out.
 
 **What makes this the driver and not a script.** It hands ``execution.run`` a
 ``PlanResult`` and nothing else: L4 reads the leaf's endpoints, derives the
@@ -55,7 +55,7 @@ from mindsos_intelligence.dispatch import L4Dispatcher
 from mindsos_intelligence.mm import MentalModel
 from mindsos_intelligence.plan_construction import PlanResult
 
-from ._dr_fixtures import (
+from ._fixtures import (
     DS_AS_OF_DATE,
     DS_FILING_RECORD,
     DS_FILING_VERDICT,
@@ -63,16 +63,16 @@ from ._dr_fixtures import (
     build_capacity_layer,
 )
 
-#: The single leaf. A Decision Record is one derivation, so one milestone.
-LEAF_REF = "mDecisionRecord"
+#: The single leaf. A run record is one derivation, so one milestone.
+LEAF_REF = "mRunRecord"
 
 
-def decision_record_plan(
+def record_plan(
     *,
     starts: Tuple[str, ...] = (DS_FILING_RECORD, DS_AS_OF_DATE),
     target: str = DS_FILING_VERDICT,
 ) -> PlanResult:
-    """The plan for one Decision Record.
+    """The plan for one run record.
 
     ``start_datastates`` is **plural on purpose**. Two starts make
     ``_select_finder`` choose ``ConjunctionFinder`` by arity — the driver states
@@ -85,11 +85,11 @@ def decision_record_plan(
     rebuild a dict holding only the singular ``start_datastate``. A directly
     constructed ``PlanResult`` can, and is gated —
     ``tests/phase_48/test_map_member_multiinput.py``. That gap is
-    ``decision-records-l4-multi-input-start``; it is real, it is in the planner
+    ``l4-multi-input-start``; it is real, it is in the planner
     path, and it does not block this.
     """
     return PlanResult(
-        plan_ref="plan:decision_record",
+        plan_ref="plan:run_record",
         root_milestone_ref="m0",
         leaf_milestone_refs=[LEAF_REF],
         pipeline_refs={LEAF_REF: f"p{LEAF_REF}"},
@@ -102,7 +102,7 @@ def decision_record_plan(
     )
 
 
-class DecisionRecordRun:
+class RecordRun:
     """One driven run: the grounding graphs it produced and the values it left.
 
     ``graphs`` is what a renderer reads. It is deliberately the ONLY channel —
@@ -128,7 +128,7 @@ class DecisionRecordRun:
 
         **``execution.run`` returns PipelineRun IRIs, not values** — the run
         blackboard is internal and never handed back. That is not a gap to work
-        around: a Decision Record is rendered from the grounding graph and
+        around: a run record is rendered from the grounding graph and
         nothing else, so reading a value here means reading the node the run
         actually wrote. Raises when the type has no instance, rather than
         returning ``None`` — a missing instance and a refused value are
@@ -158,7 +158,7 @@ class DecisionRecordRun:
         return matches[0].value
 
 
-def run_decision_record(
+def run_record(
     kl: Any,
     seed: Dict[str, Any],
     *,
@@ -167,8 +167,8 @@ def run_decision_record(
     plan: Optional[PlanResult] = None,
     graphs: Optional[List[Any]] = None,
     case_label: Optional[str] = None,
-) -> DecisionRecordRun:
-    """Drive one Decision Record end to end and return its grounding graphs.
+) -> RecordRun:
+    """Drive one run record end to end and return its grounding graphs.
 
     ``kl`` is the :class:`~mindsos_knowledge.knowledge_layer.KnowledgeLayer`
     holding the authority — bound onto the dispatcher so the lookup body reaches
@@ -203,7 +203,7 @@ def run_decision_record(
     pipeline_run_iris = execution.run(
         dispatcher,
         writer,
-        plan if plan is not None else decision_record_plan(),
+        plan if plan is not None else record_plan(),
         request_run,
         mm=mm,
         run_scope=request_id,
@@ -211,12 +211,12 @@ def run_decision_record(
         capacity_graphs=graphs,
         case_label=case_label,
     )
-    return DecisionRecordRun(graphs, pipeline_run_iris, request_run, mm)
+    return RecordRun(graphs, pipeline_run_iris, request_run, mm)
 
 
 __all__ = [
     "LEAF_REF",
-    "DecisionRecordRun",
-    "decision_record_plan",
-    "run_decision_record",
+    "RecordRun",
+    "record_plan",
+    "run_record",
 ]

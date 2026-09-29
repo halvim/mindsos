@@ -72,7 +72,7 @@ class _CapacityBase:
     outputs: Tuple[str, ...]          # DataState IRIs produced
     implementation: Optional[CapacityCallable] = None
     description: str = ""
-    # Decision Records — the phrase a Record prints when it has to NAME this
+    # The phrase a printed run record uses when it has to NAME this
     # capacity: "decided by the filing-requirement test", "stopped at
     # consulting the filing-threshold policy". Deliberately NOT ``description``:
     # a description answers *what does this do* for a developer and is written

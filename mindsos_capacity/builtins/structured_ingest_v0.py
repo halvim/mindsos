@@ -1,6 +1,6 @@
 """Structured ingest v0 — read one declared field out of a structured record.
 
-**The control arm.** ``DECISION_RECORDS_DEMO_PLAN.md`` claim 5 is *the model
+**The control arm.** The claim under test is *the model
 reads, it does not decide*, and the way that is shown is running the same
 cases twice: once with values supplied structured, once with a model reading
 prose, and demonstrating **identical answers with different origins**. This is
@@ -88,7 +88,7 @@ class StructuredSourceUnreadableError(RuntimeError):
 
     A wiring defect on our side, never a finding about the customer's
     material — see the module docstring. ``str(exc)`` becomes L-2's
-    ``stopped_detail`` and a Decision Record prints it, so the message is
+    ``stopped_detail`` and a printed run record shows it, so the message is
     prose and carries no token; the machine-readable reason is
     :attr:`refusal_reason`.
     """

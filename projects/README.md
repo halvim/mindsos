@@ -6,22 +6,19 @@
 > **This index covers the three intake sister projects only.** `projects/` has since accumulated
 > other lanes — `amii_study/`, `brain-viewer/`, `maintenance/`, `skill_acquisition/` — that are
 > not sister projects and are not tracked in the tables below. **None of them is documented
-> here** and someone should say what they are. The one lane that was, `decision_records_demo/`,
-> left this repository on 2026-08-18 (RULES §1).
+> here** and someone should say what they are. A demo may instead live in its own repository (RULES §1).
 
 ## Non-sister lanes
 
-**The Decision Records demo left this repository on 2026-08-18** (owner ruling, RULES §1).
-It is its own repo — `github.com/halvim/mindsos-decision-records` — installing core as a
-distribution pinned by tag. Zero-revenue: sales evidence, not product. It owns no
-architectural mechanism (RULES §8) and nothing in `mindsos_*` imports it.
+**A demo in its own repository** (RULES §1) installs core as a distribution pinned by tag,
+owns no architectural mechanism (RULES §8), and nothing in `mindsos_*` imports or names it.
 
 Two boundaries were recorded here. Both are kept, because both were learned the hard way and
 neither is about where the files live:
 
 - `Projects/Sanmyaku-GTM/` is **meeting operations with real humans** and is not that lane.
   Demo and research artifacts never go there.
-- A 2026-08-11 task prompt quoted `DECISION_RECORDS_DEMO_PLAN.md` §2.5 for a claim that **was
+- A 2026-08-11 task prompt quoted a demo plan's §2.5 for a claim that **was
   not in the file** (md5 `83fe6c6b93f7a09ff4853f0aff43ec70` at the time). **Grep a cited file
   for a quoted §-reference before building on it.** §2.5 has since been amended twice and the
   lane does now have an intake-routing beat — the rule the incident earned is the durable part,

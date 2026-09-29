@@ -5,7 +5,7 @@ limit the edition states, and that limit's **origin record** (``origin_v0``,
 ADR-0207). Both are declared outputs, so both reach the grounding graph through
 ``CapacityMMWriter.record``, which writes only ``(capacity_iri, input IRIs,
 outputs)`` — a value read inside a body and never declared is invisible to a
-Decision Record, and that is the whole reason a lookup capacity exists rather
+printed run record, and that is the whole reason a lookup capacity exists rather
 than a context snapshot.
 
 **Category is ``retrieval``, not ``decision``.** An earlier ruling put the
@@ -131,7 +131,7 @@ class PolicyStoreUnreachableError(RuntimeError):
     finding about the customer's case — see the module docstring.
 
     **``str(exc)`` is customer-visible text.** ``execute_pipeline`` writes it
-    onto L-2's ``RunStopped`` node as ``stopped_detail``, and a Decision Record
+    onto L-2's ``RunStopped`` node as ``stopped_detail``, and a printed run record
     prints that node. So the message is prose only: no refusal token, no
     MindsOS vocabulary, and no interpolated upstream exception — an upstream
     message is arbitrary text nobody here has read, and it reaches a reader
@@ -215,8 +215,8 @@ def build_policy_limit_lookup(
         policy_id: The authority's identifier in the ``policies`` role. Bound
             here, never taken as an input.
         source_identity_phrase: Registered prose naming the authority, printed
-            by the Record ("the filing-threshold policy"). Validated at build
-            time — a Decision Record forbids every identifier, and catching that
+            by a run record ("the filing-threshold policy"). Validated at build
+            time — a printed run record forbids every identifier, and catching that
             here beats catching it in front of a lawyer.
         question: Prose stating what is being asked, with a single ``{as_of}``
             placeholder for the date.

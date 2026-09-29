@@ -145,8 +145,8 @@ def _test_roots(root: Path) -> list[Path]:
 # deleting its line here, and this guard refuses a line it can no longer find.
 # ---------------------------------------------------------------------------
 DECLARED: dict[tuple[str, str], int] = {
-    ("tests/decision_records/test_policy_store.py", "ValueError"): 3,
-    ("tests/decision_records/test_run_driver.py", "AssertionError"): 1,
+    ("tests/run_records/test_policy_store.py", "ValueError"): 3,
+    ("tests/run_records/test_run_driver.py", "AssertionError"): 1,
     ("tests/feat_subminds/test_submind_arbiter_grounding.py", "TypeError"): 1,
     ("tests/feat_subminds/test_submind_arbiter_grounding.py", "ValueError"): 1,
     ("tests/feat_subminds/test_submind_runtime.py", "ValueError"): 4,

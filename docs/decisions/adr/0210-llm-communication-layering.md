@@ -543,9 +543,9 @@ existing `policies` role graph and is *"AUTHORED, not recorded — the recorder
 cannot write it, and no run can"*. **Both halves are withdrawn.**
 
 **(a) `policies` is a consumer's store, and this module is generic.** The policy
-role was created by the Decision Records CR, and `identifiers.py` states in the
+role was created by a consumer's CR, and `identifiers.py` states in the
 same breath as the shape argument that *"a policy is an authority a decision
-cites. That is not cosmetic here: a Decision Record states which authority, which
+cites. That is not cosmetic here: a printed run record states which authority, which
 edition, in force when, so the store's identity is part of the claim being
 made."* `mindsos_llm` is a stand-in for reading text with a borrowed model, for
 **any** consumer; borrowing a store whose identity belongs to one of them leaves

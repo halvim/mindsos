@@ -29,11 +29,11 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
   ⚠ **AMENDED 2026-08-18 (owner).** This rule used to say a **root-level**
   directory existing only on the demo's own `demo/*` branch. That bought the
   property below and paid for it in history: **a branch of the core repo carries
-  all of core.** On 2026-08-18 the Decision Records demo went to take one core
+  all of core.** On 2026-08-18 a demo went to take one core
   fix and it cost a 39-commit merge with nine conflicts, none of them demo work,
   with the same bill due at every future core ship. **A consumer that has to
-  merge its supplier is not a consumer.** Decision Records is the first demo in
-  the new shape — `github.com/halvim/mindsos-decision-records`. `robot_demo/`
+  merge its supplier is not a consumer.** An external consumer lives in its own
+  repository and installs core by tag. `robot_demo/`
   and the arc and bongard demos are **still** root-level on their `demo/*`
   branches; the old paragraph still governs them until they move, and nothing
   here moves them.
@@ -328,15 +328,14 @@ yours **above the output**, not after I ask.
 **A RENDERER'S OWN VOICE — added 2026-08-17, owner-ratified.** A renderer's own
 voice may state only **case-invariant limits of the record it renders**; every
 **case-outcome** word must be a stored, produced phrase — where the phrase is
-absent, **raise, never fill**. *(Earned in the Decision Records lane: a page
+absent, **raise, never fill**. *(Earned in an external consumer's lane: a page
 composed the words "not possible" for a decision that could not be made, which
 is the renderer speaking for a capacity about its own outcome. It reads exactly
 like the stated-absence line that IS legitimate — "Decided date: not available
 from stored evidence" — and the difference is that the legitimate one is true
-of every Record ever rendered from a store. Full form: that lane's plan §0.3
-item 11.)*
+of every Record ever rendered from a store. Full form: that lane's own plan.)*
 
-**Why this exists.** 2026-08-12: asked for an example of what the Decision Records
+**Why this exists.** 2026-08-12: asked for an example of what an external
 demo could do, a throwaway renderer was written, run, and its output presented
 under headings as though the system had produced it. The claim *"every line is
 rendered from the graph alone"* was true of the **data** and false of the
@@ -434,7 +433,7 @@ reddened two:**
   The row written first is the one left behind: it was correct when it was
   written and nothing in the harness can know that a later guard now shares its
   claim. **When a ship adds a guard, re-read the rows that already touch its
-  code, not only the row it is adding.** *(Earned in the Decision Records
+  code, not only the row it is adding.** *(Earned in an external consumer's
   transport: deleting a credential scrub broke both the exception-chain claim
   and the composed-request claim; the row added in the same commit predicted two
   and came back exact, while the older row predicted one. The miss was in the
