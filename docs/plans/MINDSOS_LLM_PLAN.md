@@ -552,3 +552,17 @@ amendment.)*
   reads them off the record. **Approval:** delegated by the owner's brief
   (rulings R29–R35 above); no new ruling.
 
+- **2026-09-28 (gate 3)** — **I-17 gate 2 merged as PR #245** (`2b29252`, tag
+  `llm-answer-names-what-was-asked-confirmed`; full gate 5400 passed / 0 failed at
+  `2d9d811`, collect 5405, ids +16/−2 read back by name; mutations M2 and M3 exact,
+  M1 one red wider than predicted and the tree right — the extra red was a correct
+  consequence the prediction missed). **Passes re-run after the step; no ruling
+  reversed.** One addition inside R24's authority, not a new ruling: the record
+  also carries `key_schema_version`, because recomputing a key needs the key
+  function it was computed under (R34 put it on the answer). **Gate 3 builds**
+  R23/R32/R33's record half; R27's premise guard now recomputes the key from the
+  record alone. ⚠ **I-11 correction, measured:** I-11 (`44889a9`) put `mode` and
+  `credential_level` on every record a DECODED answer produced; a refusal for an
+  undecodable answer carried neither (it was written with no response at all).
+  R33 closes it. **Approval:** delegated (R29–R35); no new ruling.
+

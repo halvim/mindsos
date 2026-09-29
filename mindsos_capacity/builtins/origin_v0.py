@@ -217,6 +217,24 @@ FIELD_RECORDED = "recorded"
 #: conclusion without the model.
 FIELD_MODE = "mode"
 FIELD_CREDENTIAL_LEVEL = "credential_level"
+#: WHAT WAS ASKED, BY CONTENT (plan item I-17 gate 3; rulings R23, R32, R34;
+#: ADR-0210 am-7). A prompt is named by ``prompt_iri`` + ``prompt_version``,
+#: which identify neither its words nor the schema nor the tool framing, so a
+#: record carrying only those could show a prompt but never prove it was the
+#: one that ran. These are enough to RECOMPUTE ``request_key`` (R24) from the
+#: record plus the source text found in the grounding graph (R27):
+#: the prompt words' digest (the words themselves stay in the ``prompts``
+#: role — no digest is stored beside the text it describes), the schema's
+#: TEXT and its digest (the schema is in no other record), the forced tool's
+#: name and sentence and the token ceiling (words and settings the model
+#: received), and the key version they were hashed under.
+FIELD_EXTRACTION_SCHEMA = "extraction_schema"
+FIELD_PROMPT_DIGEST = "prompt_digest"
+FIELD_SCHEMA_DIGEST = "schema_digest"
+FIELD_TOOL_NAME = "tool_name"
+FIELD_TOOL_DESCRIPTION = "tool_description"
+FIELD_MAX_TOKENS = "max_tokens"
+FIELD_KEY_SCHEMA_VERSION = "key_schema_version"
 
 PRODUCER_DECLARED: Tuple[str, ...] = (
     FIELD_ORIGIN_PARTY,
@@ -239,6 +257,13 @@ PRODUCER_DECLARED: Tuple[str, ...] = (
     FIELD_RECORDED,
     FIELD_MODE,
     FIELD_CREDENTIAL_LEVEL,
+    FIELD_EXTRACTION_SCHEMA,
+    FIELD_PROMPT_DIGEST,
+    FIELD_SCHEMA_DIGEST,
+    FIELD_TOOL_NAME,
+    FIELD_TOOL_DESCRIPTION,
+    FIELD_MAX_TOKENS,
+    FIELD_KEY_SCHEMA_VERSION,
 )
 
 #: Everything a producer may write. v0 — closed by agreement, not frozen.
@@ -337,7 +362,10 @@ REASONS_DEGENERATE: Mapping[str, str] = {
 #: Written by at least one shipped producer, on at least one path. The
 #: enforcement test **runs the producers and checks** — so this list going
 #: stale is a red gate, not a stale comment.
-#: **30 of 30 as of 2026-08-16.** The freeze's original finding was that
+#: **Every field is written as of 2026-08-16, and still is after I-17 gate 3
+#: (2026-09) added the seven what-was-asked fields** — the model reader writes
+#: them. (A count lived here and went stale; the test counts.) The freeze's
+#: original finding was that
 #: the system wrote 16 of these 30 and nothing said so. The model reader
 #: was the producer the other 14 were reserved for, and it writes every
 #: one of them: the party pair and expected_basis on every record it

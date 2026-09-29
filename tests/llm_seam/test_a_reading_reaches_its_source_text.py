@@ -21,6 +21,7 @@ right DataState would otherwise pass.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Tuple
 
@@ -190,24 +191,28 @@ def _source_text_of(graph, record_node):
 
 
 def _key_from(record, source_text):
-    """Recompute the v2 key from the record plus the source text found.
+    """Recompute the v2 key from the RECORD plus the source text found.
 
-    ⚠ I-17 gate 2 (plan R22): the prompt digest, the schema and the framing
-    are hashed into the key, and the origin record does not carry them until
-    gate 3 (R23, R32). Until then they are this file's own constants — which
-    still proves what this file claims: only the source text actually read
-    reproduces the record's key. Gate 3 reads them off the record instead.
+    Everything but the source text is read off the origin record (plan R23,
+    R24, R32, R34 — I-17 gate 3): the prompt words' digest, the schema TEXT,
+    the framing, the model settings and the key version. Nothing comes from
+    this file's constants, so a record that stopped carrying any of them
+    could not reproduce its own key. (Gate 2 used constants for one gate
+    while the record could not yet carry them — plan section 6.)
     """
+    assert record["key_schema_version"] == "2"
     return what_was_asked(
         prompt_iri=record["prompt_iri"],
         prompt_version=record["prompt_version"],
-        prompt_digest=text_digest(WORDS),
-        extraction_schema=None,
+        prompt_digest=record["prompt_digest"],
+        extraction_schema=json.loads(record["extraction_schema"]),
+        tool_name=record["tool_name"],
+        tool_description=record["tool_description"],
+        max_tokens=record["max_tokens"],
         model_id=record["model_id"],
         model_version=record["model_version"],
         temperature=record["temperature"],
         source_text=source_text,
-        **FRAMING,
     )["request_key"]
 
 
