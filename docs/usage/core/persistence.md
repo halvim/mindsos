@@ -228,7 +228,7 @@ three commands.
 ### Known constraints carried into Phase 08
 
 * **`RefreshUnsafeError` ships but is never raised** (PB-5 B). Per-role
-  mutation-flag tracking is deferred to a later phase. Callers using
+  mutation-flag tracking was never built. Callers using
   `MetagraphLoader.refresh(mg, role)` AFTER in-memory mutations on
   that role-graph LOSE those mutations silently. The class is
   importable from `mindsos_core.exceptions` and re-exported from

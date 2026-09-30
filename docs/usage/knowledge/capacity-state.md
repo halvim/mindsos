@@ -15,8 +15,9 @@ at `strict=False`. **Local** metagraph per user (ADR-0044).
 
 `capacity_snapshot_iri` (Phase 12 PB-8) bakes in all three
 identifying facets (`user_id`, `capacity_iri`, `taken_at`) into the
-stable IRI. Field-level inverse parsing is deferred to Phase 28 per
-PB-8.
+stable IRI. Field-level inverse parsing (a `parse_capacity_snapshot_iri`)
+was never built; `parse_iri` leaves the body opaque and only the
+full-string round-trip holds.
 
 ## Why no edges in v1
 

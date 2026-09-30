@@ -138,7 +138,7 @@ structural-vs-semantic distinction is catchable separately).
   recovery is via `--replace` (which strips non-ref keys, preserves
   `ref:*` keys, and applies the validated user-supplied bag).
   Phase 04 does NOT bump `Node._version` on update — the
-  optimistic-concurrency contract from ADR-0127 ships in Phase 07.
+  optimistic-concurrency contract from ADR-0127 shipped at Phase 07.
 
 * **No `Schema.name` field.** The `Schema` class ctor stays
   parent-shape: `__init__(*, strict: bool = False)`. Persistence

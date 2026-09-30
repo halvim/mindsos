@@ -151,8 +151,10 @@ keeps L2-convention `type_` on the handle method and translates to L1's
 NodeTypes registered in Phase 39's `build_episodic_memories_schema` /
 Phase 13's `build_problem_trace_schema` are `"Memory"` / `"Episode"`
 and `"ProblemTraceEntry"` respectively. Phase 39 `consolidate:mm`
-keeps `type_="Memory"` per design log PB-3 (semantic retarget to
-`"Episode"` deferred to Phase 48 per D-L2-17).
+kept `type_="Memory"` per design log PB-3; the retarget to `"Episode"`
+(D-L2-17) shipped at Phase 43, so `consolidate:mm` now writes Episodes
+only, and the `Memory` NodeType stays in the schema for the composite
+consolidation flow.
 
 ## Invoke input contract — arity + MM-read gate
 
