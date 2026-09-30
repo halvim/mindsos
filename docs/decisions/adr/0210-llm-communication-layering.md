@@ -683,7 +683,7 @@ has no caller outside tests), so the file a pointer names is operator-produced t
 
 **Amendment status:** Proposed — I-17 and I-12 of `docs/plans/MINDSOS_LLM_PLAN.md`
 flip it to Accepted as each ships. The decision above stands. This transcribes plan
-rulings **R19–R28** (R19, R20, R21 and the I-17 split OWNER 2026-09-21; R22–R28 ruled
+rulings **R19–R28** — and below them R29–R42 — (R19, R20, R21 and the I-17 split OWNER 2026-09-21; R22–R28 ruled
 against the plan's §1 end state, each citing its authority there).
 
 **WHAT CHANGES.**
@@ -747,6 +747,26 @@ the plan's §1, each citing its authority in the plan.
     `text_digest(text) == prompt_digest`; with no match, I-12 reports "no stored
     edition matches what ran" and shows nothing in its place.
 
+**I-12's build rulings — plan R37–R42 (2026-09-29).** R37 OWNER; the rest ruled by
+the I-12 chat against the plan's §1, each citing its authority there.
+
+13. **A substitute declares `substitute_for=<reader IRI>`** (R37, OWNER). The finder
+    never admits it — measured, the finder takes the first producer by sorted IRI, so
+    discovery by "produces the same value DataState" (clause 1, R25) would have changed
+    ordinary runs. Registration refuses unless it has the reader's inputs and value
+    output and `consults_llm=False`. Supersedes clause 1's discovery, not its shape.
+14. **Identify** (R38): `origin_method == read_by_model`, `environment_fault` not true,
+    over a persisted Episode's run graphs. No producer writes an `environment_fault`
+    record today; the exclusion is kept.
+15. **Both judgements are L3 capacities L4 dispatches** (R39) — *shown* verification
+    and value agreement.
+16. ***Shown* fails loudly** (R40): no matching edition, a v1-keyed record, a missing
+    source instance or a differing key each name the failure and show nothing in its
+    place.
+17. **Re-run** (R41): every paired substitute, through a dispatcher with no model
+    bound (one with a client is refused), no mental-model write, exact agreement.
+18. **The report is returned, not stored**; no CLI verb, no request pattern (R42).
+
 **Build state.** ⚠ **I-17 DONE(933bc6d), 2026-09-29.** I-17 shipped in three gates: (1) the seam, clause 6 — **built,
 PR #242**; (2) clauses 4 (the key and the answer's stamps), 7, 10, and the
 client halves of 8 and 9 — **built, PR #245**; (3) the origin-record half of
@@ -754,4 +774,4 @@ clauses 4, 8 and 9 — **built, I-17 gate 3**: the record carries `prompt_digest
 `extraction_schema` (text), `schema_digest`, `tool_name`, `tool_description`,
 `max_tokens` and `key_schema_version` (ADR-0207 am-2's freeze classifies them
 WRITTEN and STRUCTURAL by derivation), on the undecodable-answer refusal too. The amendment stays **Proposed** until I-12 ships,
-because clauses 1 and 5 are I-12's.
+because clauses 1 and 5 are I-12's. I-12 ships in four gates (plan §6, 2026-09-29): identify (clause 14), *shown* (15, 16), the substitute declaration (13), re-run (15, 17, 18) — the last flips this amendment to Accepted.

@@ -232,7 +232,7 @@ text, the record's schema, the answer's stamped model settings and the source te
 in the grounding graph. One match verifies all of what was asked; a mismatch names that
 the shown material is not what ran. Authority: R20, R8's pattern (identity is content).
 
-**R25 — a substitute producer** outputs the same value DataState from the same source
+**R25 — a substitute producer** ⚠ **its DISCOVERY is SUPERSEDED by R37 (OWNER 2026-09-29)**; "not yet excisable" stands. It outputs the same value DataState from the same source
 DataState and declares `consults_llm=False` (ADR-0180 §am-3). None registered ⟹ the
 report says **not yet excisable** — the honest state of every real conclusion until
 MindsOS reads text. Authority: R19.
@@ -319,6 +319,58 @@ says so ("no stored edition matches what ran") rather than showing the nearest o
 through the `prompts` role, and every other conclusion is identified and reported as
 unshowable — never shown falsely. **OWNER 2026-09-29** ("agreed", on option (a)).
 
+---
+
+**R37–R42 are I-12's build rulings, 2026-09-29.** R37 is **OWNER** (P1, option (a));
+R38–R42 were ruled by the I-12 chat against §1 after six convergence passes (the last
+two reversed nothing), each citing its authority. Recorded as ADR-0210 amendment 7
+clauses 13–18.
+
+**R37 — a substitute DECLARES what it substitutes for: `substitute_for=<reader
+capacity IRI>`.** Measured 2026-09-29: the finder takes the FIRST producer of a
+DataState by sorted IRI (`mindsos_capacity/pipeline.py`, both producer walks), and a
+FOLD input fans in to every producer. So a substitute found only because it produces
+the reader's value DataState (R25 as written) would change which producer ordinary
+runs use, by lexical accident — and a plan could take the value from the substitute
+and the origin record from the reader: a record describing a value it did not
+produce. Therefore the finder never admits a capacity declaring `substitute_for`;
+excision finds substitutes by exact pairing with the reader that wrote the record;
+and registration refuses unless the substitute consumes exactly the reader's inputs,
+outputs the reader's value DataState, and declares `consults_llm=False`. Removing
+the stand-in is then one declared change. **OWNER 2026-09-29** ("agreed", option (a)).
+
+**R38 — identify** is `origin_method == read_by_model` with `environment_fault` not
+true, over the run graphs of a persisted Episode. ⚠ **Premise NARROWED, measured:** no
+reader writes an `environment_fault` record today — `comprehension_v0` raises on an
+outage — so the exclusion filters nothing the tree emits. It stays because the field
+is derived from the refusal reason. Authority: R26, R27.
+
+**R39 — both judgements are L3 capacities that L4 dispatches**: whether the shown
+material is what ran (recompute `request_key`, compare the edition digest), and
+whether a re-derived value agrees with the stored one. Each is agreement between two
+values, which R28 puts in L3; the dispatch follows `sufficient_predicate`'s shape. The
+category is chosen at gate 2 against the decision-shaped guards
+(`DECISION_SHAPED_CATEGORIES`, `opaque_into_decision`), naming the work, not the
+crutch. Authority: R1, R3, R28.
+
+**R40 — *shown* fails LOUDLY and shows nothing in place of what failed.** No stored
+edition whose `text_digest` equals the record's `prompt_digest` → "no stored edition
+matches what ran" (R36). A record keyed under v1 (no `key_schema_version` stamp) →
+not verifiable, because the tree holds no v1 key function (R34). No source instance on
+the grounding walk, or a recomputed key that differs → "the shown material is not
+what ran" (R24, R27). Authority: R24, R27, R34, R36.
+
+**R41 — re-run** dispatches every substitute paired with the reader (R37) through a
+dispatcher with NO model bound — one with a client bound is refused, so "without the
+model" is mechanical, not declared. It writes no mental model and no grounding: the
+Episode under examination is not changed. Agreement is exact equality of canonical
+JSON, a refusal's null value included; no ruling admits a tolerance. A substitute
+that raises is a failed re-run, never a disagreement. Authority: R19, R25, R28, R37.
+
+**R42 — the report is RETURNED, not stored, and I-12 adds no CLI verb and no request
+pattern.** §1 asks that a conclusion CAN be identified, shown and re-run; storing the
+verdict, or routing it from a request, is scope §1 does not name. Authority: §0.1.
+
 ## 3. THE ITEM LIST
 
 | id | item | filed as | state |
@@ -335,7 +387,7 @@ unshowable — never shown falsely. **OWNER 2026-09-29** ("agreed", on option (a
 | I-9 | prompt bodies have a home: a conclusion stamped `prompt_iri` + `prompt_version` can show the text it names | core-llm-prompt-text-has-no-home | DONE(a1687f2) |
 | I-10 | a recorded set has a home in the graph: pointer + provenance in L2 Local, payloads stay a FILE | core-llm-recorded-set-l2-pointer-owner | DONE(780ee1b) |
 | I-11 | `mode` and `credential_level` reach the origin record. Required under §1, no longer deferred; prerequisite discharged at `fe0e19a`. ⚠ **NOT blocked by I-8** — measured: `origin_v0.py` imports only `..identifiers` and `..printable`, so it has no L2 dependency, and the change is two names in `PRODUCER_DECLARED` plus two lines in `comprehension_v0._record` reading fields the answer already carries beside the seven at lines 353-359 | core-llm-l3-may-declare-answer-mode-and-level | DONE(44889a9) |
-| I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Specified 2026-09-21 by R19–R28**; I-17 DONE(933bc6d), so unblocked | core-llm-excision-capability | TODO |
+| I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Specified by R19–R28 and R36–R42**; ships in FOUR gates (§6, 2026-09-29) | core-llm-excision-capability | TODO |
 | I-13 | a transport's other keys survive into the answer | core-llm-transport-extra-keys-survive-into-the-answer | OUT(trigger: a consumer iterates an answer's keys, or a third-party transport's output is stored) |
 | I-14 | level 3 / hosted adapter, the old "slice 3" | core-llm-level-3-awaits-a-hosted-adapter | OUT(trigger: a consumer wants Bedrock, Vertex or Azure) |
 | I-15 | a capacity **declares** that it writes (R7): `writes=True` on the declaration, both invoke sites gate the `writeable` injection on it instead of on `outputs == ()`, and an AST guard reconciles the declaration against the body — the `context.llm` census shape. **Blocks I-10**, whose ruled declared output is unreachable without it | core-capacity-write-is-declared-not-inferred | DONE(8f1f7d4) |
@@ -601,3 +653,16 @@ amendment.)*
   are I-17 then I-12"* marked superseded; no other tracked doc contradicts I-17 as
   built. **Approval:** OWNER, "agreed".
 
+- **2026-09-29 (I-12 rulings)** — **R37 (OWNER) and R38–R42**, ruled before any I-12
+  code. Premises re-measured first — statically at `3298dc5` (every record field I-17
+  added; `text_digest` feeds both clients' `prompt_digest`; `prompts` stores the text
+  unchanged; `read_episode`, `producers_of` and the `consults_llm` injection exist) and
+  at runtime on the gate box (the two premise files: 5 passed / 0 skipped, the FalkorDB
+  round trip included). **Two measurements changed the design:** the finder's
+  first-producer rule (R37) and the degenerate `environment_fault` (R38). **One
+  reversal in the passes:** verifying *shown* moved from L4 to L3 (R39). **I-12 ships
+  in FOUR gates, one claim each:** (1) identify (R38); (2) *shown* (R39's first
+  capacity, R40); (3) the substitute declaration and the finder's refusal of it (R37);
+  (4) re-run (R39's second capacity, R41, R42), contract row 12, ADR-0210 am-7 →
+  Accepted, plan row DONE. **Approval:** R37 OWNER ("agreed"); R38–R42 delegated by
+  the brief (*"rule what you can against §1"*).
