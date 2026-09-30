@@ -170,6 +170,7 @@ EXPECTED_DIRECT_DISPATCH = {
     "mindsos_intelligence/orchestrator.py": 1,        # L4-policy-meta: planner scoring
     "mindsos_intelligence/replan_check.py": 1,        # L4-policy-meta: replan predicate
     "mindsos_intelligence/sufficient_predicate.py": 1,  # L4-policy-meta: sufficiency
+    "mindsos_intelligence/excision.py": 1,            # L4-policy-meta: excision shown check (plan I-12, R39)
     "mindsos_intelligence/dream_cycle.py": 1,         # L4-policy-meta: dream driver
     "mindsos_intelligence/crash_recovery.py": 1,      # L4-policy-meta: startup scan
     "mindsos_intelligence/submind_arbiter.py": 1,     # L4-policy-meta: priority scoring

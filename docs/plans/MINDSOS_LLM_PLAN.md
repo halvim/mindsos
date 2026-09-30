@@ -351,7 +351,11 @@ whether a re-derived value agrees with the stored one. Each is agreement between
 values, which R28 puts in L3; the dispatch follows `sufficient_predicate`'s shape. The
 category is chosen at gate 2 against the decision-shaped guards
 (`DECISION_SHAPED_CATEGORIES`, `opaque_into_decision`), naming the work, not the
-crutch. Authority: R1, R3, R28.
+crutch. Authority: R1, R3, R28. ⚠ **Chosen at gate 2: `predicate`** — the family
+`predicate.sufficient` already uses for a verdict L4 dispatches, with opaque
+DataStates and `NO_DONT_KNOW` (a verdict always answers; a check that cannot run is
+a named failure). Installed opt-in by `install_excision_v0`, like
+`install_orchestration_v0`; nothing boots it (R42: no consumer at boot).
 
 **R40 — *shown* fails LOUDLY and shows nothing in place of what failed.** No stored
 edition whose `text_digest` equals the record's `prompt_digest` → "no stored edition
@@ -666,3 +670,17 @@ amendment.)*
   (4) re-run (R39's second capacity, R41, R42), contract row 12, ADR-0210 am-7 →
   Accepted, plan row DONE. **Approval:** R37 OWNER ("agreed"); R38–R42 delegated by
   the brief (*"rule what you can against §1"*).
+
+- **2026-09-30 (I-12 gate 1 merged; gate 2)** — **Gate 1 merged as PR #248**
+  (`30e5d12`, tag `llm-excision-identifies-confirmed`): `identify`. Gated at
+  `6693873` (5407 passed / 0 failed, collect 5412, ids +5/−0 by name, mutations M1/M2
+  exact), then **re-gated at `66df217`** after rebasing onto `f50f1b9` (PR #247,
+  another lane, touched `origin_v0`, `comprehension_v0` and this file — the merge
+  rule's disjointness failed): 5409 passed / 0 failed, collect 5414, +5/−0, M1/M2
+  exact again. **Passes re-run: no ruling reversed.** **Gate 2 builds *shown***:
+  L3 `predicate.shown_is_what_ran` (`mindsos_capacity/builtins/excision_v0.py`,
+  installed by `install_excision_v0`) and L4 `excision.show`. The key and the words
+  are checked INDEPENDENTLY, so each failure is named alone and the part that
+  verified is still shown (R40). A prompts-role test docstring that said *shown*
+  means only retrievable is corrected in place (R20, R36). **Approval:** delegated
+  (R38–R42); no new ruling.

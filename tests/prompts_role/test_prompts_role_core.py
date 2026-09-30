@@ -184,9 +184,12 @@ def test_append_only_is_declared_but_not_enforced() -> None:
     overwritten; :func:`~mindsos_knowledge.prompts.write_prompt_edition`
     refuses a duplicate, and that refusal is the only enforcement there is.
 
-    Consequence, and it is the module's own honesty problem: *shown* means
-    RETRIEVABLE, not VERIFIABLE. Filed as
-    ``core-llm-prompt-edition-append-only-unenforced``. This test exists so
+    Consequence for the store alone: an edition is RETRIEVABLE, not
+    self-verifying. Filed as ``core-llm-prompt-edition-append-only-unenforced``.
+    ⚠ *Shown* no longer rests on this (plan R20, R36): a conclusion's words
+    are verified BY CONTENT — ``text_digest`` of the edition against the
+    record's ``prompt_digest`` — in ``mindsos_intelligence.excision.show``
+    (plan I-12), so an edition rewritten in place is detected, not shown. This test exists so
     the day the substrate enforces it, this line fails and someone reads the
     sentence above."""
     schema = build_prompts_schema()
