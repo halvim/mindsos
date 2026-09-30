@@ -308,7 +308,7 @@ only readers of `:Tombstone` are clean-up deletes (`persistence sync
 `mindsos_core.reconstruction.load_graph(client, graph_id)` returns a
 reconstructed `Graph` with anchor + nodes + edges + hyperedges +
 `_version` fields restored from FalkorDB. Streaming loader (ADR-0124)
-and metagraph_loader land in Phase 08 (below).
+and metagraph_loader landed at Phase 08 (below).
 
 ## Reconstruction layer (Phase 08)
 

@@ -137,8 +137,8 @@ mindsos knowledge schema validate --role episodic_memories \
 
 Phase 13's `validate` runs L1 structural validation only (NodeType
 registered, EdgeType endpoint type check, HyperEdgeType member type
-check). Semantic validation (cross-role refs etc.) ships in Phase 36
-per ADR-0139.
+check). Semantic validation (cross-role refs etc.) shipped at Phase 36
+per ADR-0139 — see `mindsos_knowledge/validators.py`.
 
 ## Strict-tighten roadmap
 

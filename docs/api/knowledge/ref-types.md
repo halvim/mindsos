@@ -29,13 +29,13 @@ ADR-0047, extension is a one-PR operation via a five-step recipe.
 3. Add a test in `tests/phase_12/test_ref_types_and_roles.py` (or a
    later phase's tier).
 4. Optionally update any downstream classifier.
-5. Run the parity test (Phase 27+ when L3 ships its mirror per
-   ADR-0067).
+5. Run the parity test (ADR-0067).
 
-## L3 parity (deferred to Phase 27)
+## L3 parity
 
 L3 imports `REF_TYPES` from L2 where feasible; ADR-0010 forbids the
 import in the SessionProtocol seam case, so L3 duplicates the
 frozenset verbatim and a parity test ensures the two sets stay in
-sync. The parity test ships in Phase 27 (L3 DataStates + capacity
-primitives), not Phase 12 — L3 doesn't exist yet to compare against.
+sync. The parity test shipped with L3 (`tests/phase_27/test_capacity_dataclass.py`,
+the `REF_TYPES` parity section); it could not be written at Phase 12,
+when there was no L3 to compare against.

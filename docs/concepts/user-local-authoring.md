@@ -50,10 +50,9 @@ L4 orchestrator decides "consolidate this Mental Model into a memory"
             └→ returns WriteResult | ProblemTraceRecord (ADR-0146)
 ```
 
-This path is **not implemented yet.** It is specified by the chain
-ADR-0138 / 0143 / 0145 / 0146 / 0147 (all Proposed) plus ADR-0139
-(Proposed; lands in Phase 36). Each ADR flips Accepted as its consumer
-phase ships.
+This path has since shipped: the chain ADR-0138 / 0143 / 0145 / 0146 /
+0147 plus ADR-0139 are all **Accepted**, and L3 capacities write
+through `KLWriteHandle` (`mindsos_capacity/builtins/`).
 
 The line: L1 owns mutation; L3 capacities are translations of L1
 methods for specific uses; L2 (KL) stops translating (per

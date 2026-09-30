@@ -10,14 +10,14 @@ two nodes that live in *different* graphs within the same metagraph.
 The metagraph owns the edge (registers it in the unified
 `IdentityRegistry` per ADR-0020; persists it in the metagraph state
 file). Per the locked Pushback 1-C scope split, 05b ships the binary
-primitive only; **`IntergraphHyperEdge`** (n-ary) lands in Phase 05c.
+primitive only; **`IntergraphHyperEdge`** (n-ary) landed at Phase 05c.
 
 The motivating use case is *typed cross-graph relationships* —
 linking a lexicon-graph node `cat` to a concepts-graph node `Cat#1`
 via an `EVOKES` edge, where the edge itself is not part of either
 graph but is semantically owned by the metagraph that contains both.
 The cat=c+a+t compositional pattern (a word node identity-bound to
-its constituent letter nodes) ships fully in Phase 05c with the
+its constituent letter nodes) shipped at Phase 05c with the
 `IntergraphHyperEdge` primitive; 05b's binary `IntergraphEdge`
 already supports the `compositional: bool` flag for use cases where
 1-to-1 identity binding is sufficient.
@@ -106,8 +106,9 @@ In Phase 05b, `IntergraphEdge` instances live in
 `mg.intergraph_edges: Dict[str, IntergraphEdge]` and persist to the
 metagraph state file at `metagraph-<name>.json` (state-file v=2 — the
 05a→05b cumulative one-way migration adds the `intergraph_edges`
-array and the optional `schema_name` reference). Phase 07 will ship
-the FalkorDB Cypher emit using **Pattern B** (anchor-node):
+array and the optional `schema_name` reference). The FalkorDB Cypher
+emit shipped at Phase 07 using **Pattern B** (anchor-node), in
+`mindsos_core/cypher/builders.py`:
 
 ```
 (:IntergraphEdge {edge_id, type_name, properties..., _compositional})

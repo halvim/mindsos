@@ -11,7 +11,7 @@ from mindsos_core import MetagraphSchema, IntergraphEdgeType
 
 Phase 05b's metagraph-level schema container. Per the locked
 Pushback 1-C scope split, 05b's `MetagraphSchema` carries
-`IntergraphEdgeType` only; Phase 05c will add `MetaEdgeType` /
+`IntergraphEdgeType` first; `MetaEdgeType` /
 `MetaHyperEdgeType` / `IntergraphHyperEdgeType` to the same container
 class.
 

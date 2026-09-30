@@ -39,7 +39,7 @@ The enumeration is canonical; `FUNCTIONAL_CATEGORIES` is the frozenset of all 13
     tracker. ADR-0145 stays Proposed until all 5 categories ship.
 
 !!! note "Alignment-lookup is a RETRIEVAL capacity, not a 13th category"
-    Phase 15b PB-23 deferred this decision to Phase 28's design pass.
+    Phase 15b PB-23 left this decision to Phase 28's design pass, where it landed.
     Resolution: alignment-lookup reads alignment edges from KL's
     `alignments` role-graph — it is a retrieval capacity that ships in
     the `retrieval` category, not a new top-level category. See

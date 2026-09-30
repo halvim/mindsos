@@ -62,7 +62,7 @@ registry that Phase 05 will exercise.
 
 ## Pluggable id strategies (ADR-0131)
 
-`IdStrategy` is a Protocol; three implementations ship in Phase 02:
+`IdStrategy` is a Protocol with three implementations:
 
 ```text
 $ mindsos identity strategies

@@ -123,9 +123,10 @@ mindsos admin import oewn     --source PATH [--version V] [--json]
 mindsos admin import framenet --source PATH [--version V] [--json]
 ```
 
-Each verb is a dry-run that returns an `ImportResult` to stdout. State-
-file persistence is deferred to Phase 26; server-driven persistence
-ships at Phase 18+.
+The verbs no longer stop at a dry run: each imports, persists the
+resulting Metagraph to FalkorDB through the admin CLI envelope, and
+returns an `ImportResult` summary. Persistence shipped; see
+`mindsos_cli/commands/admin.py`.
 
 ## Why admin owns this (not L3, not server)
 

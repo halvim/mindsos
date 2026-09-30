@@ -349,7 +349,7 @@ mindsos graph set-prop --name people --edge-id e-1 --prop weight=0.9
 Exactly one of `--node-id <ID>` / `--edge-id <ID>` is required (mutex;
 both or neither exits 2). Routes through schema validation when a
 schema is attached. Note: Phase 04 does NOT bump any `_version` field —
-the optimistic-concurrency contract from ADR-0127 lands in Phase 07.
+the optimistic-concurrency contract from ADR-0127 landed at Phase 07.
 
 ### `--replace` and `ref:*` properties
 

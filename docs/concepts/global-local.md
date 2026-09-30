@@ -179,7 +179,7 @@ not through a mutation method on the view).
 - **Write methods on KL** — `add_local_node` / `add_local_edge` /
   `add_local_alignment` / `promote` / `similarity_report` are deleted
   per [ADR-0138 Proposed](../decisions/adr/0138-kl-drops-write-api.md);
-  writes land via L3 capacities in Phase 33-35.
+  writes landed via L3 capacities at Phases 33-35.
 - **CLI verbs over KL** — Phase 14 PB-13 partially closed at Phase 17
   retirement: `mindsos knowledge versions` shipped;
   `active-version` verb dropped per PB-15 vacuum (no graph-layer

@@ -38,9 +38,10 @@ them with a `:` separator (ADR-0154), so `alignment_role("lexicon",
 
 ## Anchor IRI minting
 
-Phase 13 deliberately does **NOT** mint anchor IRIs — that decision is
-deferred to Phase 14 (KL bootstrap) per Phase 13 PB-5. Two candidate
-patterns are documented in the design log:
+Phase 13 deliberately does **NOT** mint anchor IRIs, and the decision
+left to Phase 14 (KL bootstrap) per Phase 13 PB-5 was never built —
+`mindsos_knowledge.identifiers` has no anchor builder. The two
+candidate patterns from the design log:
 
 - (b.i) Anchor reuses the referenced entity's IRI directly.
 - (b.ii) Anchor mints a wrapper IRI (e.g.,
