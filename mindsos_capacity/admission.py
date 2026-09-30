@@ -35,7 +35,12 @@ from __future__ import annotations
 
 from typing import AbstractSet, Callable, Dict, Iterable, Mapping, Tuple
 
-__all__ = ["unavailable_inputs", "arity_unroutable_inputs", "declaration_refusals"]
+__all__ = [
+    "unavailable_inputs",
+    "arity_unroutable_inputs",
+    "declaration_refusals",
+    "substitute_problems",
+]
 
 
 def unavailable_inputs(
@@ -122,6 +127,11 @@ def declaration_refusals(
 
     C3R1b's *outputs meet inputs* rule joins this map; it is a declaration
     predicate too. It is not here yet.
+
+    **A substitute is refused outright** (``mindsos_llm`` plan R37, OWNER
+    2026-09-29), every declared input named: it exists to re-derive a model
+    reader's conclusion for excision (plan I-12), and admitting it would let
+    the first-producer-by-IRI rule swap it in for the reader in ordinary runs.
     """
     from .exceptions import CapacityRegistrationError
 
@@ -136,8 +146,32 @@ def declaration_refusals(
             declaration = capacity_layer.resolve_declaration(iri, session=session)
         except CapacityRegistrationError:
             continue
+        if getattr(declaration, "substitute_for", None) is not None:
+            refusals[iri] = tuple(declaration.inputs)
+            continue
         arity = getattr(declaration, "operand_arity", None) or {}
         bad = arity_unroutable_inputs(arity, is_collection)
         if bad:
             refusals[iri] = bad
     return refusals
+
+
+def substitute_problems(substitute, reader) -> Tuple[str, ...]:
+    """Why ``substitute`` cannot stand in for ``reader`` — empty when it can.
+
+    ``mindsos_llm`` plan R37 (OWNER 2026-09-29): a substitute re-derives a
+    model reader's conclusion WITHOUT the model (R19, R25), from the same
+    source, so it must consume exactly the reader's inputs, produce only what
+    the reader produces, and not consult the model — and the capacity it
+    names must be one that does.
+    """
+    problems = []
+    if not getattr(reader, "consults_llm", False):
+        problems.append("the capacity it names does not consult the borrowed model")
+    if getattr(substitute, "consults_llm", False):
+        problems.append("it declares consults_llm=True; a substitute runs WITHOUT the model")
+    if tuple(substitute.inputs) != tuple(reader.inputs):
+        problems.append(f"its inputs {tuple(substitute.inputs)!r} are not the reader's {tuple(reader.inputs)!r}")
+    if not substitute.outputs or not set(substitute.outputs) <= set(reader.outputs):
+        problems.append(f"its outputs {tuple(substitute.outputs)!r} are not a non-empty subset of the reader's {tuple(reader.outputs)!r}")
+    return tuple(problems)
