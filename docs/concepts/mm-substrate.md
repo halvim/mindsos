@@ -42,7 +42,8 @@ and returns it. Growth is monotone within a task; instances are never evicted
 mid-task. Each instance pins its source as an `(iri, version_int)` tuple
 captured at instantiation, so the task reads a stable snapshot regardless of
 later knowledge writes. Lazy inline-on-retire (the D'1 retention mechanism)
-lands at Phase 48 with `kl.read_at_version` / `kl.retire_version`.
+shipped: `kl.read_at_version` and `kl.retire_version` are both on
+`mindsos_knowledge.knowledge_layer`.
 
 ## Dream deep-copy
 

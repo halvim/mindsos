@@ -270,8 +270,8 @@ except (redis.exceptions.ResponseError,
     raise PersistenceError(f"...") from e
 ```
 
-The Graph `.properties` writer was deferred at Phase 07 (P9 C) and has
-not shipped: `build_create_graph_anchor` writes only
+The Graph `.properties` writer was deferred at Phase 07 (P9 C) and never shipped.
+`build_create_graph_anchor` writes only
 id / name / role / `_version` and the parent link.
 
 ### 4-step persist lifecycle (P96 A)

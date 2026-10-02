@@ -197,7 +197,8 @@ flag emits the verbose `Pipeline` shape:
 - `2` — usage error (missing `--start` or `--target`).
 
 The Phase 30 CLI does **not** define exit 3 (invocation-envelope
-failure); that arrives at Phase 31 alongside the `invoke` CLI verb.
+failure); exit 3 and the `invoke` CLI verb both shipped
+(`mindsos_cli/commands/capacity.py:invoke_cmd`).
 
 ## `mindsos capacity problem-trace tail`
 

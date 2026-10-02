@@ -12,8 +12,8 @@ verified_at: 4aac114
 ships only the registry primitive itself + the three `IdStrategy`
 implementations. The full metagraph-scoped semantics (registry shared
 across contained graphs, replace-with-conflict during reconstruction,
-etc.) land with Phase 05 (`Metagraph` + `MetaEdge` +
-`MetaHyperEdge`).
+etc.) shipped at Phase 05: `Metagraph`, `MetaEdge` and `MetaHyperEdge` are
+all in `mindsos_core`.
 
 ## Construction
 

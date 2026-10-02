@@ -16,7 +16,8 @@ user (ADR-0044 invariant unchanged).
   outcome classification. Immutable externally; lazy
   inline-on-retire is the only permitted internal mutation
   (L2_CHAT_DECISIONS D-L2-3 `append_only_with_lazy_inline`
-  discipline; full discipline body lands Phase 43 / ADR-0153).
+  discipline; the full discipline body shipped as
+  `mindsos_knowledge.validators.validate_mutation_discipline`).
 - `Memory` — clustering composite over Episodes, keyed by
   `task_pattern_iri`. Materializes on first episode of a task-
   pattern; subsequent episodes attach via `memory_contains_episode`
@@ -35,9 +36,9 @@ may re-add on `Episode` atomically with the full D-L2-17 ship).
 ## Advisory property frozensets
 
 **None at Phase 39** (Phase 13 `MEMORY_PROPS` dropped per Phase 39
-design log PB-R1-B; properties land Phase 43 alongside
-`CONTENT_FIELDS` / `METADATA_FIELDS` / `mutation_discipline` apparatus
-per ADR-0153 / ADR-0152).
+design log PB-R1-B; the properties shipped alongside the
+`*_CONTENT_FIELDS` / `*_METADATA_FIELDS` / `mutation_discipline` apparatus
+in `mindsos_knowledge/validators.py`, per ADR-0153 / ADR-0152).
 
 ## Where it's used
 
@@ -64,4 +65,5 @@ writing — interim tech debt for two phases; see
   lands there.
 - Full mutation-discipline body (`append_only_with_lazy_inline`) lands
   at Phase 43 ADR-0153 ship.
-- `memory_contains_episode` IntergraphEdge lands at Phase 43.
+- `memory_contains_episode` IntergraphEdge shipped; the role-graph schema
+  registers the edge type.
