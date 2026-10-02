@@ -38,7 +38,7 @@ alice = g.add_node("Alice", "Person")
 acme = g.add_node("Acme", "Org")
 
 g.add_edge(alice, acme, "WORKS_AT", label="employed since 2024")
-g.add_hyperedge([alice, acme], label="project-X")
+g.add_hyperedge([alice, acme], "WORKED_ON", label="project-X")
 ```
 
 * `name` is human-readable; the graph also carries an auto-minted UUID4
