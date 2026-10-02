@@ -39,15 +39,28 @@ _DOMAIN = frozenset({"live", "index"})
 
 #: "<verb> in|to Phase NN" / "a later phase", present or future tense only.
 _TARGET = r"(?:a later phase|Phase\s+\d+[a-z]*\+?)"
+#: Verbs whose present tense reads as "still coming". `ship` is NOT here for the
+#: bare and `at` forms: "what ships at Phase 28" legitimately records what that
+#: phase delivered, and nothing in the line distinguishes it from a promise.
+_ARRIVE = r"(?:lands?|land|arrives?|arrive|joins?|join|comes?|come)"
 _PROMISE = re.compile(
     r"\b(?:will\s+)?(?:lands?|land|arrives?|arrive|joins?|join|comes?|come|ships?|ship|"
     r"deferred)\b[^.]{0,24}?\b(?:in|to)\s+" + _TARGET
     + r"|\bFuture\s+Phase\s+\d+"
-    + r"|\bPhase\s+\d+[a-z]*\+?\s+will\s+(?:ship|land|add|bring|join)\b",
+    + r"|\bPhase\s+\d+[a-z]*\+?\s+will\s+(?:ship|land|add|bring|join)\b"
+    # "<arrive-verb> [at|with] Phase NN" -- the preposition is optional, which is
+    # how "lands Phase 47" and "lands at Phase 48" slipped past the first cut.
+    + r"|\b(?:will\s+)?" + _ARRIVE + r"\b[^.]{0,24}?\b(?:at|with)?\s*Phase\s+\d+[a-z]*\+?"
+    # "deferred at|to Phase NN" -- a deferral with no stated outcome.
+    + r"|\bdeferred\b[^.]{0,30}?\b(?:at|to)\s+(?:the\s+first\s+consumer\s+\()?Phase\s+\d+",
 )
-#: The line says how it turned out, so it is a record, not a promise.
+#: The line says how it turned out, so it is a record, not a promise. The
+#: outcome must be ON THE SAME LINE: the unit of judgement is the line, so a
+#: promise whose resolution wraps onto the next one is reported, and the fix is
+#: to put the outcome where the claim is.
 _RESOLVED = re.compile(
-    r"\b(shipped|landed|never built|not built|was never|retired|no longer)\b",
+    r"\b(shipped|landed|never built|not built|was never|retired|no longer"
+    r"|exists? yet|does not exist|do not exist|never shipped|still open)\b",
     re.IGNORECASE,
 )
 
@@ -125,6 +138,11 @@ _FABRICATED = (
     "Per-role tracking is deferred to a later phase.",
     "Phase 07 will ship the array form.",
     "Future Phase 09 ships proper XRef migration.",
+    "The metagraph sync CLI lands Phase 08.",
+    "The retention mechanism lands at Phase 48.",
+    "Those schema types land with Phase 05.",
+    "That arrives at Phase 31 alongside the CLI verb.",
+    "The composite is deferred at Phase 36.",
 )
 
 
@@ -141,6 +159,9 @@ def test_a_resolved_line_is_true(tmp_path):
         "Deferred to Phase 28, and never built.\n"
         "The tracking is deferred to a later phase - it was never built.\n"
         "The rule shipped at Phase 10.\n"
+        "The composite is deferred at Phase 36 - no writing capacity exists yet.\n"
+        "The retention mechanism lands at Phase 48; it never shipped.\n"
+        "The sync CLI lands Phase 08 - that path does not exist.\n"
     )
     assert find_problems(_tree(tmp_path, page)) == []
 
