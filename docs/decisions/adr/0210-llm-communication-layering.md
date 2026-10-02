@@ -683,7 +683,7 @@ has no caller outside tests), so the file a pointer names is operator-produced t
 
 **Amendment status:** Proposed — I-17 and I-12 of `docs/plans/MINDSOS_LLM_PLAN.md`
 flip it to Accepted as each ships. The decision above stands. This transcribes plan
-rulings **R19–R28** — and below them R29–R42 — (R19, R20, R21 and the I-17 split OWNER 2026-09-21; R22–R28 ruled
+rulings **R19–R28** — and below them R29–R43 — (R19, R20, R21 and the I-17 split OWNER 2026-09-21; R22–R28 ruled
 against the plan's §1 end state, each citing its authority there).
 
 **WHAT CHANGES.**
@@ -766,6 +766,11 @@ the I-12 chat against the plan's §1, each citing its authority there.
 17. **Re-run** (R41): every paired substitute, through a dispatcher with no model
     bound (one with a client is refused), no mental-model write, exact agreement.
 18. **The report is returned, not stored**; no CLI verb, no request pattern (R42).
+19. **Re-run's edges** (R43): substitutes in scope are Global's plus the session
+    owner's Local; a substitute that declares `writes`, or whose outputs lack the
+    conclusion's value, is named and not run; a conclusion the grounding walk cannot
+    place is named and nothing is run; a dispatcher with a client bound is an error.
+    A failed re-run is never a disagreement.
 
 **Build state.** ⚠ **I-17 DONE(933bc6d), 2026-09-29.** I-17 shipped in three gates: (1) the seam, clause 6 — **built,
 PR #242**; (2) clauses 4 (the key and the answer's stamps), 7, 10, and the
@@ -774,4 +779,4 @@ clauses 4, 8 and 9 — **built, I-17 gate 3**: the record carries `prompt_digest
 `extraction_schema` (text), `schema_digest`, `tool_name`, `tool_description`,
 `max_tokens` and `key_schema_version` (ADR-0207 am-2's freeze classifies them
 WRITTEN and STRUCTURAL by derivation), on the undecodable-answer refusal too. The amendment stays **Proposed** until I-12 ships,
-because clauses 1 and 5 are I-12's. I-12 ships in four gates (plan §6, 2026-09-29): identify (clause 14), *shown* (15, 16), the substitute declaration (13), re-run (15, 17, 18) — the last flips this amendment to Accepted. Gate 1 merged as PR #248 (`30e5d12`); gate 2 merged as PR #249 (`e342af2`) — clause 15's first capacity (`predicate.shown_is_what_ran`, category `predicate`) and clause 16; gate 3 builds clause 13 (`Capacity.substitute_for`, refused by `admission.declaration_refusals`, paired by `admission.substitute_problems`, which also requires the named capacity to consult the model).
+because clauses 1 and 5 are I-12's. I-12 ships in four gates (plan §6, 2026-09-29): identify (clause 14), *shown* (15, 16), the substitute declaration (13), re-run (15, 17, 18) — the last flips this amendment to Accepted. Gate 1 merged as PR #248 (`30e5d12`); gate 2 merged as PR #249 (`e342af2`) — clause 15's first capacity (`predicate.shown_is_what_ran`, category `predicate`) and clause 16; gate 3 merged as PR #251 (`c9169cd`) — clause 13 (`Capacity.substitute_for`, refused by `admission.declaration_refusals`, paired by `admission.substitute_problems`, which also requires the named capacity to consult the model); gate 4 builds clauses 17, 18 and 19 and clause 15's second capacity (`predicate.rederived_agrees`, `CapacityLayer.substitutes_for`, `excision.rerun`).

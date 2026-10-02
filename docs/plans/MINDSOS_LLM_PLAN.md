@@ -375,6 +375,18 @@ that raises is a failed re-run, never a disagreement. Authority: R19, R25, R28, 
 pattern.** §1 asks that a conclusion CAN be identified, shown and re-run; storing the
 verdict, or routing it from a request, is scope §1 does not name. Authority: §0.1.
 
+**R43 — what re-run does at its edges (2026-10-02, ruled at gate 4).** (a) The
+substitutes in scope are Global's plus the acting session owner's Local, Local
+shadowing Global — never another user's (`CapacityLayer.substitutes_for`). (b) A
+substitute that declares `writes` is NOT run and is named: dispatch would hand it a
+write handle, and R41 says re-run writes nothing. (c) A substitute whose outputs lack
+the conclusion's value DataState is NOT run and is named — registration (R37) checks
+only that its outputs are among the reader's. (d) A conclusion whose producer, value
+or consumed inputs the grounding walk cannot find uniquely is named and nothing is
+run. (e) A dispatcher with a client bound raises `ModelBoundError` — an error, not a
+report, because the caller built the wrong dispatcher. Each of (b)–(d) leaves
+`agrees` empty: a failed re-run is never a disagreement (R41). Authority: R37, R41.
+
 ## 3. THE ITEM LIST
 
 | id | item | filed as | state |
@@ -391,7 +403,7 @@ verdict, or routing it from a request, is scope §1 does not name. Authority: §
 | I-9 | prompt bodies have a home: a conclusion stamped `prompt_iri` + `prompt_version` can show the text it names | core-llm-prompt-text-has-no-home | DONE(a1687f2) |
 | I-10 | a recorded set has a home in the graph: pointer + provenance in L2 Local, payloads stay a FILE | core-llm-recorded-set-l2-pointer-owner | DONE(780ee1b) |
 | I-11 | `mode` and `credential_level` reach the origin record. Required under §1, no longer deferred; prerequisite discharged at `fe0e19a`. ⚠ **NOT blocked by I-8** — measured: `origin_v0.py` imports only `..identifiers` and `..printable`, so it has no L2 dependency, and the change is two names in `PRODUCER_DECLARED` plus two lines in `comprehension_v0._record` reading fields the answer already carries beside the seven at lines 353-359 | core-llm-l3-may-declare-answer-mode-and-level | DONE(44889a9) |
-| I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Specified by R19–R28 and R36–R42**; ships in FOUR gates (§6, 2026-09-29) | core-llm-excision-capability | TODO |
+| I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Specified by R19–R28 and R36–R43**; ships in FOUR gates (§6, 2026-09-29) | core-llm-excision-capability | TODO |
 | I-13 | a transport's other keys survive into the answer | core-llm-transport-extra-keys-survive-into-the-answer | OUT(trigger: a consumer iterates an answer's keys, or a third-party transport's output is stored) |
 | I-14 | level 3 / hosted adapter, the old "slice 3" | core-llm-level-3-awaits-a-hosted-adapter | OUT(trigger: a consumer wants Bedrock, Vertex or Azure) |
 | I-15 | a capacity **declares** that it writes (R7): `writes=True` on the declaration, both invoke sites gate the `writeable` injection on it instead of on `outputs == ()`, and an AST guard reconciles the declaration against the body — the `context.llm` census shape. **Blocks I-10**, whose ruled declared output is unreachable without it | core-capacity-write-is-declared-not-inferred | DONE(8f1f7d4) |
@@ -698,3 +710,23 @@ amendment.)*
   deterministic capacity would make "excisable" claim something about a conclusion
   the model never produced). Authority: R19, R37. **Approval:** R37 OWNER; the rest
   delegated (R38–R42).
+
+- **2026-10-02 (I-12 gate 3 merged; gate 4)** — **Gate 3 merged as PR #251**
+  (`c9169cd`, tag `llm-substitute-declared-confirmed`): the substitute declaration.
+  Gated at `d60d384` (5424 passed / 0 failed, ids +8/−0 by name; M7 two reds, M8 and
+  M9 one each, all as predicted). `main` moved twice before the merge (PR #250, then
+  PRs #252 and #253): re-gated in full at `6159211` (first run 4
+  CLI-subprocess timeouts in `phase_05b`/`phase_05c` under box load — the known
+  flake; those suites alone 361 passed, full rerun 5430 passed / 0 failed), then at
+  the final head `8169626` by the narrowed rule below (781 passed, +8/−0, CI green).
+  **OWNER 2026-10-02 — merge rule, narrowed re-gate:** when everything `main` gained
+  since the gated base touches 0 package files, re-gating `tests/architecture` plus
+  the affected test directories on the rebased head, with the collect delta, plus
+  CI's full suite on that exact head, suffices. **Passes re-run: no ruling
+  reversed.** **Gate 4 builds re-run** (R41, R42) and rules **R43**: L3
+  `predicate.rederived_agrees` (canonical-JSON equality; Python `==` would call
+  `True` and `1` the same conclusion), `CapacityLayer.substitutes_for`, L4
+  `excision.rerun`. The row flips to `DONE(<sha>)`, ADR-0210 am-7 to Accepted and
+  contract row 12 lands in the closeout that follows the merge, because the sha does
+  not exist before it. **Approval:** merge rule OWNER ("if you are sure b works, i
+  agree"); R43 delegated (R38–R42's delegation).
