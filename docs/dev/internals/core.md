@@ -334,8 +334,10 @@ Result is byte-equivalent to the prior Phase 07 implementation.
 ### `iter_load_graph` (NEW — RPB-1 A semantics)
 
 ```python
-def iter_load_graph(client, graph_id, *, identity=None,
-                    schema=None, batch_size=10_000) -> Iterator[Graph]:
+def iter_load_graph(client, graph_id, *, identity=None, schema=None,
+                    batch_size=10_000, include_deprecated=False,
+                    report=None,
+                    unknown_edge_type_policy=None) -> Iterator[Graph]:
     ...
 ```
 

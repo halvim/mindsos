@@ -142,29 +142,30 @@ from mindsos_core.schema.types import (
 from mindsos_core.schema.migration import migrate_from
 
 
-# Old schema — what the persisted data was validated under.
-old = Schema(
-    node_types={"Person": NodeType(property_types={"name": PropertyType.STRING})},
-    edge_types={"knows": EdgeType()},
-)
+# Old schema — what the persisted data was validated under. A Schema is
+# built by registration, not by constructor kwargs; an EdgeType name is a
+# Cypher relationship identifier, so it must be SCREAMING_SNAKE.
+old = Schema(strict=True)
+old.add_node_type(NodeType(name="Person",
+                           property_types={"name": PropertyType.STRING}))
+old.add_edge_type(EdgeType(name="KNOWS"))
 
 # New schema — adds a required "email" property to Person and drops
-# the "knows" edge type entirely.
-new = Schema(
-    node_types={
-        "Person": NodeType(property_types={
-            "name": PropertyType.STRING,
-            "email": PropertyType.STRING,  # newly required
-        })
-    },
-    edge_types={},  # "knows" removed
-)
+# the "KNOWS" edge type entirely.
+new = Schema(strict=True)
+new.add_node_type(NodeType(name="Person", property_types={
+    "name": PropertyType.STRING,
+    "email": PropertyType.STRING,  # newly required
+}))
 
-# Persisted data: a Graph constructed under the OLD schema.
-g = Graph(name="people", schema=old)
-g.add_node("Person", properties={"name": "Alice"})  # no email — will be flagged
-g.add_node("Person", properties={"name": "Bob"})    # no email — will be flagged
-# (Add edges of type "knows" similarly; they'll be flagged as removed.)
+# Persisted data: a Graph holding what was written under the OLD schema.
+# `_validate=False` is the seeding escape hatch the Phase 11 tests use --
+# without it the writes are rejected and there is nothing left to scan.
+g = Graph(name="people")
+a = g.add_node("Alice", "Person", properties={"name": "Alice"}, _validate=False)
+b = g.add_node("Bob", "Person", properties={"name": "Bob"}, _validate=False)
+g.add_edge(source=a, target=b, type_name="KNOWS",
+           properties={}, _validate=False)
 
 # Scan: pass OLD as positional, GRAPH as target, NEW via kwarg.
 violations = migrate_from(old, g, new=new, detail="summary")
@@ -178,7 +179,7 @@ Expected output (order may vary):
 
 ```
 [missing_required_property] Person.email (2× in people): property 'email' (type 'STRING') required by new schema; missing from persisted 'Person' elements
-[removed_edge_type] knows. (N× in people): element type 'knows' removed from new schema
+[removed_edge_type] KNOWS. (N× in people): element type 'KNOWS' removed from new schema
 ```
 
 Switch `detail="each"` to get one violation per offending element

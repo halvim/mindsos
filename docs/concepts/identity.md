@@ -167,7 +167,7 @@ user-authored data, where:
 
 ```python
 # Every time this runs, different UUID
-node = g.add_node(value="my-concept", type_="CustomConcept")
+node = g.add_node(value="my-concept", type_name="CustomConcept")
 print(node.node_id)  # "a7f3e9c1-...", "b2d4c8a5-...", etc.
 ```
 
