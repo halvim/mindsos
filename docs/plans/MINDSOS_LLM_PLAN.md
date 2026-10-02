@@ -684,3 +684,17 @@ amendment.)*
   verified is still shown (R40). A prompts-role test docstring that said *shown*
   means only retrievable is corrected in place (R20, R36). **Approval:** delegated
   (R38–R42); no new ruling.
+
+- **2026-09-30 (I-12 gate 2 merged; gate 3)** — **Gate 2 merged as PR #249**
+  (`e342af2`, tag `llm-excision-shows-confirmed`): *shown*. Gated at `6760df4`
+  (5416 passed / 0 failed, collect 5421, ids +7/−0 by name; M3 and M4 one red each,
+  M6 two reds, all as predicted); `main` had not moved, so no re-gate. **Passes re-run:
+  no ruling reversed.** **Gate 3 builds R37**: `Capacity.substitute_for`; the refusal
+  lives in `admission.declaration_refusals`, the one map BOTH finders read, so no
+  finder admits a substitute; registration checks the pairing through
+  `admission.substitute_problems`. One check is read out of R37's own reason rather
+  than its list — **the capacity a substitute names must itself consult the model**
+  (a substitute replaces the borrowed model's reading, R19; pairing one with a
+  deterministic capacity would make "excisable" claim something about a conclusion
+  the model never produced). Authority: R19, R37. **Approval:** R37 OWNER; the rest
+  delegated (R38–R42).

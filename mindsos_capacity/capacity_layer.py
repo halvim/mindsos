@@ -71,6 +71,7 @@ from .bootstrap import (
     ensure_datastate_graph,
 )
 from .capabilities import CAN_WRITE_GLOBAL
+from .admission import substitute_problems
 from .capacity import InvocationResult, Monitor, _CapacityBase
 from .datastate import DataState, validate_datastate
 from .printable import printable_phrase_problem
@@ -343,6 +344,7 @@ class CapacityLayer:
                 f"{type(declaration).__name__}"
             )
         self._validate_contract_fields(declaration)
+        self._validate_substitute(declaration, session=session)
         target_uid = session.user_id if session is not None else None
         if target_uid is None:
             self._enforce_global_write(session, op="register_capacity")
@@ -446,6 +448,33 @@ class CapacityLayer:
                     ds_gid, in_iri, cap_gid, node.node_id, EDGE_CONSUMES
                 )
         return node
+
+    def _validate_substitute(self, declaration: _CapacityBase, *, session: SessionArg) -> None:
+        """``mindsos_llm`` plan R37 (OWNER 2026-09-29) — a substitute is PAIRED.
+
+        The reader it names must be registered in the registering scope
+        (Local, else Global — ``resolve_declaration``), and the pair must
+        pass :func:`~mindsos_capacity.admission.substitute_problems`.
+        """
+        reader_iri = getattr(declaration, "substitute_for", None)
+        if reader_iri is None:
+            return
+        try:
+            reader = self.resolve_declaration(reader_iri, session=session)
+        except CapacityRegistrationError:
+            reader = None
+        if reader is None:
+            raise CapacityRegistrationError(
+                f"Capacity {declaration.iri!r} declares substitute_for="
+                f"{reader_iri!r}, which is not registered in this scope. A "
+                "substitute is paired with the reader it re-derives (plan R37)."
+            )
+        problems = substitute_problems(declaration, reader)
+        if problems:
+            raise CapacityRegistrationError(
+                f"Capacity {declaration.iri!r} cannot substitute for "
+                f"{reader_iri!r}: " + "; ".join(problems) + " (plan R37)."
+            )
 
     def _validate_contract_fields(self, declaration: _CapacityBase) -> None:
         """ADR-0159 register-time contract-field validation.

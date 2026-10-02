@@ -130,6 +130,17 @@ class _CapacityBase:
     # Like ``input_group`` and ``decodes_refusals``, a registration-time
     # fact and NOT emitted to the graph.
     writes: bool = False
+    # ``mindsos_llm`` plan ruling **R37** (OWNER 2026-09-29) — a SUBSTITUTE
+    # declares which model reader it re-derives, by IRI. Excision (plan
+    # I-12) re-runs a model-produced conclusion with the substitute paired to
+    # the reader that wrote it (R19, R25). ⚠ The finders never admit a
+    # substitute (``admission.declaration_refusals``): they take the first
+    # producer of a DataState by sorted IRI, so a substitute found only
+    # because it produces the reader's value would change which producer
+    # ordinary runs use, by lexical accident. Registration checks the pairing
+    # (``admission.substitute_problems``). A registration-time fact, not
+    # emitted to the graph.
+    substitute_for: Optional[str] = None
     # Bounded member retry (ADR-0201 am-6 / MEMBER_RETRY_CAP) is now
     # DECLARED rather than blanket. Default ``False``: a deterministic
     # body fails identically on a second attempt, so retrying it only
