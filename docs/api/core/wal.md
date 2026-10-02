@@ -58,7 +58,7 @@ def my_replayer(payload: dict) -> None:
     # ... reapply writes for this kind ...
     pass
 
-register_replayer("my.kind", my_replayer)
+register_replayer(client, "my.kind", my_replayer)
 
 # At server start:
 n = recover(client, metagraph_id="mg1")

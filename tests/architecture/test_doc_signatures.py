@@ -9,14 +9,18 @@ had drifted. The probe lived outside the repo, so nothing ran it after the
 batch. This guard is that comparison, made permanent and narrowed to the part
 that is decidable without judgement.
 
-THE RULE, in two halves:
+THE RULE, in three halves:
 
 * a ``def NAME(...)`` written inside a ```python fence on a live or index page
   must list the same parameters as the one definition of ``NAME`` in the tree,
   both ways;
 * a keyword argument in a call on such a page must be a real parameter of the
-  one definition of the callee (for a class: its ``__init__`` parameters, or
-  its fields when the constructor is generated).
+  one definition of the callee (for a class: its ``__init__`` parameters plus
+  its fields, or its fields alone when the constructor is generated);
+* the call's ARITY must work: it may not pass more positional arguments than
+  the callee has positional slots, and it must supply every parameter that has
+  no default. An example that raises ``TypeError`` the moment a reader runs it
+  is the same defect as a wrong parameter name.
 
 DOMAIN -- deliberately narrow, so a RED line is always a real defect:
 
@@ -31,6 +35,12 @@ DOMAIN -- deliberately narrow, so a RED line is always a real defect:
   belongs to its own guard, not to this one.
 * Fields are resolved through base classes, so a dataclass that inherits its
   fields is not reported for having them.
+* A call carrying ``...`` is a deliberate elision (``handle.write_and_validate(
+  ...)`` in the review checklist) and is skipped whole. So is a call with
+  ``*args`` / ``**kwargs`` spread at the call site, and a callee taking
+  ``*args`` is not held to a positional maximum.
+* Arity is checked only against an EXPLICIT signature. A generated dataclass
+  constructor is not, because which fields carry defaults is not read here.
 * Parameters starting with ``_`` are not required to appear in a doc, and a
   callable taking ``**kwargs`` is only checked one way.
 
@@ -66,19 +76,29 @@ inv = _load()
 # -- the tree ---------------------------------------------------------------
 
 
-def _params(node: ast.AST) -> tuple[list[str], bool]:
-    """Named parameters of a def, and whether it also takes ``**kwargs``."""
+def _sig(node: ast.AST) -> dict:
+    """What a ``def`` accepts: names, positional slots, what has no default."""
     a = node.args
-    names = [p.arg for p in a.posonlyargs + a.args + a.kwonlyargs]
-    return [n for n in names if n not in ("self", "cls")], a.kwarg is not None
+    positional = [p.arg for p in a.posonlyargs + a.args if p.arg not in ("self", "cls")]
+    keyword_only = [p.arg for p in a.kwonlyargs]
+    defaulted = len(a.defaults)
+    required = positional[: len(positional) - defaulted] if defaulted else list(positional)
+    required += [p.arg for p, d in zip(a.kwonlyargs, a.kw_defaults) if d is None]
+    return {
+        "names": positional + keyword_only,
+        "positional": positional,
+        "required": required,
+        "star": a.vararg is not None,
+        "starstar": a.kwarg is not None,
+    }
 
 
 class Tree:
     """Every ``mindsos_*`` definition under ``root``, indexed by bare name."""
 
     def __init__(self, root: Path) -> None:
-        self.funcs: dict[str, list[tuple[str, list[str], bool]]] = {}
-        self.methods: dict[str, list[tuple[str, list[str], bool]]] = {}
+        self.funcs: dict[str, list[tuple[str, dict]]] = {}
+        self.methods: dict[str, list[tuple[str, dict]]] = {}
         self.classes: dict[str, list[tuple[str, dict, dict, list[str]]]] = {}
         for pkg in sorted(p for p in root.iterdir() if p.is_dir() and p.name.startswith("mindsos_")):
             for path in sorted(pkg.rglob("*.py")):
@@ -94,20 +114,20 @@ class Tree:
     def _module(self, mod: ast.Module, where: str) -> None:
         for node in mod.body:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                names, kw = _params(node)
-                self.funcs.setdefault(node.name, []).append((where, names, kw))
+                self.funcs.setdefault(node.name, []).append((where, _sig(node)))
             elif isinstance(node, ast.ClassDef):
                 fields: dict[str, None] = {}
-                methods: dict[str, tuple[list[str], bool]] = {}
+                methods: dict[str, dict] = {}
                 bases = [b.id for b in node.bases if isinstance(b, ast.Name)]
                 bases += [b.attr for b in node.bases if isinstance(b, ast.Attribute)]
                 for stmt in node.body:
                     if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
                         fields[stmt.target.id] = None
                     elif isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        names, kw = _params(stmt)
-                        methods[stmt.name] = (names, kw)
-                        self.methods.setdefault(stmt.name, []).append((f"{where}.{node.name}", names, kw))
+                        methods[stmt.name] = _sig(stmt)
+                        self.methods.setdefault(stmt.name, []).append(
+                            (f"{where}.{node.name}", methods[stmt.name])
+                        )
                     elif isinstance(stmt, ast.Assign):
                         for target in stmt.targets:
                             if not isinstance(target, ast.Name):
@@ -141,22 +161,25 @@ class Tree:
         return None
 
     def unique(self, name: str):
-        """``(kind, accepted, takes_kwargs, where)`` when ``name`` has exactly one
-        definition across functions, classes and methods; otherwise ``None``."""
+        """``{accepted, sig, where}`` when ``name`` has exactly one definition
+        across functions, classes and methods; otherwise ``None``. ``sig`` is
+        ``None`` when the callable has no explicit signature to check arity
+        against (a generated dataclass constructor)."""
         hits = (
-            [("func",) + f for f in self.funcs.get(name, [])]
-            + [("method",) + m for m in self.methods.get(name, [])]
-            + [("class", c[0], None, None) for c in self.classes.get(name, [])]
+            [("call", where, sig) for where, sig in self.funcs.get(name, [])]
+            + [("call", where, sig) for where, sig in self.methods.get(name, [])]
+            + [("class", c[0], None) for c in self.classes.get(name, [])]
         )
         if len(hits) != 1:
             return None
-        kind, where, names, kwargs = hits[0]
+        kind, where, sig = hits[0]
         if kind == "class":
             ctor = self.method(name, "__init__")
             if ctor is not None:
-                return "class", set(ctor[0]) | self.fields(name), ctor[1], where
-            return "class", self.fields(name), False, where
-        return kind, set(names), kwargs, where
+                return {"accepted": set(ctor["names"]) | self.fields(name),
+                        "sig": ctor, "where": where}
+            return {"accepted": self.fields(name), "sig": None, "where": where}
+        return {"accepted": set(sig["names"]), "sig": sig, "where": where}
 
 
 # -- the pages --------------------------------------------------------------
@@ -166,16 +189,24 @@ def _report(rel: str, line: int, msg: str) -> str:
     return f"{rel}:{line}: {msg}"
 
 
+def _elided(node: ast.Call) -> bool:
+    """A call written with ``...`` stands for arguments the page left out."""
+    for arg in list(node.args) + [kw.value for kw in node.keywords]:
+        if isinstance(arg, ast.Constant) and arg.value is Ellipsis:
+            return True
+    return False
+
+
 def _check_def(tree: Tree, rel: str, line: int, node: ast.AST, out: list[str]) -> None:
     hit = tree.unique(node.name)
     if hit is None:
         return
-    kind, accepted, takes_kwargs, where = hit
-    documented, _ = _params(node)
+    accepted, where = hit["accepted"], hit["where"]
+    documented = _sig(node)["names"]
     for arg in documented:
         if arg not in accepted:
             out.append(_report(rel, line, f"`{node.name}(...)` documents `{arg}`, not a parameter of {where}"))
-    if takes_kwargs:
+    if hit["sig"] is not None and hit["sig"]["starstar"]:
         return
     for arg in sorted(accepted):
         if arg not in documented and not arg.startswith("_"):
@@ -185,18 +216,39 @@ def _check_def(tree: Tree, rel: str, line: int, node: ast.AST, out: list[str]) -
 def _check_call(tree: Tree, rel: str, line: int, node: ast.Call, out: list[str]) -> None:
     func = node.func
     name = func.id if isinstance(func, ast.Name) else (func.attr if isinstance(func, ast.Attribute) else None)
-    keywords = [kw.arg for kw in node.keywords if kw.arg]
-    if name is None or not keywords:
+    if name is None or _elided(node):
         return
     hit = tree.unique(name)
     if hit is None:
         return
-    kind, accepted, takes_kwargs, where = hit
-    if takes_kwargs:
+    accepted, sig, where = hit["accepted"], hit["sig"], hit["where"]
+    named = [kw.arg for kw in node.keywords if kw.arg]
+    spread = any(kw.arg is None for kw in node.keywords)
+    starred = any(isinstance(a, ast.Starred) for a in node.args)
+
+    if named and not (sig is not None and sig["starstar"]):
+        for kw in named:
+            if kw not in accepted:
+                out.append(_report(rel, line, f"`{name}({kw}=...)` is not a parameter of {where}"))
+    if sig is None or starred:
         return
-    for kw in keywords:
-        if kw not in accepted:
-            out.append(_report(rel, line, f"`{name}({kw}=...)` is not a parameter of {where}"))
+    positional = sig["positional"]
+    if not sig["star"] and len(node.args) > len(positional):
+        out.append(_report(
+            rel, line,
+            f"`{name}(...)` is given {len(node.args)} positional argument(s) but {where} "
+            f"takes at most {len(positional)}",
+        ))
+        return
+    if spread:
+        return
+    supplied = set(positional[: len(node.args)]) | set(named)
+    missing = [p for p in sig["required"] if p not in supplied]
+    if missing:
+        out.append(_report(
+            rel, line,
+            f"`{name}(...)` never supplies {missing}, required by {where}",
+        ))
 
 
 def find_problems(root: Path) -> list[str]:
@@ -232,7 +284,9 @@ def test_the_premise_holds_so_the_guard_cannot_pass_vacuously():
     tree = Tree(_ROOT)
     assert len(tree.funcs) > 100, f"only {len(tree.funcs)} module functions indexed"
     assert len(tree.classes) > 100, f"only {len(tree.classes)} classes indexed"
-    assert tree.unique("iter_load_graph"), "a known-unique function did not resolve"
+    hit = tree.unique("iter_load_graph")
+    assert hit and hit["sig"], "a known-unique function did not resolve to a signature"
+    assert hit["sig"]["required"] == ["client", "graph_id"], hit["sig"]["required"]
 
 
 def test_the_pages_are_actually_scanned():
@@ -256,7 +310,7 @@ def test_the_pages_are_actually_scanned():
 def test_documented_signatures_agree_with_the_tree():
     bad = find_problems(_ROOT)
     assert not bad, (
-        f"{len(bad)} documented signature(s) or keyword call(s) disagree with the "
+        f"{len(bad)} documented signature(s) or call(s) disagree with the "
         "tree:\n" + "\n".join(bad)
     )
 
@@ -297,6 +351,10 @@ def build(client, graph_id, *, batch_size=10, include_deprecated=False, _interna
 
 def flexible(name, **kwargs):
     return name
+
+
+def variadic(first, *rest):
+    return first
 '''
 
 
@@ -321,6 +379,8 @@ _FABRICATED = (
     _page("build(client, 'g', unknown_flag=True)"),
     _page("Widget(colour='red')"),
     _page("Panel(mode='fast')"),
+    _page("build(client)"),
+    _page("build(client, 'g', 'surplus')"),
 )
 
 
@@ -339,9 +399,25 @@ def test_a_true_page_is_silent(tmp_path):
         "w = Widget(iri='x', name='n', size=2)\n"
         "p = Panel(strict=True)\n"
         "flexible('n', anything=1)\n"
-        "build(client, 'g', batch_size=5)"
+        "variadic(1, 2, 3, 4)\n"
+        "build(client, 'g', batch_size=5)\n"
+        "build(graph_id='g', client=client)"
     )
     assert find_problems(_tree(tmp_path, page)) == []
+
+
+def test_an_elided_call_is_skipped(tmp_path):
+    """`handle.write_and_validate(...)` means "arguments omitted", not "none"."""
+    assert find_problems(_tree(tmp_path, _page("build(...)"))) == []
+
+
+def test_a_spread_call_is_not_judged_on_missing_arguments(tmp_path):
+    assert find_problems(_tree(tmp_path, _page("build(client, **opts)"))) == []
+
+
+def test_a_generated_constructor_is_not_held_to_arity(tmp_path):
+    """Which dataclass fields carry defaults is not read, so arity is not checked."""
+    assert find_problems(_tree(tmp_path, _page("Widget('x')"))) == []
 
 
 def test_an_ambiguous_name_is_skipped(tmp_path):
