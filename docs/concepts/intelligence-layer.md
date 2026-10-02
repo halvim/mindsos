@@ -25,7 +25,9 @@ A custom Executor (ADR-0163) over a priority heap keyed
 `(tier, -attention_score, submit_time)`. The four tiers — CRITICAL, FOREGROUND,
 BACKGROUND, DREAM — come from the L3 `TierEnum` (ADR-0169), imported downward.
 Within a tier, ordering is by descending `attention_score` (cold-start
-constants at v1; the L3 `scoring.attention_score` capacity lands Phase 47). The
+constants at v1; the L3 `scoring.attention_score` capacity has since shipped in
+`mindsos_capacity/builtins/orchestration_v0.py`, still returning a cold-start
+constant). The
 single mutation primitive is `write_priority(request_id, score=None, tier=None)`;
 `score=None` with a `tier` is the "top of new tier" elevate default. Ordering is
 queue-level; running-task preemption is cooperative — a higher-priority arrival
@@ -63,4 +65,4 @@ A periodic timer (ADR-0162 / ADR-0165) that, with the MM deep-copy primitive
 (`fork_dream_mm`), supports dream-as-live re-execution. At Phase 46 the timer
 mechanism and the deep-copy primitive ship; the dream driver it ticks — invoke
 dream bodies, drive live re-execution, fire ALS signals, consume replan-injection
-directives — lands at Phase 47/48.
+directives — has since shipped as `mindsos_intelligence/dream_cycle.py`.

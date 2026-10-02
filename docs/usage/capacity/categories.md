@@ -72,4 +72,4 @@ The 5-kind **CONSTRAINT** enforcement layer ships per ADRs
 
 * [Overview](overview.md) — `CapacityLayer` construction, registration, Local-wins.
 * [Data states](data-states.md) — shapes referenced by `inputs` / `outputs`.
-* [Building capacities](building.md) — substantive walkthrough lands at Phase 29 (deferred per PHASE_MAP doc-to-phase row).
+* [Building capacities](building.md) — the substantive walkthrough shipped.

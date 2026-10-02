@@ -38,7 +38,8 @@ duplicate ids; non-empty result ⇒ `IntegrityCheckError`.
 ## `MetagraphRepository`
 
 Programmatic-only at Phase 07 (P60 A) — no CLI verb consumes this;
-metagraph sync CLI lands Phase 08 per M14 + P12 D.
+the metagraph sync CLI shipped at Phase 08 per M14 + P12 D
+(`sync --metagraph M`, `mindsos_cli/commands/persistence.py`).
 
 ```python
 from mindsos_core.persistence import MetagraphRepository

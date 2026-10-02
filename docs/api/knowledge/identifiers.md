@@ -105,8 +105,9 @@ table (currently `ROLE_ONTOLOGY` only) get `kind=None` and `body=rest`.
 
 `capacity_snapshot_iri` bodies hold embedded colons (the inner
 `capacity_iri` per ADR-0066 plus the ISO8601 `taken_at`). The parser
-leaves the post-`snapshot:` body opaque; field-level decomposition is
-deferred to the first consumer (Phase 28+).
+leaves the post-`snapshot:` body opaque; field-level decomposition was never
+built - `parse_capacity_snapshot_iri` exists nowhere in the tree but this
+sentence and a docstring in `mindsos_knowledge/identifiers.py`.
 
 `is_version_qualified_iri(value) -> bool` is a no-raise probe over the
 same parser.

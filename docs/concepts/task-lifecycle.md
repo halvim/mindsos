@@ -103,4 +103,6 @@ Phase 47 runs over **placeholder v0 catalogs** (`planning_v0` / `phase1_v0` /
 `orchestration_v0`). ⚠ **They are deleted, not replaced in place, and by core, not
 by a subsystem** (`RULES.md` §8): ADR-0206 §8 removes all thirteen and makes the
 Phase-50 reference bundle the canonical fixture — CORE-C4R3 / C4R7 / C4R8. The Phase-5→completion **consolidation** hook is a stub seam here; the
-real MM-freeze + Episode write lands at Phase 48.
+real MM-freeze + Episode write has since shipped in
+`mindsos_intelligence/consolidation.py` (`consolidate_request` freezes the MM,
+stamps the terminal content and closes the Episode).
