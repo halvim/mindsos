@@ -126,7 +126,7 @@ from mindsos_intelligence.mm import MentalModel
 from mindsos_intelligence.orchestrator import Orchestrator
 
 mm = MentalModel(session_id="scenario-alice", user_id="alice")
-orch = Orchestrator(dispatcher, mm, task_scope="integration-c")
+orch = Orchestrator(dispatcher, mm, request_scope="integration-c")
 outcome = orch.run_lifecycle({"text": "the cat sat"}, request_id="T1")
 # outcome.status == "succeeded"; outcome.outcome == "task-pattern:v0:trivial"
 ```
