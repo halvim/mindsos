@@ -59,6 +59,16 @@ def _false_live(root: Path) -> list[str]:
     ]
 
 
+def adjudicated_sites(root: Path) -> list[tuple[str, int]]:
+    """Report mode (`tools/claim_inventory.py`, the emit contract): the
+    `file:line` of every reference this guard resolved in a live or index
+    doc, true or false. A line is emitted because it CARRIES a reference; the
+    rest of what that line says is not judged here. Distinct lines, so two
+    references on one line are one site."""
+    tree = inv.load_tree(root)
+    return sorted({(s.file, s.line) for s in inv.scan(tree) if inv.partition(s.file) in _DOMAIN})
+
+
 def test_the_premise_holds_so_the_guard_cannot_pass_vacuously():
     assert (_ROOT / "docs").is_dir(), "docs/ missing - the image did not copy it"
     assert inv.GUARDED_EXTRACTED["live-doc-references-resolve"] == _DOMAIN
@@ -113,3 +123,17 @@ def test_a_live_plan_is_inside_the_domain(tmp_path):
     (root / "confirmation_docs" / "CORE_RECONCILIATION_PLAN.md").write_text("See `docs/gone.md`.\n")
     bad = _false_live(root)
     assert len(bad) == 1 and "docs/gone.md" in bad[0]
+
+
+# -- report mode -----------------------------------------------------------
+
+def test_it_emits_the_lines_carrying_a_reference_and_only_those(tmp_path):
+    page = "Per ADR-0001 and ADR-0001 again.\nA plain line.\nSee `docs/gone.md`.\n"
+    assert adjudicated_sites(_tree(tmp_path, page)) == [("docs/usage/p.md", 1), ("docs/usage/p.md", 3)]
+
+
+def test_every_false_reference_is_an_emitted_site(tmp_path):
+    root = _tree(tmp_path, "Per ADR-0001.\nSee `docs/gone.md`.\nnothing\n")
+    emitted = {f"{f}:{n}" for f, n in adjudicated_sites(root)}
+    false = {b.split(": ", 1)[0] for b in _false_live(root)}
+    assert false == {"docs/usage/p.md:2"} and false <= emitted

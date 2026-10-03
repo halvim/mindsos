@@ -40,12 +40,16 @@ Usage:
   python3 tools/claim_inventory.py --check    # exit 1 while any row is not
                                               # GUARDED (the finish line)
   python3 tools/claim_inventory.py --list CLASS  # print the false sites
+  python3 tools/claim_inventory.py --emitted  # sites each guard reports
+                                              # adjudicating (imports the
+                                              # guards: needs the packages)
 """
 
 from __future__ import annotations
 
 import argparse
 import ast
+import importlib.util
 import json
 import re
 import subprocess
@@ -146,6 +150,72 @@ GUARDED: dict[str, tuple[str, str]] = {
 GUARDED_EXTRACTED: dict[str, frozenset[str]] = {
     "live-doc-references-resolve": frozenset({"live", "index"}),
 }
+
+# --------------------------------------------------------------------------
+# The report-mode contract -- a guard EMITS what it adjudicated.
+# --------------------------------------------------------------------------
+
+#: Owner ruling 2026-10-03 (b): the common unit of coverage is ``file:line``,
+#: emitted by the guards themselves. A guard exposes a module-level
+#:
+#:     adjudicated_sites(root: Path) -> list[tuple[str, int]]
+#:
+#: of (repo-relative file, 1-based line). It emits ONLY the lines where its
+#: claim class OCCURS and was judged -- never every line it scanned. A guard
+#: that reads every live line looking for a token adjudicates the lines that
+#: carry the token; emitting the rest would read as coverage of prose it never
+#: judged. A line that is emitted is a FLOOR: the guard judged its own class
+#: on that line, not every claim the line makes.
+#:
+#: Nothing is DECLARED here about which class or page a guard covers -- a
+#: declared mapping is prose about the tree at the one place where being wrong
+#: is invisible. The emitted sites are the evidence.
+EMITTER = "adjudicated_sites"
+
+#: Guards that do not emit yet. This set may only SHRINK:
+#: tests/architecture/test_claim_inventory.py holds its ceiling, and reddens
+#: when a guard here gains an emitter without leaving the set.
+EMITS_PENDING: frozenset[str] = frozenset({
+    "adr-status-index",
+    "role-set-count",
+    "capacity-api-retired-names",
+    "adr-test-citation",
+    "pending-ship-label",
+    "adr-sentinel-no-skip",
+    "retired-design-pointer",
+    "coordination-files-closed-set",
+    "llm-plan-scope",
+    "adr-0210-am4-record-shape",
+    "live-page-verified-at",
+    "doc-signature-agreement",
+    "adr-role-registration",
+    "core-names-no-consumer",
+})
+
+
+def load_guard(cls: str):
+    """Import the guard module registered for ``cls``, by path. The guard's
+    CODE always comes from this checkout; the tree it reports on is the
+    ``root`` handed to its emitter."""
+    path = ROOT / GUARDED[cls][0]
+    name = "claim_guard_" + re.sub(r"\W", "_", cls)
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def emitted(root: Path = ROOT) -> dict[str, list[tuple[str, int]]]:
+    """class -> the sites its guard reports adjudicating under ``root``.
+    Pending guards are absent, not empty: absence is not a claim of zero."""
+    out: dict[str, list[tuple[str, int]]] = {}
+    for cls in GUARDED:
+        if cls in EMITS_PENDING:
+            continue
+        out[cls] = sorted(set(getattr(load_guard(cls), EMITTER)(root)))
+    return out
+
 
 # --------------------------------------------------------------------------
 # Unguarded classes -- extracted and checked here.
@@ -525,7 +595,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--list", metavar="CLASS")
+    ap.add_argument("--emitted", action="store_true")
     a = ap.parse_args(argv)
+    if a.emitted:
+        got = emitted(a.root)
+        for cls, sites in got.items():
+            print(f"{cls:30} {len(sites):>6} lines in {len({f for f, _ in sites}):>4} files")
+        print(f"pending (no emitter yet): {len(EMITS_PENDING)} of {len(GUARDED)}")
+        return 0
     rep = build_report(a.root)
     if a.list:
         for s in rep["_sites"]:

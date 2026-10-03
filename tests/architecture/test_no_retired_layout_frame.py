@@ -48,17 +48,35 @@ def _load():
 inv = _load()
 
 
-def find_problems(root: Path) -> list[str]:
+def _judged(root: Path):
+    """Every line the guard JUDGES: (file, line number, text) of each live or
+    index line carrying a retired-layout token. The one walk both callers share, so what is
+    reported as adjudicated and what can be reported as a problem cannot
+    drift apart."""
     tree = inv.load_tree(root)
-    out = []
     for rel in tree.files:
         if not rel.endswith(".md") or inv.partition(rel) not in _DOMAIN:
             continue
         text = (root / rel).read_text(encoding="utf-8", errors="replace")
         for n, line in enumerate(text.splitlines(), 1):
-            if TOKENS.search(line) and not SAYS_RETIRED.search(line):
-                out.append(f"{rel}:{n}: {line.strip()[:120]}")
-    return out
+            if TOKENS.search(line):
+                yield rel, n, line
+
+
+def find_problems(root: Path) -> list[str]:
+    return [
+        f"{rel}:{n}: {line.strip()[:120]}"
+        for rel, n, line in _judged(root)
+        if not SAYS_RETIRED.search(line)
+    ]
+
+
+def adjudicated_sites(root: Path) -> list[tuple[str, int]]:
+    """Report mode (`tools/claim_inventory.py`, the emit contract): the
+    `file:line` sites this guard adjudicated -- the lines carrying a retired-layout token,
+    whichever way the judgement went. Every other live line was scanned, not
+    judged, and is NOT emitted: this guard says nothing about it."""
+    return [(rel, n) for rel, n, _ in _judged(root)]
 
 
 def test_the_premise_holds_so_the_guard_cannot_pass_vacuously():
@@ -105,3 +123,17 @@ def test_model_call_is_not_model_c(tmp_path):
 
 def test_a_dated_record_is_outside_the_domain(tmp_path):
     assert find_problems(_tree(tmp_path, "nothing here\n")) == []
+
+
+# -- report mode -----------------------------------------------------------
+
+def test_it_emits_the_judged_lines_and_only_those(tmp_path):
+    page = "The retired Model C layout kept ADRs elsewhere.\nA plain line.\nADRs live per Model C.\n"
+    assert adjudicated_sites(_tree(tmp_path, page)) == [("docs/usage/p.md", 1), ("docs/usage/p.md", 3)]
+
+
+def test_every_reported_problem_is_an_emitted_site(tmp_path):
+    root = _tree(tmp_path, "per Model C\nthe retired parent tree\nnothing\n")
+    emitted = {f"{f}:{n}" for f, n in adjudicated_sites(root)}
+    problems = {p.split(": ", 1)[0] for p in find_problems(root)}
+    assert problems == {"docs/usage/p.md:1"} and problems <= emitted
