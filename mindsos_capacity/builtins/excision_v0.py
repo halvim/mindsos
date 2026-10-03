@@ -19,6 +19,11 @@ answers, and a check that cannot run is a named failure, never a guess.
 A record keyed under v1 carries no ``key_schema_version`` stamp (R34) and the
 tree holds no v1 key function, so it is reported unverifiable rather than
 guessed at.
+
+**A re-derived value agrees** (R28, R41) when its canonical JSON equals the
+model's — exactly, a refusal's ``null`` included. No ruling admits a
+tolerance, and Python's ``==`` is not the test: it calls ``True`` and ``1``
+equal, and they are different conclusions.
 """
 
 from __future__ import annotations
@@ -40,8 +45,11 @@ from ..identifiers import CATEGORY_PREDICATE, capacity_iri, datastate_iri
 
 DS_SHOWN_CLAIM = datastate_iri("excision.shown_claim")
 DS_SHOWN_VERDICT = datastate_iri("excision.shown_verdict")
+DS_REDERIVED_CLAIM = datastate_iri("excision.rederived_claim")
+DS_REDERIVED_VERDICT = datastate_iri("excision.rederived_verdict")
 
 SHOWN_IS_WHAT_RAN_IRI = capacity_iri(CATEGORY_PREDICATE, "shown_is_what_ran")
+REDERIVED_AGREES_IRI = capacity_iri(CATEGORY_PREDICATE, "rederived_agrees")
 
 #: The four failures *shown* can name (plan R40). Nothing is shown in the
 #: place of what failed.
@@ -124,6 +132,38 @@ def build_shown_is_what_ran() -> Capacity:
     )
 
 
+def _canonical(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def judge_agreement(model_value: Any, rederived_value: Any) -> Dict[str, Any]:
+    """Whether a re-derived value IS the model's (plan R41). Pure; no store."""
+    return {"agrees": _canonical(model_value) == _canonical(rederived_value)}
+
+
+def _rederived_agrees(**kwargs: Any) -> Dict[str, Any]:
+    claim = kwargs[DS_REDERIVED_CLAIM]
+    return {
+        DS_REDERIVED_VERDICT: judge_agreement(
+            claim["model_value"], claim["rederived_value"]
+        )
+    }
+
+
+def build_rederived_agrees() -> Capacity:
+    return Capacity(
+        name="rederived_agrees",
+        category=CATEGORY_PREDICATE,
+        inputs=(DS_REDERIVED_CLAIM,),
+        outputs=(DS_REDERIVED_VERDICT,),
+        implementation=_rederived_agrees,
+        description=(
+            "Whether a value re-derived without the model is the model's: "
+            "exact equality of canonical JSON, a refusal's null included."
+        ),
+    )
+
+
 def _excision_datastates() -> List[DataState]:
     return [
         DataState(
@@ -132,7 +172,12 @@ def _excision_datastates() -> List[DataState]:
             description="Excision (plan I-12) DataState.",
             provenance_category=CATEGORY_PREDICATE,
         )
-        for name in ("excision.shown_claim", "excision.shown_verdict")
+        for name in (
+            "excision.shown_claim",
+            "excision.shown_verdict",
+            "excision.rederived_claim",
+            "excision.rederived_verdict",
+        )
     ]
 
 
@@ -147,17 +192,24 @@ def install_excision_v0(capacity_layer) -> None:
     index = capacity_layer._capacity_index.get(metagraph.metagraph_id, {})
     if SHOWN_IS_WHAT_RAN_IRI not in index:
         capacity_layer.register_capacity(build_shown_is_what_ran())
+    if REDERIVED_AGREES_IRI not in index:
+        capacity_layer.register_capacity(build_rederived_agrees())
 
 
 __all__ = [
+    "DS_REDERIVED_CLAIM",
+    "DS_REDERIVED_VERDICT",
     "DS_SHOWN_CLAIM",
     "DS_SHOWN_VERDICT",
+    "REDERIVED_AGREES_IRI",
     "SHOWN_IS_WHAT_RAN_IRI",
     "SHOWN_KEY_UNVERIFIABLE",
     "SHOWN_NOT_WHAT_RAN",
     "SHOWN_NO_EDITION_MATCHES",
     "SHOWN_SOURCE_NOT_FOUND",
+    "build_rederived_agrees",
     "build_shown_is_what_ran",
     "install_excision_v0",
+    "judge_agreement",
     "judge_shown",
 ]

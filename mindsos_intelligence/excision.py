@@ -4,8 +4,8 @@
 borrowed model can be **identified** as such, **shown** (including what was
 asked), and **re-run** without it. This module is the L4 half — it locates and
 dispatches; judging agreement is L3's (plan R28, R39). I-12 ships in four
-gates, one claim each (plan §6, 2026-09-29); gate 1 built IDENTIFY, gate 2
-builds SHOWN.
+gates, one claim each (plan §6, 2026-09-29): IDENTIFY, SHOWN, the substitute
+declaration (L3 only), and RE-RUN.
 
 **Identified** (R26, R38): an origin record whose ``origin_method`` is
 ``read_by_model``, in every mode — a replayed answer is still the model's —
@@ -29,6 +29,14 @@ the prompt words by the edition the record names in the ``prompts`` role. L3's
 NOTHING is shown in its place: the words only when the stored edition's digest
 matches what ran; the source text, schema, framing and model settings only
 when the recomputed key matches, since the key hashes all of them.
+
+**Re-run** (R19, R25, R37, R41, R42): every substitute paired with the reader
+that produced the conclusion is dispatched on the inputs that reader consumed,
+through a dispatcher with NO model bound — one with a client bound is refused,
+so "without the model" is mechanical. L3's ``predicate.rederived_agrees``
+judges each value against the model's. No substitute → not yet excisable.
+Nothing is written: the calls bypass the grounding executor, a substitute that
+declares ``writes`` is not run, and the report is returned, never stored.
 """
 
 from __future__ import annotations
@@ -37,8 +45,11 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 from mindsos_capacity.builtins.excision_v0 import (
+    DS_REDERIVED_CLAIM,
+    DS_REDERIVED_VERDICT,
     DS_SHOWN_CLAIM,
     DS_SHOWN_VERDICT,
+    REDERIVED_AGREES_IRI,
     SHOWN_IS_WHAT_RAN_IRI,
 )
 
@@ -53,6 +64,7 @@ from mindsos_capacity.identifiers import (
     EDGE_PRODUCES,
     NODE_TYPE_CAPACITY_INSTANCE,
     NODE_TYPE_DATASTATE_INSTANCE,
+    PROP_CAPACITY_INSTANCE_TYPE,
     PROP_DATASTATE_INSTANCE_TYPE,
 )
 from mindsos_knowledge.prompts import PromptEditionNotFoundError, prompt_text
@@ -129,6 +141,36 @@ def _only_one(items: List[Any]) -> Optional[Any]:
     return items[0] if len(items) == 1 else None
 
 
+def _producer_of(graph: Any, conclusion: ModelConclusion) -> Optional[Any]:
+    """The one CapacityInstance that produced the conclusion's origin record."""
+    return _only_one([
+        e.source for e in graph.edges.values()
+        if e.type_name == EDGE_PRODUCES
+        and e.target.node_id == conclusion.record_node_id
+        and e.source.type_name == NODE_TYPE_CAPACITY_INSTANCE
+    ])
+
+
+def _consumed(graph: Any, producer: Any, datastate: Any) -> Optional[Any]:
+    """The one instance of ``datastate`` that ``producer`` consumed."""
+    return _only_one([
+        e.source for e in graph.edges.values()
+        if e.type_name == EDGE_CONSUMES
+        and e.target.node_id == producer.node_id
+        and (e.source.properties or {}).get(PROP_DATASTATE_INSTANCE_TYPE) == datastate
+    ])
+
+
+def _produced(graph: Any, producer: Any, datastate: Any) -> Optional[Any]:
+    """The one instance of ``datastate`` that ``producer`` produced."""
+    return _only_one([
+        e.target for e in graph.edges.values()
+        if e.type_name == EDGE_PRODUCES
+        and e.source.node_id == producer.node_id
+        and (e.target.properties or {}).get(PROP_DATASTATE_INSTANCE_TYPE) == datastate
+    ])
+
+
 def source_text_of(graph: Any, conclusion: ModelConclusion) -> Optional[str]:
     """The text the reader consumed, or ``None`` unless the walk is unambiguous.
 
@@ -136,22 +178,10 @@ def source_text_of(graph: Any, conclusion: ModelConclusion) -> Optional[str]:
     record's ``source_datastate`` (R27; the premise guard is
     ``tests/llm_seam/test_a_reading_reaches_its_source_text.py``).
     """
-    edges = list(graph.edges.values())
-    producer = _only_one([
-        e.source for e in edges
-        if e.type_name == EDGE_PRODUCES
-        and e.target.node_id == conclusion.record_node_id
-        and e.source.type_name == NODE_TYPE_CAPACITY_INSTANCE
-    ])
+    producer = _producer_of(graph, conclusion)
     if producer is None:
         return None
-    wanted = conclusion.record.get("source_datastate")
-    source = _only_one([
-        e.source for e in edges
-        if e.type_name == EDGE_CONSUMES
-        and e.target.node_id == producer.node_id
-        and (e.source.properties or {}).get(PROP_DATASTATE_INSTANCE_TYPE) == wanted
-    ])
+    source = _consumed(graph, producer, conclusion.record.get("source_datastate"))
     return None if source is None else source.value
 
 
@@ -204,11 +234,127 @@ def show(
     )
 
 
+#: The failures *re-run* can name (plan R41). A failed re-run is never a
+#: disagreement: ``agrees`` stays ``None``.
+RERUN_NOT_IN_THE_GROUNDING_GRAPH = "conclusion_not_in_the_grounding_graph"
+RERUN_SUBSTITUTE_WRITES = "substitute_declares_writes"
+RERUN_VALUE_NOT_PRODUCED = "substitute_does_not_produce_the_value"
+RERUN_SUBSTITUTE_FAILED = "substitute_did_not_run"
+RERUN_CHECK_DID_NOT_RUN = "agreement_check_did_not_run"
+
+
+class ModelBoundError(RuntimeError):
+    """*Re-run* was handed a dispatcher with a model client bound (plan R41)."""
+
+
+@dataclass(frozen=True)
+class SubstituteRun:
+    """One substitute's re-derivation. ``agrees`` is ``None`` when it failed."""
+
+    substitute_iri: str
+    agrees: Optional[bool]
+    value: Any
+    failure: Optional[str]
+
+
+@dataclass(frozen=True)
+class RerunReport:
+    """One conclusion re-run without the model. ``excisable`` is ``False``
+    when no substitute is paired with its reader — not yet excisable (R25)."""
+
+    conclusion: ModelConclusion
+    reader_iri: Optional[str]
+    excisable: bool
+    failure: Optional[str]
+    runs: Tuple[SubstituteRun, ...]
+
+
+def _run_substitute(
+    substitute: Any, inputs: Mapping[str, Any], model_value: Any, value_datastate: str, dispatcher: Any
+) -> SubstituteRun:
+    def failed(reason: str) -> SubstituteRun:
+        return SubstituteRun(substitute.iri, None, None, reason)
+
+    if getattr(substitute, "writes", False):
+        return failed(RERUN_SUBSTITUTE_WRITES)
+    if value_datastate not in substitute.outputs:
+        return failed(RERUN_VALUE_NOT_PRODUCED)
+    result = dispatcher.dispatch(substitute.iri, inputs)
+    if not getattr(result, "success", False) or value_datastate not in result.outputs:
+        return failed(RERUN_SUBSTITUTE_FAILED)
+    value = result.outputs[value_datastate]
+    judged = dispatcher.dispatch(
+        REDERIVED_AGREES_IRI,
+        {DS_REDERIVED_CLAIM: {"model_value": model_value, "rederived_value": value}},
+    )
+    if not getattr(judged, "success", False):
+        return SubstituteRun(substitute.iri, None, value, RERUN_CHECK_DID_NOT_RUN)
+    return SubstituteRun(
+        substitute.iri, bool(judged.outputs[DS_REDERIVED_VERDICT]["agrees"]), value, None
+    )
+
+
+def rerun(
+    conclusion: ModelConclusion,
+    graphs: Iterable[Any],
+    *,
+    dispatcher: Any,
+) -> RerunReport:
+    """Re-derive ``conclusion`` without the model (R19, R25, R37, R41, R42).
+
+    ``dispatcher`` must have NO model client bound and reach L3's
+    ``predicate.rederived_agrees`` (``install_excision_v0``); its capacity
+    layer and session say which substitutes are in scope.
+    """
+    if dispatcher.llm is not None:
+        raise ModelBoundError(
+            "re-run needs a dispatcher with no model client bound: a re-run "
+            "that could reach the model is not a re-run without it (plan R41)."
+        )
+    graph = {g.graph_id: g for g in graphs}.get(conclusion.graph_id)
+    producer = None if graph is None else _producer_of(graph, conclusion)
+    if producer is None:
+        return RerunReport(conclusion, None, False, RERUN_NOT_IN_THE_GROUNDING_GRAPH, ())
+    reader_iri = (producer.properties or {}).get(PROP_CAPACITY_INSTANCE_TYPE)
+    substitutes = dispatcher.capacity_layer.substitutes_for(
+        reader_iri, session=dispatcher.session
+    )
+    if not substitutes:
+        return RerunReport(conclusion, reader_iri, False, None, ())
+    value_node = _produced(graph, producer, conclusion.value_datastate)
+    if value_node is None:
+        return RerunReport(conclusion, reader_iri, True, RERUN_NOT_IN_THE_GROUNDING_GRAPH, ())
+    runs: List[SubstituteRun] = []
+    for substitute in substitutes:
+        consumed = {ds: _consumed(graph, producer, ds) for ds in substitute.inputs}
+        if any(node is None for node in consumed.values()):
+            return RerunReport(conclusion, reader_iri, True, RERUN_NOT_IN_THE_GROUNDING_GRAPH, ())
+        runs.append(
+            _run_substitute(
+                substitute,
+                {ds: node.value for ds, node in consumed.items()},
+                value_node.value,
+                conclusion.value_datastate,
+                dispatcher,
+            )
+        )
+    return RerunReport(conclusion, reader_iri, True, None, tuple(runs))
+
+
 __all__ = [
+    "ModelBoundError",
     "ModelConclusion",
-    "SHOWN_CHECK_DID_NOT_RUN",
+    "RERUN_CHECK_DID_NOT_RUN",
+    "RERUN_NOT_IN_THE_GROUNDING_GRAPH",
+    "RERUN_SUBSTITUTE_FAILED",
+    "RERUN_SUBSTITUTE_WRITES",
+    "RERUN_VALUE_NOT_PRODUCED",
+    "RerunReport",
     "ShownReport",
+    "SHOWN_CHECK_DID_NOT_RUN",
+    "SubstituteRun",
     "identify",
+    "rerun",
     "show",
     "source_text_of",
 ]

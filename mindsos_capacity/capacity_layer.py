@@ -666,6 +666,33 @@ class CapacityLayer:
         """Return every registered declaration (Local + Global)."""
         return list(self._declarations.values())
 
+    def substitutes_for(
+        self, reader_iri: str, *, session: SessionArg = None
+    ) -> Tuple[_CapacityBase, ...]:
+        """Every substitute paired with ``reader_iri`` in this scope, by IRI.
+
+        ``mindsos_llm`` plan R37, R41. Scope-correct like
+        :meth:`resolve_declaration`: Global, plus the session owner's Local,
+        Local shadowing Global at a colliding IRI — never another user's
+        Local, which the flat ``_declarations`` mirror would hand over. Reads
+        the index's declarations as registered and builds no lazy capability:
+        ``substitute_for`` is declaration metadata.
+        """
+        merged: Dict[str, _CapacityBase] = {
+            iri: entry[2]
+            for iri, entry in self._capacity_index[self._global.metagraph_id].items()
+        }
+        target_uid = session.user_id if session is not None else None
+        local_mg = self._locals.get(target_uid) if target_uid is not None else None
+        if local_mg is not None:
+            for iri, entry in self._capacity_index[local_mg.metagraph_id].items():
+                merged[iri] = entry[2]
+        return tuple(
+            merged[iri]
+            for iri in sorted(merged)
+            if getattr(merged[iri], "substitute_for", None) == reader_iri
+        )
+
     # ── Phase 30 — invocation surface (ADR-0072) ──────────────────────
 
     def invoke(
