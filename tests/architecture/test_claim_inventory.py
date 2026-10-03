@@ -11,6 +11,10 @@ that miscounts moves the finish line silently, so it is tested like a guard:
 * its EXTRACTORS are run over a FABRICATED tree whose true and false claims
   are known, and must count them exactly;
 * its PARTITION -- the one definition of "live" -- is pinned by its corners;
+* its REPORT-MODE CONTRACT is held per guard: a registered guard EMITS the
+  `file:line` sites it adjudicated, or sits in `EMITS_PENDING`, a set that may
+  only shrink (owner ruling 2026-10-03: coverage is gathered from what the
+  guards emit, never from a declared guard->class mapping);
 * on the real tree it must see a non-empty domain for every unguarded class,
   so it cannot pass vacuously.
 
@@ -84,6 +88,66 @@ def test_every_doc_reading_architecture_guard_is_registered():
         f"doc guards missing from claim_inventory.GUARDED: {unregistered} - "
         "register the class each one holds"
     )
+
+
+# -- the report-mode contract ----------------------------------------------
+
+#: The pending set as committed with the contract. It may only shrink: a guard
+#: leaves it by gaining an emitter, and nothing may join it -- a NEW guard is
+#: born emitting. Lower this number in the ship that shrinks the set.
+_PENDING_CEILING = 14
+_DEFINES_EMITTER = re.compile(r"^def adjudicated_sites\(", re.MULTILINE)
+
+
+def test_the_emitter_name_is_the_one_this_file_looks_for():
+    assert inv.EMITTER == "adjudicated_sites"
+
+
+def test_pending_names_only_registered_guards():
+    stray = sorted(inv.EMITS_PENDING - set(inv.GUARDED))
+    assert not stray, f"EMITS_PENDING names classes that are not registered: {stray}"
+
+
+def test_the_pending_set_may_only_shrink():
+    assert len(inv.EMITS_PENDING) <= _PENDING_CEILING, (
+        f"{len(inv.EMITS_PENDING)} guards are pending an emitter, ceiling "
+        f"{_PENDING_CEILING} - a new guard must emit from its first commit"
+    )
+
+
+@pytest.mark.parametrize("cls", sorted(inv.EMITS_PENDING))
+def test_a_pending_guard_has_no_emitter_or_it_must_leave_the_set(cls):
+    src = (_ROOT / inv.GUARDED[cls][0]).read_text(encoding="utf-8")
+    assert not _DEFINES_EMITTER.search(src), (
+        f"{cls} defines adjudicated_sites but is still in EMITS_PENDING - "
+        "remove it from the set and lower _PENDING_CEILING"
+    )
+
+
+@pytest.mark.parametrize("cls", sorted(set(inv.GUARDED) - inv.EMITS_PENDING))
+def test_a_registered_guard_emits_the_sites_it_adjudicated(cls):
+    guard = inv.load_guard(cls)
+    emit = getattr(guard, inv.EMITTER, None)
+    assert callable(emit), (
+        f"{inv.GUARDED[cls][0]} has no {inv.EMITTER}(root) - the guard must "
+        "report the file:line sites it adjudicated"
+    )
+    sites = emit(_ROOT)
+    assert sites, f"{cls} emitted no site on the real tree - it adjudicates nothing, or its emitter is dead"
+    tracked = set(inv.load_tree(_ROOT).files)
+    lengths: dict[str, int] = {}
+    bad = []
+    for site in sites:
+        ok = isinstance(site, tuple) and len(site) == 2 and isinstance(site[0], str) and type(site[1]) is int
+        if ok and site[0] in tracked:
+            if site[0] not in lengths:
+                lengths[site[0]] = len((_ROOT / site[0]).read_text(encoding="utf-8", errors="replace").splitlines())
+            ok = 1 <= site[1] <= lengths[site[0]]
+        else:
+            ok = False
+        if not ok:
+            bad.append(site)
+    assert not bad, f"{cls} emitted {len(bad)} site(s) that are not a line of a tracked file: {bad[:5]}"
 
 
 # -- the one definition of "live" ------------------------------------------
