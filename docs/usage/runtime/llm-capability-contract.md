@@ -10,7 +10,7 @@ a consuming project can do with `pip install mindsos-runtime` and no change to
 core.
 
 ⚠⚠ **THIS TABLE IS NOT THE SCOPE OF THE WORK, and a 2026-09-05 ruling that made
-it so was superseded on 2026-09-13.** All eleven rows pass and the module is not
+it so was superseded on 2026-09-13.** All twelve rows pass, and that never said the module was
 finished, because *what a consumer can DO* is a different question from *what is
 left to build*. **The scope lives in `docs/plans/MINDSOS_LLM_PLAN.md` and nowhere
 else** (ADR-0210 amendment 3). A row here is a capability claim; it is not an
@@ -43,7 +43,7 @@ the words; a v1 set refuses a replay config rather than missing every read.
 carries the schema text, both digests, the framing and the key version, so a
 stored conclusion's `request_key` can be recomputed from the record plus its
 source text — including a refusal for an undecodable answer, which until then
-carried no model identity, mode or level at all. **I-12** adds **row 12**.
+carried no model identity, mode or level at all. **I-12** added **row 12** (`bf7bd43`): the excision capability lives in L3 and L4, not in `mindsos_llm`.
 
 ⚠ **`model_version` is a configured label, not a fact about the call** (R35): no
 provider is sent it, so unlike `model_id` and `temperature` it is stamped as
@@ -64,6 +64,7 @@ configured.
 | 9 | Trust that core proved **its own shipped adapter** against the contract it publishes — including, for that adapter only, that it sends exactly what the client handed it | `contract.verify_transport` against `adapters.anthropic.build_transport` | `tests/llm_seam/test_contract_against_the_shipped_adapter.py` (`test_the_shipped_adapter_sends_exactly_what_the_client_handed_it` reads the composed body on the DEFAULT opener) | **PASS** |
 | 10 | Route its calls through a **broker it runs**, so core never holds the credential at all — and run the broker core ships rather than writing one. The brokered transport takes the same call as the credentialled one (R29) | `broker`, `adapters.build_brokered_transport`, `mindsos_broker` | `tests/llm_seam/test_broker_contract.py`, `tests/llm_seam/test_reference_broker.py` | **PASS** |
 | 11 | Read **off any answer** which mode produced it and at which credential level, without knowing how the client was built — and never be handed a replayed answer that claims to be live | `live.LiveLLM`, `live.CapturingLLM`, `replay.RecordedLLM`, `client.MODES` | `tests/llm_seam/test_answer_provenance.py` | **PASS** — ADR-0210 decisions 5 and 6, amendment 2 |
+| 12 | **Excise the model from a stored conclusion**: identify every conclusion the model produced in a persisted run, be shown exactly what was asked — verified by content, with nothing shown in place of what fails — and re-run it without the model through a substitute the project declares, judged by exact agreement. No substitute: reported as not yet excisable | `mindsos_intelligence.excision` (`identify`, `show`, `rerun`), `mindsos_capacity.builtins.excision_v0.install_excision_v0`, `Capacity(substitute_for=…)` | `tests/llm_seam/test_excision_identifies.py`, `test_excision_shows.py`, `test_substitute_is_declared.py`, `test_excision_reruns.py` | **PASS** — ADR-0210 amendment 7; plan I-12 |
 
 ## Row 9, and how it was closed
 
@@ -134,7 +135,7 @@ can read **off the answer**.
 ## What this document does NOT claim
 
 - It says nothing about extraction **quality**. Every row is structural. A
-  model that returns a well-shaped wrong answer passes all eleven.
+  model that returns a well-shaped wrong answer passes all twelve.
 - ⚠ **Row 7 is two checks, and the pair still has an edge it does not
   claim.** `identity_is_stamped_above_the_transport` asks only whether the
   stamped fields are **present** on the consumer's answer;
