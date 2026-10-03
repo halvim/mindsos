@@ -264,7 +264,7 @@ sets are Local-only (`recorded-sets`, built `780ee1b`). **For current state read
 plan, `docs/plans/MINDSOS_LLM_PLAN.md` — as of 2026-09-21 the open items are I-17
 then I-12.** ⚠ **SUPERSEDED 2026-09-29: I-17 is DONE(933bc6d)** (PRs #242, #245,
 #246 — an answer and its origin record name what was asked by content; rulings
-R29–R35) and **only I-12 is open**, with owner ruling **R36** (accept and detect:
+R29–R35) and **only I-12 is open** (⚠ **SUPERSEDED 2026-10-03: I-12 is DONE(bf7bd43)**, PRs #248, #249, #251, #255, rulings R37–R43; no plan item is open), with owner ruling **R36** (accept and detect:
 core does not guarantee the words sent are the stored edition; I-12's *shown* reports
 a mismatch). ⚠ **I-12 was SPECIFIED 2026-09-21** (plan R19–R28, ADR-0210 am-7,
 squash `84b8053`): *re-run without the model* means RE-DERIVE with a producer that

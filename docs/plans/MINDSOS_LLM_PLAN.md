@@ -38,7 +38,7 @@ so it borrows a language model for that one job **until it can**.
 > **shown** (including what was asked), and **re-run without the borrowed model** once
 > MindsOS reads text itself.
 
-⚠ **THE CAPABILITY CONTRACT TABLE IS NOT THE SCOPE.** All eleven of its rows already
+⚠ **THE CAPABILITY CONTRACT TABLE IS NOT THE SCOPE.** All twelve of its rows (eleven until I-12, 2026-10-03)
 pass. It answers *"what can a consumer DO"*, which is a different question from *"what
 is left to build"*. The 2026-09-05 ruling that made it the completion criterion is
 **SUPERSEDED** by this file.
@@ -403,7 +403,7 @@ report, because the caller built the wrong dispatcher. Each of (b)–(d) leaves
 | I-9 | prompt bodies have a home: a conclusion stamped `prompt_iri` + `prompt_version` can show the text it names | core-llm-prompt-text-has-no-home | DONE(a1687f2) |
 | I-10 | a recorded set has a home in the graph: pointer + provenance in L2 Local, payloads stay a FILE | core-llm-recorded-set-l2-pointer-owner | DONE(780ee1b) |
 | I-11 | `mode` and `credential_level` reach the origin record. Required under §1, no longer deferred; prerequisite discharged at `fe0e19a`. ⚠ **NOT blocked by I-8** — measured: `origin_v0.py` imports only `..identifiers` and `..printable`, so it has no L2 dependency, and the change is two names in `PRODUCER_DECLARED` plus two lines in `comprehension_v0._record` reading fields the answer already carries beside the seven at lines 353-359 | core-llm-l3-may-declare-answer-mode-and-level | DONE(44889a9) |
-| I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Specified by R19–R28 and R36–R43**; ships in FOUR gates (§6, 2026-09-29) | core-llm-excision-capability | TODO |
+| I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Specified by R19–R28 and R36–R43**; ships in FOUR gates (§6, 2026-09-29) | core-llm-excision-capability | DONE(bf7bd43) |
 | I-13 | a transport's other keys survive into the answer | core-llm-transport-extra-keys-survive-into-the-answer | OUT(trigger: a consumer iterates an answer's keys, or a third-party transport's output is stored) |
 | I-14 | level 3 / hosted adapter, the old "slice 3" | core-llm-level-3-awaits-a-hosted-adapter | OUT(trigger: a consumer wants Bedrock, Vertex or Azure) |
 | I-15 | a capacity **declares** that it writes (R7): `writes=True` on the declaration, both invoke sites gate the `writeable` injection on it instead of on `outputs == ()`, and an AST guard reconciles the declaration against the body — the `context.llm` census shape. **Blocks I-10**, whose ruled declared output is unreachable without it | core-capacity-write-is-declared-not-inferred | DONE(8f1f7d4) |
@@ -412,7 +412,7 @@ report, because the caller built the wrong dispatcher. Each of (b)–(d) leaves
 
 **DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17.**
 
-**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12.**
+**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅.**
 I-9 and I-10 are blocked by I-8, the L2 record shape, and may ship in either order once
 it is ruled. ⚠ **I-9's dependency is the ROLE decision only** — measured: no prompt text crosses the
 transport seam, so the text is in no ANSWER. ⚠ **It does NOT follow that no run writes it**
@@ -730,3 +730,18 @@ amendment.)*
   contract row 12 lands in the closeout that follows the merge, because the sha does
   not exist before it. **Approval:** merge rule OWNER ("if you are sure b works, i
   agree"); R43 delegated (R38–R42's delegation).
+
+- **2026-10-03 (I-12 DONE)** — **Gate 4 merged as PR #255** (`bf7bd43`, tag
+  `llm-excision-reruns-confirmed`): re-run. Gated at `0e94790` on `a663b11`: 5455
+  passed / 5 skipped / 1 xpassed / 0 failed, collect 5460, ids +13/−0 read back by
+  name, all in `tests/llm_seam/test_excision_reruns.py`; mutations M10, M11, M12 one
+  red each and M13 two, each a one-line change, all as predicted. `main` gained PR
+  #254 (docs lane) before the merge: 0 `tests/`, 0 `mindsos_*`, 0 overlap, so no
+  re-gate. **Passes re-run: no ruling reversed.** **I-12 is `DONE(bf7bd43)`** in four
+  gates (PRs #248, #249, #251, #255); ADR-0210 am-7 is Accepted; the capability
+  contract has its row 12. **Every item on the DONE WHEN line is now DONE** — no
+  item is open; I-13 and I-14 stay `OUT` on their triggers. Contradiction sweep of
+  live docs: HANDOFF.md's *"only I-12 is open"* marked superseded; the contract's
+  *"all eleven rows pass and the module is not finished"* restated; no other tracked
+  doc says I-12 is open. **No call to a model provider was made at any gate** (OWNER
+  rule 2026-09-30): every test replays recorded answers. **Approval:** delegated.

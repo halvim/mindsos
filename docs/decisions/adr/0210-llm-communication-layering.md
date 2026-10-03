@@ -48,7 +48,7 @@ file owns the scope now.** *Original paragraph follows.*
 do with `pip install mindsos-runtime` and no change to core, each row naming the
 module that answers it and the guard that pins it. **ELEVEN rows as of
 2026-09-10** (nine at the ruling, a tenth with slice 4, an eleventh with
-amendment 2); all PASS. ⚠ The row count is stated here because it has been
+amendment 2); all PASS. **TWELVE as of 2026-10-03** (row 12, I-12). ⚠ The row count is stated here because it has been
 wrong in this file twice — quote the table, do not recall its size.
 
 ⚠ **That table's own status column was stale from birth and is fixed at
@@ -681,8 +681,8 @@ has no caller outside tests), so the file a pointer names is operator-produced t
 
 ## Amendment 7 — excision is re-derivation, and an answer names what was asked by content (2026-09-21)
 
-**Amendment status:** Proposed — I-17 and I-12 of `docs/plans/MINDSOS_LLM_PLAN.md`
-flip it to Accepted as each ships. The decision above stands. This transcribes plan
+**Amendment status:** Accepted (2026-10-03) — both items it waited on have shipped:
+I-17 `DONE(933bc6d)` and I-12 `DONE(bf7bd43)` of `docs/plans/MINDSOS_LLM_PLAN.md`. The decision above stands. This transcribes plan
 rulings **R19–R28** — and below them R29–R43 — (R19, R20, R21 and the I-17 split OWNER 2026-09-21; R22–R28 ruled
 against the plan's §1 end state, each citing its authority there).
 
@@ -778,5 +778,5 @@ client halves of 8 and 9 — **built, PR #245**; (3) the origin-record half of
 clauses 4, 8 and 9 — **built, I-17 gate 3**: the record carries `prompt_digest`,
 `extraction_schema` (text), `schema_digest`, `tool_name`, `tool_description`,
 `max_tokens` and `key_schema_version` (ADR-0207 am-2's freeze classifies them
-WRITTEN and STRUCTURAL by derivation), on the undecodable-answer refusal too. The amendment stays **Proposed** until I-12 ships,
-because clauses 1 and 5 are I-12's. I-12 ships in four gates (plan §6, 2026-09-29): identify (clause 14), *shown* (15, 16), the substitute declaration (13), re-run (15, 17, 18) — the last flips this amendment to Accepted. Gate 1 merged as PR #248 (`30e5d12`); gate 2 merged as PR #249 (`e342af2`) — clause 15's first capacity (`predicate.shown_is_what_ran`, category `predicate`) and clause 16; gate 3 merged as PR #251 (`c9169cd`) — clause 13 (`Capacity.substitute_for`, refused by `admission.declaration_refusals`, paired by `admission.substitute_problems`, which also requires the named capacity to consult the model); gate 4 builds clauses 17, 18 and 19 and clause 15's second capacity (`predicate.rederived_agrees`, `CapacityLayer.substitutes_for`, `excision.rerun`).
+WRITTEN and STRUCTURAL by derivation), on the undecodable-answer refusal too. The amendment stayed **Proposed** until I-12 shipped,
+because clauses 1 and 5 are I-12's; ⚠ **I-12 DONE(bf7bd43), 2026-10-03 — Accepted.** I-12 ships in four gates (plan §6, 2026-09-29): identify (clause 14), *shown* (15, 16), the substitute declaration (13), re-run (15, 17, 18) — the last flips this amendment to Accepted. Gate 1 merged as PR #248 (`30e5d12`); gate 2 merged as PR #249 (`e342af2`) — clause 15's first capacity (`predicate.shown_is_what_ran`, category `predicate`) and clause 16; gate 3 merged as PR #251 (`c9169cd`) — clause 13 (`Capacity.substitute_for`, refused by `admission.declaration_refusals`, paired by `admission.substitute_problems`, which also requires the named capacity to consult the model); gate 4 merged as PR #255 (`bf7bd43`) — clauses 17, 18 and 19 and clause 15's second capacity (`predicate.rederived_agrees`, `CapacityLayer.substitutes_for`, `excision.rerun`).
