@@ -10,8 +10,9 @@ model reader's conclusion without the model declares
   (``combination`` < ``comprehension``), so admitting it would silently swap
   it in for the reader in ordinary runs;
 * registration refuses a pairing that is not a substitute: an unregistered
-  reader, a reader that does not consult the model, a substitute that does,
-  different inputs, or outputs the reader does not produce.
+  reader, a reader that neither consults the model nor declares the input
+  carrying its answer (R44), a substitute that consults it, different inputs,
+  or outputs the reader does not produce.
 """
 
 from __future__ import annotations
@@ -145,5 +146,5 @@ def test_a_substitute_for_a_capacity_that_does_not_consult_the_model_is_refused(
     plain = _substitute(None, name="plain_days")
     layer.register_capacity(plain)
 
-    with pytest.raises(CapacityRegistrationError, match="does not consult the borrowed model"):
+    with pytest.raises(CapacityRegistrationError, match="neither consults the borrowed model"):
         layer.register_capacity(_substitute(plain.iri, name="rederive_plain"))

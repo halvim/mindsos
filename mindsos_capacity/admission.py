@@ -40,6 +40,7 @@ __all__ = [
     "arity_unroutable_inputs",
     "declaration_refusals",
     "substitute_problems",
+    "answer_input_problems",
 ]
 
 
@@ -156,22 +157,52 @@ def declaration_refusals(
     return refusals
 
 
+def answer_input_problems(declaration) -> Tuple[str, ...]:
+    """Why ``declaration``'s ``model_answer_inputs`` cannot stand — empty when it can.
+
+    ``mindsos_llm`` plan R44 (OWNER 2026-10-03): a capacity that is HANDED the
+    model's answer declares which of its own inputs carry it. The names must
+    be its own inputs, and a capacity that calls the model does not also
+    declare them (R44a). That a SUBSTITUTE declares none is the pairing
+    rule's (:func:`substitute_problems`, R44c).
+    """
+    answer_inputs = tuple(getattr(declaration, "model_answer_inputs", ()) or ())
+    if not answer_inputs:
+        return ()
+    problems = []
+    stray = tuple(ds for ds in answer_inputs if ds not in tuple(declaration.inputs))
+    if stray:
+        problems.append(f"model_answer_inputs names {stray!r}, which are not among its inputs {tuple(declaration.inputs)!r}")
+    if getattr(declaration, "consults_llm", False):
+        problems.append("it declares both consults_llm=True and model_answer_inputs; a reader calls the model or is handed its answer")
+    return tuple(problems)
+
+
 def substitute_problems(substitute, reader) -> Tuple[str, ...]:
     """Why ``substitute`` cannot stand in for ``reader`` — empty when it can.
 
-    ``mindsos_llm`` plan R37 (OWNER 2026-09-29): a substitute re-derives a
-    model reader's conclusion WITHOUT the model (R19, R25), from the same
-    source, so it must consume exactly the reader's inputs, produce only what
-    the reader produces, and not consult the model — and the capacity it
-    names must be one that does.
+    ``mindsos_llm`` plan R37 (OWNER 2026-09-29) as amended by R44 (OWNER
+    2026-10-03): a substitute re-derives a model reader's conclusion WITHOUT
+    the model (R19, R25), from the same source. A reader is a capacity that
+    consults the model, or one that declares which inputs carry the model's
+    answer. The substitute consumes exactly the reader's inputs MINUS those
+    answer inputs — at least one must remain, or there is no source to
+    re-derive from — produces only what the reader produces, and neither
+    consults the model nor declares answer inputs of its own.
     """
     problems = []
-    if not getattr(reader, "consults_llm", False):
-        problems.append("the capacity it names does not consult the borrowed model")
+    answer_inputs = tuple(getattr(reader, "model_answer_inputs", ()) or ())
+    if not getattr(reader, "consults_llm", False) and not answer_inputs:
+        problems.append("the capacity it names neither consults the borrowed model nor declares the inputs that carry its answer")
     if getattr(substitute, "consults_llm", False):
         problems.append("it declares consults_llm=True; a substitute runs WITHOUT the model")
-    if tuple(substitute.inputs) != tuple(reader.inputs):
-        problems.append(f"its inputs {tuple(substitute.inputs)!r} are not the reader's {tuple(reader.inputs)!r}")
+    if tuple(getattr(substitute, "model_answer_inputs", ()) or ()):
+        problems.append("it declares model_answer_inputs; a substitute is never handed the model's answer")
+    source_inputs = tuple(ds for ds in reader.inputs if ds not in answer_inputs)
+    if not source_inputs:
+        problems.append("the reader has no input left once the model's answer is withheld; there is no source to re-derive from")
+    elif tuple(substitute.inputs) != source_inputs:
+        problems.append(f"its inputs {tuple(substitute.inputs)!r} are not the reader's without the model's answer {source_inputs!r}")
     if not substitute.outputs or not set(substitute.outputs) <= set(reader.outputs):
         problems.append(f"its outputs {tuple(substitute.outputs)!r} are not a non-empty subset of the reader's {tuple(reader.outputs)!r}")
     return tuple(problems)
