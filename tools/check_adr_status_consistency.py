@@ -97,8 +97,11 @@ def _prose_status(md: str) -> str | None:
     return _canon(m.group(1)) if m else None
 
 
-def load_adr_statuses() -> tuple[dict[str, str], list[str]]:
+def load_adr_statuses(adr_dir: Path | None = None) -> tuple[dict[str, str], list[str]]:
     """Map ADR *filename* -> canonical status.
+
+    ``adr_dir`` defaults to this checkout's ADR folder. A guard's report mode
+    passes the folder of the tree it was asked to report on.
 
     Keyed by filename, not by the 4-digit number: ADR-0172 and ADR-0201
     each have amendment files sharing their number, and keying by number
@@ -106,7 +109,7 @@ def load_adr_statuses() -> tuple[dict[str, str], list[str]]:
     """
     out: dict[str, str] = {}
     problems: list[str] = []
-    for f in sorted(ADR_DIR.glob("[0-9][0-9][0-9][0-9]-*.md")):
+    for f in sorted((adr_dir or ADR_DIR).glob("[0-9][0-9][0-9][0-9]-*.md")):
         md = f.read_text(encoding="utf-8")
         fm = _frontmatter_status(md)          # YAML front-matter (may be None)
         pr = _prose_status(md)                # prose/bullet Status line

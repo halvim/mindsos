@@ -183,14 +183,11 @@ EMITTER = "adjudicated_sites"
 #: when a guard here gains an emitter without leaving the set.
 EMITS_PENDING: frozenset[str] = frozenset({
     "adr-status-index",
-    "adr-test-citation",
-    "pending-ship-label",
     "adr-sentinel-no-skip",
     "retired-design-pointer",
     "coordination-files-closed-set",
     "adr-0210-am4-record-shape",
     "live-page-verified-at",
-    "adr-role-registration",
     "core-names-no-consumer",
 })
 
