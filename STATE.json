@@ -620,9 +620,25 @@
       "what": "docs/concepts/role-graphs.md: (1) its tests/phase_13/test_dispatch.py citation describes a '14-entry exact-set check' while line 82 asserts set(_ROLE_SCHEMA_BUILDERS) == set(ALL_ROLES); (2) the growth chain stops at 18 while the role set is 19 (recorded-sets missing); (3) five shipped roles have no table row - installed-capacities, learned-pipelines, policies, prompts, recorded-sets.",
       "spec": "Found by READING, so no existing guard re-finds them: fix them under whichever mechanism claims those sites once the coverage gate lands (the role-count guard's phrase floor covers the counts; the citation and the missing rows need their own adjudication or an exclusion-list entry). Do not replace a stale count with a fresh one unless a guard holds it.",
       "consumer": "none - the doc-fix program."
+    },
+    {
+      "name": "core-llm-answer-fed-readers",
+      "status": "OPENED 2026-10-03 as plan item I-18, ruling R44 (OWNER, amends R37). NOTHING BUILT. MEASURED: mindsos_capacity/admission.py substitute_problems is the only place the tree ties 'model-produced' to consults_llm, while mindsos_intelligence/excision.py identifies by the origin record; and substitute_problems requires a substitute's inputs to equal the reader's, so for a capacity that is handed the model's answer the substitute would receive that answer. RULED: a capacity declares which inputs carry the model's answer (working name model_answer_inputs; not combinable with consults_llm=True); a substitute pairs with a capacity that consults the model or declares such inputs; its inputs are the reader's minus the answer; excision.rerun withholds the answer. Two gates: (1) declaration + pairing, (2) re-run withholds. Guard first, born red.",
+      "branch_to_open": "now - I-18 is the only open item",
+      "spec": "docs/plans/MINDSOS_LLM_PLAN.md item I-18, ruling R44; ADR-0210 amendment 8",
+      "consumer": "a consuming project that makes one model call and mints several conclusions from the answer"
     }
   ],
   "recent": [
+    {
+      "kind": "docs",
+      "name": "R44 recorded (owner: a reader calls the model or declares the answer it is handed) - plan item I-18 opened",
+      "sha": "pending (this PR, branch docs/i18-ruling)",
+      "tag": "none",
+      "gate": "none - markdown + STATE only, no mindsos_* module, no tests/ file; CI runs the plan-scope and ADR-status guards",
+      "what": "Owner ruling 2026-10-03 recorded as plan R44 (amends R37), new item I-18 TODO on the DONE WHEN line, ADR-0210 amendment 8 (Proposed), pending_designs core-llm-answer-fed-readers. Sweep: the plan's and HANDOFF.md's same-day 'no item is open' marked superseded in place. Nothing built.",
+      "docs": "docs/plans/MINDSOS_LLM_PLAN.md; docs/decisions/adr/0210-llm-communication-layering.md; HANDOFF.md; STATE.json"
+    },
     {
       "kind": "docs",
       "name": "claim-coverage gate, slice 1 - a registered guard EMITS the file:line sites it adjudicated (3 of 17 emit)",
