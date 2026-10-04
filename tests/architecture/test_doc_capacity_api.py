@@ -78,9 +78,9 @@ _VERDICT_AS_PIPELINE = (
 _DEAD_KWARG = re.compile(r"\btask_id\b")
 
 
-def _live_docs():
-    for dirpath, dirnames, filenames in os.walk(_DOCS):
-        rel = os.path.relpath(dirpath, _DOCS)
+def _live_docs(docs=_DOCS):
+    for dirpath, dirnames, filenames in os.walk(docs):
+        rel = os.path.relpath(dirpath, docs)
         top = rel.split(os.sep)[0]
         if top in _SKIP_DIRS:
             dirnames[:] = []
@@ -99,16 +99,36 @@ def _package_dirs():
     ]
 
 
-def _offenders(patterns):
-    hits = set()
-    for path in _live_docs():
+def _hits(patterns, root=_ROOT):
+    """Every live line carrying one of ``patterns``: (file, line number, text).
+    The one walk both callers share."""
+    root = os.fspath(root)
+    for path in _live_docs(os.path.join(root, "docs")):
+        rel = os.path.relpath(path, root).replace(os.sep, "/")
         text = io.open(path, encoding="utf-8").read()
         for lineno, line in enumerate(text.splitlines(), 1):
-            for pattern in patterns:
-                if pattern.search(line):
-                    hits.add("%s:%d  %s" % (os.path.relpath(path, _ROOT), lineno, line.strip()))
-                    break
-    return hits
+            if any(pattern.search(line) for pattern in patterns):
+                yield rel, lineno, line
+
+
+def _offenders(patterns):
+    return {"%s:%d  %s" % (rel, lineno, line.strip()) for rel, lineno, line in _hits(patterns)}
+
+
+#: Everything the three doc tests below look for, in one tuple for report mode.
+_ALL_RETIRED = (
+    (re.compile(r"\b%s\b" % _RETIRED_EXCEPTION),) + _VERDICT_AS_PIPELINE + (_DEAD_KWARG,)
+)
+
+
+def adjudicated_sites(root):
+    """Report mode (`tools/claim_inventory.py`, the emit contract): the
+    `file:line` of every live line carrying a retired CORE-C3R1 name. This
+    guard only FORBIDS, so every site it has is an offender and on a clean
+    tree the report is EMPTY: it adjudicates no line there and adds nothing to
+    a page's coverage. That is the honest report, not a dead emitter -- the
+    corners at the foot of this file prove it fires."""
+    return sorted({(rel, lineno) for rel, lineno, _ in _hits(_ALL_RETIRED, root)})
 
 
 def test_the_docs_tree_is_present_so_this_guard_can_fail():
@@ -198,3 +218,37 @@ def test_no_live_doc_uses_the_dead_task_id_keyword():
         "these pages pass or document task_id; the live keyword is "
         "request_id:\n  " + "\n  ".join(sorted(offenders))
     )
+
+
+# -- report mode -----------------------------------------------------------
+
+def _tree(root, live):
+    os.makedirs(os.path.join(str(root), "docs", "usage"))
+    io.open(os.path.join(str(root), "docs", "usage", "p.md"), "w", encoding="utf-8").write(live)
+    os.makedirs(os.path.join(str(root), "docs", "changelog"))
+    io.open(os.path.join(str(root), "docs", "changelog", "old.md"), "w", encoding="utf-8").write(
+        "It raised PipelineNotFoundError then.\n"
+    )
+    return root
+
+
+def test_it_emits_the_lines_carrying_a_retired_name_and_only_those(tmp_path):
+    page = (
+        "except PipelineNotFoundError:\n"
+        "A plain line about find_pipeline(start_datastate=x).\n"
+        "pipeline = find_pipeline(view)\n"
+        "layer.invoke(cap, task_id=t)\n"
+    )
+    assert adjudicated_sites(_tree(tmp_path, page)) == [
+        ("docs/usage/p.md", 1), ("docs/usage/p.md", 3), ("docs/usage/p.md", 4)]
+
+
+def test_a_clean_page_emits_nothing(tmp_path):
+    assert adjudicated_sites(_tree(tmp_path, "verdict = find_pipeline(view)\nrequest_id=r\n")) == []
+
+
+def test_the_real_tree_report_is_exactly_the_offenders(tmp_path):
+    """Forbid-only: what is emitted and what is an offender are the same set."""
+    emitted = {"%s:%d" % site for site in adjudicated_sites(_ROOT)}
+    offenders = {o.split("  ", 1)[0] for o in _offenders(_ALL_RETIRED)}
+    assert emitted == offenders

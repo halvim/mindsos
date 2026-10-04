@@ -79,9 +79,9 @@ def _claimed_counts(line):
     return [int(m.group(1)) for pattern in _CLAIMS for m in pattern.finditer(line)]
 
 
-def _live_docs():
-    for dirpath, dirnames, filenames in os.walk(_DOCS):
-        rel = os.path.relpath(dirpath, _DOCS)
+def _live_docs(docs=_DOCS):
+    for dirpath, dirnames, filenames in os.walk(docs):
+        rel = os.path.relpath(dirpath, docs)
         top = rel.split(os.sep)[0]
         if top in _SKIP_DIRS:
             dirnames[:] = []
@@ -92,6 +92,26 @@ def _live_docs():
                 yield os.path.join(dirpath, name)
 
 
+def _claim_sites(root=_ROOT):
+    """Every line the guard JUDGES: (file, line number, claimed size) for each
+    closed-set size a live page publishes. The one walk both callers share."""
+    root = os.fspath(root)
+    for path in _live_docs(os.path.join(root, "docs")):
+        rel = os.path.relpath(path, root).replace(os.sep, "/")
+        text = io.open(path, encoding="utf-8").read()
+        for lineno, line in enumerate(text.splitlines(), 1):
+            for n in _claimed_counts(line):
+                yield rel, lineno, n
+
+
+def adjudicated_sites(root):
+    """Report mode (`tools/claim_inventory.py`, the emit contract): the
+    `file:line` of every published role-set size this guard compared with
+    `len(ALL_ROLES)`, right or wrong. A line with no such phrasing was scanned,
+    not judged, and is NOT emitted."""
+    return sorted({(rel, lineno) for rel, lineno, _ in _claim_sites(root)})
+
+
 def test_the_docs_tree_is_present_so_this_guard_can_fail():
     """Abort rather than pass vacuously if docs/ was not copied."""
     assert os.path.isdir(_DOCS), f"no docs tree at {_DOCS}"
@@ -100,16 +120,11 @@ def test_the_docs_tree_is_present_so_this_guard_can_fail():
 
 def test_no_live_doc_publishes_a_role_count_that_is_not_the_code_s():
     expected = len(ALL_ROLES)
-    offenders = set()
-    for path in _live_docs():
-        text = io.open(path, encoding="utf-8").read()
-        for lineno, line in enumerate(text.splitlines(), 1):
-            for n in _claimed_counts(line):
-                if n != expected:
-                    offenders.add(
-                        "%s:%d claims %d, ALL_ROLES is %d"
-                        % (os.path.relpath(path, _ROOT), lineno, n, expected)
-                    )
+    offenders = {
+        "%s:%d claims %d, ALL_ROLES is %d" % (rel, lineno, n, expected)
+        for rel, lineno, n in _claim_sites(_ROOT)
+        if n != expected
+    }
     assert not offenders, (
         "these pages publish a role-set size the code does not have:\n  "
         + "\n  ".join(sorted(offenders))
@@ -149,3 +164,31 @@ def test_every_phrasing_is_caught_on_a_fabricated_line():
 def test_subset_and_category_lines_are_not_claims():
     for line in _NOT_CLAIMS:
         assert _claimed_counts(line) == [], line
+
+
+# -- report mode -----------------------------------------------------------
+
+def _tree(root, live):
+    os.makedirs(os.path.join(str(root), "docs", "usage"))
+    io.open(os.path.join(str(root), "docs", "usage", "p.md"), "w", encoding="utf-8").write(live)
+    os.makedirs(os.path.join(str(root), "docs", "decisions"))
+    io.open(os.path.join(str(root), "docs", "decisions", "old.md"), "w", encoding="utf-8").write(
+        "There were **5 named role-graphs** then.\n"
+    )
+    return root
+
+
+def test_it_emits_the_judged_lines_and_only_those(tmp_path):
+    page = (
+        "There are **99 named role-graphs** here.\n"
+        "A plain line.\n"
+        "# mg has all 6 named roles ensured; 3 populated by importers.\n"
+        "It ships 3 role-schema builders.\n"
+    )
+    assert adjudicated_sites(_tree(tmp_path, page)) == [("docs/usage/p.md", 1), ("docs/usage/p.md", 4)]
+
+
+def test_every_wrong_count_is_an_emitted_site(tmp_path):
+    root = _tree(tmp_path, "nothing\nThere are **%d named role-graphs** here.\n" % (len(ALL_ROLES) + 1))
+    wrong = [(rel, n) for rel, n, size in _claim_sites(root) if size != len(ALL_ROLES)]
+    assert wrong == [("docs/usage/p.md", 2)] and set(wrong) <= set(adjudicated_sites(root))
