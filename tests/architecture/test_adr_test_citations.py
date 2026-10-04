@@ -44,8 +44,10 @@ import re
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
-_ADR_DIR = _ROOT / "docs" / "decisions" / "adr"
-_GAP_PLAN = _ROOT / "docs" / "plans" / "ADR_TEST_GAPS.md"
+_ADR_REL = "docs/decisions/adr"
+_GAP_REL = "docs/plans/ADR_TEST_GAPS.md"
+_ADR_DIR = _ROOT / _ADR_REL
+_GAP_PLAN = _ROOT / _GAP_REL
 _CHECKER = _ROOT / "tools" / "check_adr_status_consistency.py"
 _RESOLVE_ROOTS = ("tests", "tests_server", "tools")
 
@@ -93,50 +95,81 @@ def _split_ack_section(text: str) -> tuple[list[tuple[int, str]], list[tuple[int
     return outside, inside
 
 
-def find_problems(adrs: dict[str, tuple[str, str]], existing: set[str], gap_ids: set[str]) -> list[str]:
-    """Pure predicate. ``adrs`` maps filename -> (canonical status, text)."""
-    problems: list[str] = []
+def _judged(adrs: dict[str, tuple[str, str]]):
+    """Every line the guard JUDGES: (filename, line number, text, inside the
+    acknowledgement?) for each line of an Accepted ADR that carries a test-path
+    citation. Per ADR the acknowledgement's lines come first, because a
+    citation outside it is judged against what the acknowledgement lists. The
+    one walk both callers share, so what is reported as adjudicated and what
+    can be reported as a problem cannot drift apart. A line with no citation
+    is scanned, never judged."""
     for name, (status, text) in sorted(adrs.items()):
         if status != "accepted":
             continue
         outside, inside = _split_ack_section(text)
-        listed: dict[str, int] = {}
         for n, line in inside:
-            b = _BULLET.match(line)
-            if b:
-                path, rest = b.group(1), b.group(2)
-                listed[path] = n
-                if path in existing:
-                    problems.append(f"{name}:{n} lists `{path}` as not in this repo, but it exists")
-                kinds = sum(bool(p.search(rest)) for p in (_COVERED, _RETIRED, _FILED))
-                if kinds != 1:
-                    problems.append(f"{name}:{n} `{path}` needs exactly one disposition, has {kinds}")
-                for gid in _FILED.findall(rest):
-                    if gid not in gap_ids:
-                        problems.append(f"{name}:{n} `{path}` filed as {gid}, not a row of {_GAP_PLAN.name}")
-                pointers = _CITE.findall(rest)
-                for p in pointers:
-                    if p not in existing:
-                        problems.append(f"{name}:{n} `{path}` points at `{p}`, which does not exist")
-                if _COVERED.search(rest) and not pointers:
-                    problems.append(f"{name}:{n} `{path}` is 'covered by' nothing")
-            else:
-                for p in _CITE.findall(line):
-                    if p not in existing:
-                        problems.append(f"{name}:{n} `{p}` inside the acknowledgement is not a bullet")
+            if _CITE.search(line):
+                yield name, n, line, True
         for n, line in outside:
+            if _CITE.search(line):
+                yield name, n, line, False
+
+
+def find_problems(adrs: dict[str, tuple[str, str]], existing: set[str], gap_ids: set[str]) -> list[str]:
+    """Pure predicate. ``adrs`` maps filename -> (canonical status, text)."""
+    problems: list[str] = []
+    listed_by: dict[str, dict[str, int]] = {}
+    for name, n, line, inside in _judged(adrs):
+        listed = listed_by.setdefault(name, {})
+        if not inside:
             for p in _CITE.findall(line):
                 if p not in existing and p not in listed:
                     problems.append(f"{name}:{n} cites `{p}`, which does not exist and is not acknowledged")
+            continue
+        b = _BULLET.match(line)
+        if b:
+            path, rest = b.group(1), b.group(2)
+            listed[path] = n
+            if path in existing:
+                problems.append(f"{name}:{n} lists `{path}` as not in this repo, but it exists")
+            kinds = sum(bool(p.search(rest)) for p in (_COVERED, _RETIRED, _FILED))
+            if kinds != 1:
+                problems.append(f"{name}:{n} `{path}` needs exactly one disposition, has {kinds}")
+            for gid in _FILED.findall(rest):
+                if gid not in gap_ids:
+                    problems.append(f"{name}:{n} `{path}` filed as {gid}, not a row of {_GAP_PLAN.name}")
+            pointers = _CITE.findall(rest)
+            for p in pointers:
+                if p not in existing:
+                    problems.append(f"{name}:{n} `{path}` points at `{p}`, which does not exist")
+            if _COVERED.search(rest) and not pointers:
+                problems.append(f"{name}:{n} `{path}` is 'covered by' nothing")
+        else:
+            for p in _CITE.findall(line):
+                if p not in existing:
+                    problems.append(f"{name}:{n} `{p}` inside the acknowledgement is not a bullet")
     return problems
 
 
-def _real_inputs():
+def _real_inputs(root: Path = _ROOT):
     mod = _load_checker()
-    statuses, _ = mod.load_adr_statuses()
-    adrs = {n: (s, (_ADR_DIR / n).read_text(encoding="utf-8")) for n, s in statuses.items()}
-    gap_ids = set(_GAP_ROW.findall(_GAP_PLAN.read_text(encoding="utf-8"))) if _GAP_PLAN.is_file() else set()
-    return adrs, _existing_files(_ROOT), gap_ids
+    adr_dir = root / _ADR_REL
+    statuses, _ = mod.load_adr_statuses(adr_dir)
+    adrs = {n: (s, (adr_dir / n).read_text(encoding="utf-8")) for n, s in statuses.items()}
+    gap_plan = root / _GAP_REL
+    gap_ids = set(_GAP_ROW.findall(gap_plan.read_text(encoding="utf-8"))) if gap_plan.is_file() else set()
+    return adrs, _existing_files(root), gap_ids
+
+
+def adjudicated_sites(root: Path) -> list[tuple[str, int]]:
+    """Report mode (`tools/claim_inventory.py`, the emit contract): the
+    `file:line` sites this guard adjudicated -- each line of an Accepted ADR
+    that carries a test-path citation, whichever way the judgement went (it
+    resolves, it is acknowledged, or it is a problem). A line with no citation
+    was scanned, not judged, and is NOT emitted. An ADR is a dated record, so
+    these sites add nothing to any live page's coverage."""
+    adrs, _, _ = _real_inputs(root)
+    return sorted({(f"{_ADR_REL}/{name}", n) for name, n, _, _ in _judged(adrs)})
 
 
 def test_the_premise_holds_so_the_guard_cannot_pass_vacuously():
@@ -182,3 +215,34 @@ def test_fabricated_adrs_exercise_every_corner():
     assert any("not acknowledged" in p for p in _run(misspelt))
     stale = _ADR.format(s="accepted") + "\n## Amendment — " + ACK_PHRASE + "\n\n- `tests/live/test_y.py` — retired: x.\n"
     assert any("but it exists" in p for p in _run(stale))
+
+
+# -- report mode -----------------------------------------------------------
+
+def _tree(root: Path, status: str = "accepted", ack: str = "") -> Path:
+    (root / _ADR_REL).mkdir(parents=True)
+    (root / _ADR_REL / "0999-x.md").write_text(_ADR.format(s=status) + "No citation here.\n" + ack, encoding="utf-8")
+    (root / "tests" / "live").mkdir(parents=True)
+    (root / "tests" / "live" / "test_y.py").write_text("", encoding="utf-8")
+    (root / "tests" / "live" / "test_z.py").write_text("", encoding="utf-8")
+    return root
+
+
+def test_it_emits_the_citing_lines_and_only_those(tmp_path):
+    """Line 6 cites (one dead path, one live). Line 7 cites nothing. Line 11
+    is the acknowledgement's bullet. Headings and blank lines carry no
+    citation: scanned, never judged."""
+    root = _tree(tmp_path, ack=_ACK.format(d="covered by `tests/live/test_z.py`."))
+    assert adjudicated_sites(root) == [(f"{_ADR_REL}/0999-x.md", 6), (f"{_ADR_REL}/0999-x.md", 11)]
+    assert find_problems(*_real_inputs(root)) == []
+
+
+def test_an_adr_that_is_not_accepted_emits_nothing(tmp_path):
+    assert adjudicated_sites(_tree(tmp_path, status="deferred")) == []
+
+
+def test_every_reported_problem_is_an_emitted_site(tmp_path):
+    root = _tree(tmp_path)
+    emitted = {f"{f}:{n}" for f, n in adjudicated_sites(root)}
+    problems = {f"{_ADR_REL}/" + p.split(" ", 1)[0] for p in find_problems(*_real_inputs(root))}
+    assert problems == {f"{_ADR_REL}/0999-x.md:6"} and problems <= emitted

@@ -95,7 +95,7 @@ def test_every_doc_reading_architecture_guard_is_registered():
 #: The pending set as committed with the contract. It may only shrink: a guard
 #: leaves it by gaining an emitter, and nothing may join it -- a NEW guard is
 #: born emitting. Lower this number in the ship that shrinks the set.
-_PENDING_CEILING = 10
+_PENDING_CEILING = 7
 _DEFINES_EMITTER = re.compile(r"^def adjudicated_sites\(", re.MULTILINE)
 _CALLS_EMITTER = re.compile(r"(?<!def )\badjudicated_sites\(")
 

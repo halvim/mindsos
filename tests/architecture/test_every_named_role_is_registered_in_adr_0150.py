@@ -38,7 +38,8 @@ import pytest
 from mindsos_knowledge.identifiers import ALL_ROLES
 
 _ROOT = Path(__file__).resolve().parents[2]
-_ADR = _ROOT / "docs" / "decisions" / "adr" / "0150-l2-knowledge-lifecycle.md"
+_ADR_REL = "docs/decisions/adr/0150-l2-knowledge-lifecycle.md"
+_ADR = _ROOT / _ADR_REL
 
 #: The headings whose blocks REGISTER a role. ``## Decision`` holds the
 #: original closed-set table; ``## Revisions`` holds every amendment that
@@ -47,8 +48,9 @@ _ADR = _ROOT / "docs" / "decisions" / "adr" / "0150-l2-knowledge-lifecycle.md"
 _REGISTRY_HEADINGS: Tuple[str, ...] = ("## Decision", "## Revisions")
 
 
-def _blocks(text: str) -> Dict[str, List[str]]:
-    """Map each registry heading to its lines, up to the next ``## `` heading.
+def _blocks(text: str) -> Dict[str, List[Tuple[int, str]]]:
+    """Map each registry heading to its (1-based line number, line) pairs, up
+    to the next ``## `` heading.
 
     Raises:
         AssertionError: a registry heading is absent. Returning an empty
@@ -66,26 +68,45 @@ def _blocks(text: str) -> Dict[str, List[str]]:
         f"register it checks. Headings found: {sorted(starts)!r}."
     )
     ordered = sorted(starts.values())
-    out: Dict[str, List[str]] = {}
+    out: Dict[str, List[Tuple[int, str]]] = {}
     for heading in _REGISTRY_HEADINGS:
         start = starts[heading]
         after = [i for i in ordered if i > start]
         end = after[0] if after else len(lines)
-        out[heading] = lines[start:end]
+        out[heading] = [(i + 1, lines[i]) for i in range(start, end)]
+    return out
+
+
+def _registering_lines(text: str, roles: Sequence[str]) -> List[Tuple[int, str]]:
+    """Every line the guard JUDGES: (line number, role) for each line of a
+    registry block that names a role backticked. The one walk both callers
+    share, so what is reported as adjudicated and what counts as registered
+    cannot drift apart. A registry-block line naming no role, and every line
+    outside the two blocks, is scanned and never judged."""
+    out: List[Tuple[int, str]] = []
+    for pairs in _blocks(text).values():
+        for n, line in pairs:
+            for role in roles:
+                if f"`{role}`" in line:
+                    out.append((n, role))
     return out
 
 
 def unregistered_roles(text: str, roles: Sequence[str]) -> List[str]:
     """The roles ``text`` does not register, sorted. Empty is the passing state."""
-    blocks = _blocks(text)
-    registered = set()
-    for role in roles:
-        token = f"`{role}`"
-        for lines in blocks.values():
-            if any(token in line for line in lines):
-                registered.add(role)
-                break
+    registered = {role for _, role in _registering_lines(text, roles)}
     return sorted(set(roles) - registered)
+
+
+def adjudicated_sites(root: Path) -> List[Tuple[str, int]]:
+    """Report mode (`tools/claim_inventory.py`, the emit contract): the
+    `file:line` sites this guard adjudicated -- the registry-block lines of
+    ADR-0150 that register a role of ``ALL_ROLES``. An UNREGISTERED role has
+    no line, so it is reported as a problem and emits nothing: there is no
+    site to point at. An ADR is a dated record, so these sites add nothing to
+    any live page's coverage."""
+    text = (root / _ADR_REL).read_text(encoding="utf-8")
+    return sorted({(_ADR_REL, n) for n, _ in _registering_lines(text, sorted(ALL_ROLES))})
 
 
 def test_every_named_role_is_registered_in_adr_0150():
@@ -132,3 +153,30 @@ def test_a_register_with_no_revisions_heading_fails_rather_than_passing():
     text = "## Decision\n\n| Global | `ontology` |\n\n## Source\n\nnothing\n"
     with pytest.raises(AssertionError, match="no \\['## Revisions'\\] heading"):
         unregistered_roles(text, ["ontology"])
+
+
+# -- report mode -----------------------------------------------------------
+
+def test_it_emits_the_registering_lines_and_only_those(tmp_path):
+    """Line 3 names a role outside the registry blocks; line 6 is a registry
+    line naming none; lines 7 and 12 register one each."""
+    role_a, role_b = sorted(ALL_ROLES)[:2]
+    text = (
+        "## Context\n\n"
+        f"Planning reads `{role_a}` here, which registers nothing.\n"
+        "\n## Decision\n\n"
+        f"| Global | `{role_a}` |\n"
+        "\n## Revisions\n\n"
+        "### amendment-1 - adds a role\n"
+        f"Registers `{role_b}`.\n"
+    )
+    adr = tmp_path / _ADR_REL
+    adr.parent.mkdir(parents=True)
+    adr.write_text(text, encoding="utf-8")
+    assert adjudicated_sites(tmp_path) == [(_ADR_REL, 7), (_ADR_REL, 12)]
+
+
+def test_a_role_with_an_emitted_line_is_never_reported_unregistered():
+    text = "## Decision\n\n| Global | `ontology` |\n\n## Revisions\n\nnothing\n"
+    assert [r for _, r in _registering_lines(text, ["ontology", "policies"])] == ["ontology"]
+    assert unregistered_roles(text, ["ontology", "policies"]) == ["policies"]
