@@ -95,8 +95,9 @@ def test_every_doc_reading_architecture_guard_is_registered():
 #: The pending set as committed with the contract. It may only shrink: a guard
 #: leaves it by gaining an emitter, and nothing may join it -- a NEW guard is
 #: born emitting. Lower this number in the ship that shrinks the set.
-_PENDING_CEILING = 14
+_PENDING_CEILING = 10
 _DEFINES_EMITTER = re.compile(r"^def adjudicated_sites\(", re.MULTILINE)
+_CALLS_EMITTER = re.compile(r"(?<!def )\badjudicated_sites\(")
 
 
 def test_the_emitter_name_is_the_one_this_file_looks_for():
@@ -132,8 +133,16 @@ def test_a_registered_guard_emits_the_sites_it_adjudicated(cls):
         f"{inv.GUARDED[cls][0]} has no {inv.EMITTER}(root) - the guard must "
         "report the file:line sites it adjudicated"
     )
+    # An empty report on the real tree is legitimate (a guard that forbids a
+    # retired name has nothing to judge on a clean tree), so liveness is held
+    # where it can be: the guard's own file must exercise the emitter.
+    src = (_ROOT / inv.GUARDED[cls][0]).read_text(encoding="utf-8")
+    assert _CALLS_EMITTER.search(src), (
+        f"{inv.GUARDED[cls][0]} defines {inv.EMITTER} but never calls it - add a "
+        "fabricated corner proving it emits the judged lines and only those"
+    )
     sites = emit(_ROOT)
-    assert sites, f"{cls} emitted no site on the real tree - it adjudicates nothing, or its emitter is dead"
+    assert isinstance(sites, list), f"{cls} emitter returned {type(sites).__name__}, not a list"
     tracked = set(inv.load_tree(_ROOT).files)
     lengths: dict[str, int] = {}
     bad = []
