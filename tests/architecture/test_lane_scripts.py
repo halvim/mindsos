@@ -95,7 +95,7 @@ def test_gate_always_answers_and_never_hides_a_stale_worktree():
     assert re.search(r'if \[\[ -d "\$\{wt\}" \]\]; then', text), (
         "gate.sh does not verify the worktree actually went away"
     )
-    assert re.search(r'out="\$\{HOME\}/gate-\$\{slug\}-\$\{stamp\}', text), (
+    assert re.search(r'out="\$\{logdir\}/gate-\$\{slug\}-\$\{stamp\}', text), (
         "gate.sh's log name does not carry the run - a re-run at the same sha "
         "would overwrite the earlier run's evidence"
     )
