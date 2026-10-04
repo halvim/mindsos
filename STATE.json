@@ -642,7 +642,7 @@
     {
       "kind": "docs",
       "name": "R44 recorded (owner: a reader calls the model or declares the answer it is handed) - plan item I-18 opened",
-      "sha": "pending (this PR, branch docs/i18-ruling)",
+      "sha": "c226f5e (PR #258)",
       "tag": "none",
       "gate": "none - markdown + STATE only, no mindsos_* module, no tests/ file; CI runs the plan-scope and ADR-status guards",
       "what": "Owner ruling 2026-10-03 recorded as plan R44 (amends R37), new item I-18 TODO on the DONE WHEN line, ADR-0210 amendment 8 (Proposed), pending_designs core-llm-answer-fed-readers. Sweep: the plan's and HANDOFF.md's same-day 'no item is open' marked superseded in place. Nothing built.",
