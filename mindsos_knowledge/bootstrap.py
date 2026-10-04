@@ -389,6 +389,65 @@ def ensure_global_role_graph(
     return graph
 
 
+def _role_schema_for_scope(role: str, scope: str):
+    """The schema ``role`` carries in ``scope``, or ``None`` if it has none there.
+
+    One dispatch for both realms, so a graph minted by ``ensure_*`` and a graph
+    re-attached after a load get the same schema. ``None`` means "leave the
+    graph alone": an unknown role, a role that does not live in ``scope``, or a
+    ``dataset:`` role whose schema is not registered in this process.
+    """
+    if role.startswith(_ALIGNMENT_PREFIX):
+        return build_alignment_schema(strict=False) if scope == "global" else None
+    if role == ROLE_LEARNED_PARAMETERS:
+        return build_learned_parameters_schema(strict=False, scope=scope)
+    named = _GLOBAL_NAMED_ROLES if scope == "global" else _LOCAL_NAMED_ROLES
+    if role in named:
+        return schema_for_role(role, strict=False)
+    if scope == "local" and role.startswith(DATASET_ROLE_PREFIX):
+        try:
+            return schema_for_role(role, strict=False)
+        except UnknownRoleError:
+            return None
+    return None
+
+
+def reattach_role_schemas(metagraph: Metagraph, scope: str) -> list[str]:
+    """Give every schema-less role-graph of a LOADED metagraph its schema back.
+
+    The loader does not restore graph schemas, so a role-graph read back from
+    the store carries ``schema is None``: no type check, and no mutation
+    discipline (``KnowledgeLayer.discipline_for`` answers ``None`` and the
+    write handle skips the check). This restores both.
+
+    Only fills a missing schema; a graph that already has one is untouched.
+    Existing elements are not re-validated - the schema governs writes from
+    here on.
+
+    Args:
+        metagraph: A Global or Local metagraph, typically just loaded.
+        scope: ``"global"`` or ``"local"`` - which realm ``metagraph`` is.
+
+    Returns:
+        The roles whose graph received a schema, sorted.
+    """
+    if scope not in ("global", "local"):
+        raise ValueError(f"scope must be 'global' or 'local', got {scope!r}")
+    attached: list[str] = []
+    for graph in metagraph.graphs.values():
+        if graph.schema is not None:
+            continue
+        role = getattr(graph, "role", None)
+        if not role:
+            continue
+        schema = _role_schema_for_scope(role, scope)
+        if schema is None:
+            continue
+        graph.schema = schema
+        attached.append(role)
+    return sorted(attached)
+
+
 def ensure_local_role_graph(
     metagraph: Metagraph,
     role: str,

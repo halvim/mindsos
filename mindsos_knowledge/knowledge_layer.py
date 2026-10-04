@@ -53,6 +53,7 @@ from .bootstrap import (
     ensure_global_role_graph,
     ensure_local_role_graph,
     kahn_sort,
+    reattach_role_schemas,
 )
 
 if TYPE_CHECKING:
@@ -152,6 +153,11 @@ class KnowledgeLayer:
         passing well-formed metagraphs; KL stores the reference as-is.
         """
         self._global: Optional[Metagraph] = global_metagraph
+        # A Global handed in here is normally one just loaded from the store,
+        # and the loader does not restore graph schemas. Re-attach them so the
+        # type check and the mutation discipline hold after a restart.
+        if global_metagraph is not None:
+            reattach_role_schemas(global_metagraph, "global")
         self._locals: Dict[str, Metagraph] = {}
         # Phase 14 PB-11 — UUID4Strategy default; lazy local_metagraph
         # uses this for the Local Metagraph's own id_strategy.
@@ -513,6 +519,10 @@ class KnowledgeLayer:
         # the passed metagraph is missing them. Idempotent: if they
         # already exist (from a server reading them out of FalkorDB),
         # ensure_local_role_graph returns the existing references.
+        # The loader does not restore graph schemas: re-attach them first, so
+        # a loaded role-graph is checked exactly like a freshly minted one.
+        reattach_role_schemas(metagraph, "local")
+        self._discipline_cache.pop(id(metagraph), None)
         for role in kahn_sort(_LOCAL_NAMED_ROLES, _APPLIES_AFTER_BY_ROLE):
             ensure_local_role_graph(metagraph, role)
         self._locals[user_id] = metagraph
