@@ -151,6 +151,11 @@ class KnowledgeLayer:
         **permissive** about ``global_metagraph``. No name check, no
         role-graph completeness check. The server is responsible for
         passing well-formed metagraphs; KL stores the reference as-is.
+
+        One thing is done to it: a role-graph that arrives with no schema
+        (the loader does not restore schemas) gets its role schema
+        re-attached, so the type check and the mutation discipline of
+        ADR-0153 §2 hold after a restart. The object identity is unchanged.
         """
         self._global: Optional[Metagraph] = global_metagraph
         # A Global handed in here is normally one just loaded from the store,
@@ -498,6 +503,10 @@ class KnowledgeLayer:
         alignment pair-graphs once Local alignment is a future
         amendment); KL stores the reference as-is. ADR-0042's
         "exact object" contract is honoured.
+
+        A role-graph that arrives with no schema (the loader does not
+        restore schemas) gets its role schema re-attached before storage,
+        so a loaded Local is checked exactly like a freshly minted one.
 
         Args:
             user_id: The user identifier.
