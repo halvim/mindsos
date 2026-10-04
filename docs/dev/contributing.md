@@ -83,12 +83,14 @@ failure rather than rolling on.
 |---|---|---|
 | `tools/slice_start.sh <name>` | Mac | branch `feat/<name>` + worktree `../_MindsOS-<name>` off `origin/main` |
 | `tools/slice_commit.sh "<msg>" <path>...` | Mac | stage those paths (never `-A`), commit with attribution, push; `--pr <title> <body-file>` also opens the PR |
-| `tools/gate.sh <sha> [pytest-path...]` | Linux | throwaway worktree at that sha, run, print counts + failing names + the inventory line, remove the worktree |
+| `tools/gate.sh <sha> [--mutate <file> <sed-expr>] [pytest-path...]` | Linux | throwaway worktree at that sha, run, print counts + failing names + the inventory line, remove the worktree on every exit path. With `--mutate`, apply one designated mutation to the worktree first and refuse unless exactly one line changed. The log is kept in `~/gate-logs/` (capped, newest kept) and ends with the run's `ANSWER` line |
 | `tools/slice_land.sh <pr> [--merge]` | Mac | watch CI and report; with `--merge`, squash-merge, clean up, pull, and print the branch-tip↔squash diff line count |
 
 `slice_land.sh` stops at green unless `--merge` is passed, and refuses to merge
 on anything but a SUCCESS rollup. `tests/architecture/test_lane_scripts.py`
-pins the properties that make them safe to paste.
+pins the properties that make them safe to paste, and
+`tests/architecture/test_gate_cleans_up.py` runs `gate.sh` itself to hold its
+cleanup on every exit path.
 
 ## Host setup (Linux box, Phase 02+)
 
