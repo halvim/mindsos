@@ -251,10 +251,10 @@ def _check_call(tree: Tree, rel: str, line: int, node: ast.Call, out: list[str])
         ))
 
 
-def find_problems(root: Path) -> list[str]:
-    tree = Tree(root)
+def _nodes(root: Path):
+    """Every ``def`` and call in a python fence of a live or index page:
+    (file, line number, node). The one walk both callers share."""
     inventory = inv.load_tree(root)
-    out: list[str] = []
     for rel in inventory.files:
         if not rel.endswith(".md") or inv.partition(rel) not in _DOMAIN:
             continue
@@ -269,11 +269,40 @@ def find_problems(root: Path) -> list[str]:
                 continue
             start = text[: match.start()].count("\n") + 2
             for node in ast.walk(parsed):
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    _check_def(tree, rel, start + node.lineno - 1, node, out)
-                elif isinstance(node, ast.Call):
-                    _check_call(tree, rel, start + node.lineno - 1, node, out)
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Call)):
+                    yield rel, start + node.lineno - 1, node
+
+
+def find_problems(root: Path) -> list[str]:
+    tree = Tree(root)
+    out: list[str] = []
+    for rel, line, node in _nodes(root):
+        if isinstance(node, ast.Call):
+            _check_call(tree, rel, line, node, out)
+        else:
+            _check_def(tree, rel, line, node, out)
     return sorted(set(out))
+
+
+def _is_judged(tree: Tree, node: ast.AST) -> bool:
+    """Whether ``_check_def`` / ``_check_call`` reach a verdict on ``node``
+    instead of returning early: the name resolves to exactly one definition
+    and, for a call, its arguments are not elided with ``...``."""
+    if isinstance(node, ast.Call):
+        func = node.func
+        name = func.id if isinstance(func, ast.Name) else (func.attr if isinstance(func, ast.Attribute) else None)
+        return name is not None and not _elided(node) and tree.unique(name) is not None
+    return tree.unique(node.name) is not None
+
+
+def adjudicated_sites(root: Path) -> list[tuple[str, int]]:
+    """Report mode (`tools/claim_inventory.py`, the emit contract): the
+    `file:line` of every documented signature or call this guard compared with
+    the tree. An unknown or ambiguous name, an elided call and a fence that
+    does not parse were read, not judged, and are NOT emitted."""
+    root = Path(root)
+    tree = Tree(root)
+    return sorted({(rel, line) for rel, line, node in _nodes(root) if _is_judged(tree, node)})
 
 
 # -- the guard --------------------------------------------------------------
@@ -437,3 +466,26 @@ def test_a_dated_record_is_outside_the_domain(tmp_path):
 def test_a_non_python_fence_is_not_read_as_python(tmp_path):
     page = "# page\n\n```cypher\nWidget(colour='red')\n```\n"
     assert find_problems(_tree(tmp_path, page)) == []
+
+
+# -- report mode -----------------------------------------------------------
+
+def test_it_emits_the_judged_lines_and_only_those(tmp_path):
+    page = _page(
+        "build(client, 'g')\n"
+        "absent_helper(whatever=1)\n"
+        "build(...)\n"
+        "panel.render('fast')\n"
+        "Widget(colour='red')"
+    )
+    assert adjudicated_sites(_tree(tmp_path, page)) == [("docs/usage/p.md", 4), ("docs/usage/p.md", 8)]
+
+
+def test_every_reported_problem_is_an_emitted_site(tmp_path):
+    for i, page in enumerate(_FABRICATED):
+        root = tmp_path / f"e{i}"
+        root.mkdir()
+        _tree(root, page)
+        emitted = {f"{f}:{n}" for f, n in adjudicated_sites(root)}
+        problems = {":".join(p.split(":", 2)[:2]) for p in find_problems(root)}
+        assert problems and problems <= emitted, f"corner {i}: {problems - emitted}"

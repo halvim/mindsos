@@ -107,6 +107,34 @@ def scope_claims(docs: dict[str, str]) -> list[str]:
     )
 
 
+def adjudicated_sites(root) -> list[tuple[str, int]]:
+    """Report mode (`tools/claim_inventory.py`, the emit contract): the
+    `file:line` sites this guard adjudicated -- in the plan, every item row and
+    the DONE WHEN line; in any other doc that mentions mindsos_llm, each line
+    carrying a scope phrasing (judged: the document must point at the plan).
+    Every other line was read, not judged, and is NOT emitted."""
+    root = Path(root)
+    out: set[tuple[str, int]] = set()
+    plan = root / PLAN_PATH
+    if plan.is_file():
+        text = plan.read_text(encoding="utf-8")
+        for n, line in enumerate(text.splitlines(), 1):
+            if _ROW.match(line):
+                out.add((PLAN_PATH, n))
+        m = _DONE_WHEN.search(text)
+        if m:
+            out.add((PLAN_PATH, text.count("\n", 0, m.start()) + 1))
+    for p in sorted((root / "docs").rglob("*.md")):
+        rel = p.relative_to(root).as_posix()
+        body = p.read_text(encoding="utf-8", errors="ignore")
+        if rel == PLAN_PATH or "mindsos_llm" not in body:
+            continue
+        for n, line in enumerate(body.splitlines(), 1):
+            if any(phrase in line.lower() for phrase in SCOPE_PHRASINGS):
+                out.add((rel, n))
+    return sorted(out)
+
+
 def _plan_text() -> str:
     return (_repo_root() / PLAN_PATH).read_text(encoding="utf-8")
 
@@ -193,3 +221,29 @@ def test_the_checker_flags_a_fabricated_scope_claim():
             "the definition of done for mindsos_llm lives in " + PLAN_PATH
         ),
     }) == [], "a document that POINTS at the plan is correct and must pass"
+
+
+# -- report mode -----------------------------------------------------------
+
+def test_it_emits_the_judged_lines_and_only_those(tmp_path):
+    (tmp_path / "docs" / "plans").mkdir(parents=True)
+    (tmp_path / PLAN_PATH).write_text(
+        "# plan\n"
+        "| I-1 | a thing | filed-as | DONE(abc1234) |\n"
+        "prose about the plan\n"
+        "**DONE WHEN: I-1.**\n"
+    )
+    (tmp_path / "docs" / "other.md").write_text(
+        "mindsos_llm notes\nThe definition of done lives in the plan.\nplain\n"
+    )
+    (tmp_path / "docs" / "unrelated.md").write_text("The definition of done for something else.\n")
+    assert adjudicated_sites(tmp_path) == [
+        ("docs/other.md", 2), (PLAN_PATH, 2), (PLAN_PATH, 4)]
+
+
+def test_every_scope_claim_is_in_an_emitted_file(tmp_path):
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "other.md").write_text("the definition of done for mindsos_llm is here\n")
+    docs = {"docs/other.md": (tmp_path / "docs" / "other.md").read_text()}
+    assert scope_claims(docs) == ["docs/other.md"]
+    assert {f for f, _ in adjudicated_sites(tmp_path)} == {"docs/other.md"}
