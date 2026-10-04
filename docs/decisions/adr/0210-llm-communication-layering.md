@@ -780,3 +780,30 @@ clauses 4, 8 and 9 — **built, I-17 gate 3**: the record carries `prompt_digest
 `max_tokens` and `key_schema_version` (ADR-0207 am-2's freeze classifies them
 WRITTEN and STRUCTURAL by derivation), on the undecodable-answer refusal too. The amendment stayed **Proposed** until I-12 shipped,
 because clauses 1 and 5 are I-12's; ⚠ **I-12 DONE(bf7bd43), 2026-10-03 — Accepted.** I-12 ships in four gates (plan §6, 2026-09-29): identify (clause 14), *shown* (15, 16), the substitute declaration (13), re-run (15, 17, 18) — the last flips this amendment to Accepted. Gate 1 merged as PR #248 (`30e5d12`); gate 2 merged as PR #249 (`e342af2`) — clause 15's first capacity (`predicate.shown_is_what_ran`, category `predicate`) and clause 16; gate 3 merged as PR #251 (`c9169cd`) — clause 13 (`Capacity.substitute_for`, refused by `admission.declaration_refusals`, paired by `admission.substitute_problems`, which also requires the named capacity to consult the model); gate 4 merged as PR #255 (`bf7bd43`) — clauses 17, 18 and 19 and clause 15's second capacity (`predicate.rederived_agrees`, `CapacityLayer.substitutes_for`, `excision.rerun`).
+
+## Amendment 8 — a reader calls the model or declares the answer it is handed (2026-10-03)
+
+**Amendment status:** Proposed — I-18 of `docs/plans/MINDSOS_LLM_PLAN.md` flips it to
+Accepted when it ships. The decision above stands. This transcribes plan ruling
+**R44** (OWNER 2026-10-03), which amends R37 and therefore amendment 7 clause 13.
+
+**WHAT CHANGES.** Amendment 7 clause 13 says registration refuses a substitute unless
+it has the reader's inputs, and I-12 gate 3 added that the capacity it names must
+itself consult the model. Both are SUPERSEDED for an answer-fed reader:
+
+1. A capacity may declare which of its own inputs carry the model's answer. It may
+   not also declare `consults_llm=True`.
+2. A substitute may be paired with a capacity that consults the model or that
+   declares such inputs.
+3. The substitute's inputs are the reader's minus the declared answer inputs; it
+   declares neither.
+4. Re-run withholds the answer: the substitute is dispatched on the source only
+   (amends clause 17).
+
+**WHY.** Identification reads the origin record; pairing read the capacity. A
+conclusion minted from a handed-over answer satisfied the first and could never
+satisfy the second, and a substitute given the reader's exact inputs would have been
+handed the model's answer.
+
+**Build state.** Nothing built. Two gates (plan §6, 2026-10-03).
+

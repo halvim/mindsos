@@ -387,6 +387,26 @@ run. (e) A dispatcher with a client bound raises `ModelBoundError` — an error,
 report, because the caller built the wrong dispatcher. Each of (b)–(d) leaves
 `agrees` empty: a failed re-run is never a disagreement (R41). Authority: R37, R41.
 
+**R44 — a reader is a capacity that CALLS the model, or one that DECLARES the input
+that carries the model's answer (OWNER 2026-10-03; amends R37).** ⚠ **R37's pairing
+check — *"the capacity a substitute names must itself consult the model"*, added at
+I-12 gate 3 — and its *"same inputs"* rule are SUPERSEDED for an answer-fed reader.**
+Measured 2026-10-03: `admission.substitute_problems` is the only place the tree ties
+"model-produced" to `consults_llm`, while identification (R38) reads the origin
+record. A capacity that is handed one model answer and mints `read_by_model`
+conclusions from it is identified and can never be paired; and because a substitute
+must take the reader's exact inputs, it would be handed the model's answer — a re-run
+that is not without the model. **Ruled:** (a) a capacity may declare which of its own
+inputs carry the model's answer (working name `model_answer_inputs`); it may not also
+declare `consults_llm=True`; (b) a substitute may be paired with a capacity that
+consults the model OR declares such inputs; (c) the substitute's inputs are the
+reader's MINUS the declared answer inputs, and it declares neither; (d) re-run
+withholds the answer — the substitute is dispatched on the source only. **Rejected:**
+dropping the reader-side check alone (the substitute could still consume the answer,
+so "without the model" would be a claim nothing checks); requiring every model call
+inside a consulting capacity (the substitute would have to reproduce the whole answer
+exactly). Authority: §1 (*re-run without it*), R19, R26, R41.
+
 ## 3. THE ITEM LIST
 
 | id | item | filed as | state |
@@ -409,10 +429,11 @@ report, because the caller built the wrong dispatcher. Each of (b)–(d) leaves
 | I-15 | a capacity **declares** that it writes (R7): `writes=True` on the declaration, both invoke sites gate the `writeable` injection on it instead of on `outputs == ()`, and an AST guard reconciles the declaration against the body — the `context.llm` census shape. **Blocks I-10**, whose ruled declared output is unreachable without it | core-capacity-write-is-declared-not-inferred | DONE(8f1f7d4) |
 | I-17 | an answer names what was asked BY CONTENT (R20–R23): the client resolves and hands the transport everything the model receives, stamps the prompt and schema digests, `request_key` v2, and both digests plus the schema text reach the origin record. **Blocks I-12**, whose *shown* is unverifiable without it | core-llm-answer-names-what-was-asked | DONE(933bc6d) |
 | I-16 | I-9's writer gets its installer. Measured 2026-09-17: nothing in the tree calls `build_write_prompt_edition`, and `install_learn_parameter_capacities` is the precedent it skipped — so a `DONE` item is a declaration L4 cannot route to | core-llm-prompt-edition-has-no-installer | DONE(6e6514e) |
+| I-18 | an answer-fed reader can be paired and re-run: a capacity that is HANDED the model's answer and mints `read_by_model` conclusions from it declares which input carries the answer; a substitute takes the reader's inputs minus that answer, and re-run withholds it. **Specified by R44** (amends R37); two gates (§6, 2026-10-03) | core-llm-answer-fed-readers | TODO |
 
-**DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17.**
+**DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17, I-18.**
 
-**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅.**
+**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅ → I-18.**
 I-9 and I-10 are blocked by I-8, the L2 record shape, and may ship in either order once
 it is ruled. ⚠ **I-9's dependency is the ROLE decision only** — measured: no prompt text crosses the
 transport seam, so the text is in no ANSWER. ⚠ **It does NOT follow that no run writes it**
@@ -745,3 +766,16 @@ amendment.)*
   *"all eleven rows pass and the module is not finished"* restated; no other tracked
   doc says I-12 is open. **No call to a model provider was made at any gate** (OWNER
   rule 2026-09-30): every test replays recorded answers. **Approval:** delegated.
+
+- **2026-10-03 (I-18 opened, R44)** — ⚠ **the line above, *"no item is open"*, is
+  SUPERSEDED the same day.** A consuming project's shape — one model call, several
+  conclusions minted from the answer by capacities that do not call the model —
+  showed that I-12's pairing rule cannot pair such a conclusion (measured: one site,
+  `admission.substitute_problems`), and that the same-inputs rule would hand a
+  substitute the model's answer. **OWNER ruling R44** (§2): a reader calls the model
+  or declares the input that carries its answer. **New item I-18**, on the DONE WHEN
+  line, `TODO`, nothing built. **Two gates, one claim each:** (1) the declaration and
+  the pairing rule at registration; (2) re-run withholds the answer. Guard first,
+  born red: a core test builds the shape and shows a substitute is refused today.
+  The contract's row 12 wording and ADR-0210 amendment 8 (Proposed) follow I-18.
+  **Approval:** OWNER, "approved A".
