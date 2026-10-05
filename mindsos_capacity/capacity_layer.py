@@ -71,7 +71,7 @@ from .bootstrap import (
     ensure_datastate_graph,
 )
 from .capabilities import CAN_WRITE_GLOBAL
-from .admission import substitute_problems
+from .admission import answer_input_problems, substitute_problems
 from .capacity import InvocationResult, Monitor, _CapacityBase
 from .datastate import DataState, validate_datastate
 from .printable import printable_phrase_problem
@@ -450,12 +450,18 @@ class CapacityLayer:
         return node
 
     def _validate_substitute(self, declaration: _CapacityBase, *, session: SessionArg) -> None:
-        """``mindsos_llm`` plan R37 (OWNER 2026-09-29) — a substitute is PAIRED.
+        """``mindsos_llm`` plan R37 and R44 — a substitute is PAIRED, and a
+        declared answer input is the capacity's own.
 
         The reader it names must be registered in the registering scope
         (Local, else Global — ``resolve_declaration``), and the pair must
         pass :func:`~mindsos_capacity.admission.substitute_problems`.
         """
+        declared = answer_input_problems(declaration)
+        if declared:
+            raise CapacityRegistrationError(
+                f"Capacity {declaration.iri!r}: " + "; ".join(declared) + " (plan R44)."
+            )
         reader_iri = getattr(declaration, "substitute_for", None)
         if reader_iri is None:
             return
@@ -473,7 +479,7 @@ class CapacityLayer:
         if problems:
             raise CapacityRegistrationError(
                 f"Capacity {declaration.iri!r} cannot substitute for "
-                f"{reader_iri!r}: " + "; ".join(problems) + " (plan R37)."
+                f"{reader_iri!r}: " + "; ".join(problems) + " (plan R37, R44)."
             )
 
     def _validate_contract_fields(self, declaration: _CapacityBase) -> None:

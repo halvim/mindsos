@@ -141,6 +141,15 @@ class _CapacityBase:
     # (``admission.substitute_problems``). A registration-time fact, not
     # emitted to the graph.
     substitute_for: Optional[str] = None
+    # ``mindsos_llm`` plan ruling **R44** (OWNER 2026-10-03, amends R37) — a
+    # reader that does NOT call the model but is HANDED its answer declares
+    # which of its own inputs carry that answer. A substitute paired with it
+    # takes the reader's inputs MINUS these (``admission.substitute_problems``),
+    # so a re-run is never handed the model's answer. Not combinable with
+    # ``consults_llm=True`` (``admission.answer_input_problems``), and a
+    # substitute declares none. A registration-time fact, not emitted to the
+    # graph.
+    model_answer_inputs: Tuple[str, ...] = ()
     # Bounded member retry (ADR-0201 am-6 / MEMBER_RETRY_CAP) is now
     # DECLARED rather than blanket. Default ``False``: a deterministic
     # body fails identically on a second attempt, so retrying it only

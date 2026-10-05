@@ -54,19 +54,23 @@ _PROBES = {
 }
 
 
-def _text(path: Path) -> str:
+def _text(path: Path, root: Path = _ROOT) -> str:
     raw = path.read_text(encoding="utf-8", errors="replace")
-    if path.name == "STATE.json" and path.parent == _ROOT:
+    if path.name == "STATE.json" and path.parent == root:
         state = json.loads(raw)
         state.pop("recent", None)
         return json.dumps(state, ensure_ascii=False)
     return raw
 
 
-def _scan():
+def _scan(root: Path = _ROOT):
+    """The one walk both callers share: (files scanned, hits), a hit being
+    (file, line number, text) of a line that names the consumer. What is
+    reported as adjudicated and what is reported as a problem are the same
+    list, so they cannot drift apart."""
     scanned, hits = [], []
-    for path in _ROOT.rglob("*"):
-        rel = path.relative_to(_ROOT)
+    for path in root.rglob("*"):
+        rel = path.relative_to(root)
         if any(part in _SKIP_DIRS or part.endswith(".egg-info") for part in rel.parts):
             continue
         if not path.is_file() or path.suffix not in _SUFFIXES or path.resolve() == _SELF:
@@ -74,16 +78,30 @@ def _scan():
         if path.stat().st_size > _MAX_BYTES:
             continue
         scanned.append(rel)
-        for n, line in enumerate(_text(path).splitlines(), 1):
+        for n, line in enumerate(_text(path, root).splitlines(), 1):
             m = PATTERN.search(line)
             if m:
-                hits.append(f"{rel}:{n}: {line.strip()[:120]}")
+                hits.append((rel.as_posix(), n, line))
     return scanned, hits
+
+
+def adjudicated_sites(root: Path) -> list[tuple[str, int]]:
+    """Report mode (`tools/claim_inventory.py`, the emit contract): the
+    `file:line` sites this guard adjudicated -- the lines that name the
+    consumer. This guard only FORBIDS, so every site it has is a problem, and
+    on a clean tree its honest report is EMPTY: every other line was scanned,
+    not judged. The corners below prove the emitter is alive. A hit in
+    ``STATE.json`` is emitted as line 1, because that file is judged with its
+    ship log removed and so has no line numbers of its own."""
+    _, hits = _scan(root)
+    return [(rel, 1 if rel == "STATE.json" else n) for rel, n, _ in hits]
 
 
 def test_core_names_no_external_consumer():
     _, hits = _scan()
-    assert not hits, "core names its external consumer:\n" + "\n".join(hits[:50])
+    assert not hits, "core names its external consumer:\n" + "\n".join(
+        f"{rel}:{n}: {line.strip()[:120]}" for rel, n, line in hits[:50]
+    )
 
 
 def test_the_scan_reaches_every_required_root():
@@ -98,3 +116,23 @@ def test_the_scan_reaches_every_required_root():
 def test_the_pattern_catches_the_name_and_spares_generic_english():
     wrong = {text: want for text, want in _PROBES.items() if bool(PATTERN.search(text)) != want}
     assert not wrong, wrong
+
+
+# -- report mode -----------------------------------------------------------
+
+def test_it_emits_the_naming_lines_and_only_those(tmp_path):
+    """Line 1 is generic English, line 3 is plain: scanned, never judged."""
+    (tmp_path / "mindsos_x").mkdir()
+    (tmp_path / "mindsos_x" / "a.py").write_text(
+        "# Architectural Decision Records - MindsOS\n"
+        "# built for the Decision Records demo\n"
+        "x = 1\n",
+        encoding="utf-8",
+    )
+    assert adjudicated_sites(tmp_path) == [("mindsos_x/a.py", 2)]
+
+
+def test_a_clean_tree_emits_nothing(tmp_path):
+    (tmp_path / "mindsos_x").mkdir()
+    (tmp_path / "mindsos_x" / "a.py").write_text("x = 1\n", encoding="utf-8")
+    assert adjudicated_sites(tmp_path) == []
