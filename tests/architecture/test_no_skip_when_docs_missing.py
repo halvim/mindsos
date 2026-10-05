@@ -74,19 +74,44 @@ def _is_skip_call(call: ast.Call) -> bool:
     return False
 
 
-def find_offences(source: str, name: str) -> list[str]:
-    """Pure predicate over one module's source."""
-    offences: list[str] = []
+def _judged(source: str):
+    """Every call the guard JUDGES in one module: (line number, the phrases it
+    carries) for each ``pytest.skip`` / ``pytest.mark.skipif`` call. The one
+    walk both callers share, so what is reported as adjudicated and what can
+    be reported as an offence cannot drift apart. Every other line of the
+    module is scanned, never judged."""
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.Call) and _is_skip_call(node):
             text = " ".join(
                 s for part in [*node.args, *(k.value for k in node.keywords)]
                 for s in _strings(part)
             ).lower()
-            hit = [p for p in _PHRASES if p in text]
-            if hit:
-                offences.append(f"{name}:{node.lineno} skips on a missing doc ({hit[0]!r})")
-    return offences
+            yield node.lineno, [p for p in _PHRASES if p in text]
+
+
+def find_offences(source: str, name: str) -> list[str]:
+    """Pure predicate over one module's source."""
+    return [
+        f"{name}:{lineno} skips on a missing doc ({hit[0]!r})"
+        for lineno, hit in _judged(source)
+        if hit
+    ]
+
+
+def _modules(root: Path):
+    """(repo-relative name, source) of every module under ``tests/`` but this one."""
+    for p in sorted((root / "tests").rglob("*.py")):
+        if p.resolve() != _THIS:
+            yield p.relative_to(root).as_posix(), p.read_text(encoding="utf-8")
+
+
+def adjudicated_sites(root: Path) -> list[tuple[str, int]]:
+    """Report mode (`tools/claim_inventory.py`, the emit contract): the
+    `file:line` sites this guard adjudicated -- the line of each skip call in
+    a test module, whichever way the judgement went (it skips on a missing doc,
+    or it skips for some other reason). These are test files, so the sites add
+    nothing to any live page's coverage."""
+    return sorted({(name, lineno) for name, source in _modules(root) for lineno, _ in _judged(source)})
 
 
 def test_the_premise_holds_docs_are_in_the_tree():
@@ -100,10 +125,8 @@ def test_the_premise_holds_docs_are_in_the_tree():
 
 def test_no_test_skips_because_a_doc_is_missing():
     offences: list[str] = []
-    for p in sorted(_TESTS.rglob("*.py")):
-        if p.resolve() == _THIS:
-            continue
-        offences += find_offences(p.read_text(encoding="utf-8"), p.relative_to(_ROOT).as_posix())
+    for name, source in _modules(_ROOT):
+        offences += find_offences(source, name)
     assert not offences, (
         f"{len(offences)} skip(s) on a missing doc — make them failures:\n" + "\n".join(offences)
     )
@@ -126,3 +149,32 @@ def test_fabricated_modules_exercise_every_corner():
     assert find_offences(falkor, "f") == []
     assert find_offences(sandbox, "g") == []
     assert len(find_offences(phase30, "h")) == 1
+
+
+# -- report mode -----------------------------------------------------------
+
+_MODULE = (
+    "import pytest\n"
+    "def a():\n"
+    '    pytest.skip("ADR dir not reachable from here")\n'
+    "def b():\n"
+    '    pytest.skip("mkdocs not installed")\n'
+    "def c():\n"
+    '    pytest.fail("ADR dir missing")\n'
+)
+
+
+def test_it_emits_the_skip_calls_and_only_those(tmp_path):
+    """Lines 3 and 5 are skip calls, judged one way each. Line 7 fails rather
+    than skips, and the other lines are not calls: scanned, never judged."""
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_m.py").write_text(_MODULE, encoding="utf-8")
+    assert adjudicated_sites(tmp_path) == [("tests/test_m.py", 3), ("tests/test_m.py", 5)]
+
+
+def test_every_reported_offence_is_an_emitted_site(tmp_path):
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_m.py").write_text(_MODULE, encoding="utf-8")
+    emitted = {f"{f}:{n}" for f, n in adjudicated_sites(tmp_path)}
+    offences = {o.split(" ", 1)[0] for o in find_offences(_MODULE, "tests/test_m.py")}
+    assert offences == {"tests/test_m.py:3"} and offences <= emitted
