@@ -50,6 +50,7 @@ scope sets (RULES §12, SMALLEST EDIT).
 from __future__ import annotations
 
 import ast
+import re
 from pathlib import Path
 
 from mindsos_capacity import FAMILY_RULES, FamilyDontKnowShape
@@ -58,8 +59,10 @@ from mindsos_knowledge.identifiers import ROLE_PROMPTS
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_LIVE = _REPO_ROOT / "mindsos_llm" / "live.py"
-_ADR = _REPO_ROOT / "docs" / "decisions" / "adr" / "0210-llm-communication-layering.md"
+_LIVE_REL = "mindsos_llm/live.py"
+_ADR_REL = "docs/decisions/adr/0210-llm-communication-layering.md"
+_LIVE = _REPO_ROOT / _LIVE_REL
+_ADR = _REPO_ROOT / _ADR_REL
 
 #: The seam's call as plan R21 rules it: everything the model receives, and
 #: nothing that only names it. ⚠ **Hand-written, never imported** from
@@ -84,7 +87,13 @@ PROMPT_NAME_SPELLINGS = ("prompt_iri", "prompt_version", "prompt_id", "prompt_na
 
 
 def _seam_call_keys(source: str) -> frozenset[str]:
-    """The keyword names of the ``call`` dict built inside ``LiveLLM.read``.
+    """The keyword names of the ``call`` dict built inside ``LiveLLM.read``."""
+    return _seam_call(source)[1]
+
+
+def _seam_call(source: str) -> tuple[int, frozenset[str]]:
+    """(line number, keyword names) of the ``call`` dict built inside
+    ``LiveLLM.read`` -- the one statement the seam claim is judged on.
 
     Read from the AST. A signature or a call is read from the code that
     makes it, never from a docstring that describes it.
@@ -102,7 +111,7 @@ def _seam_call_keys(source: str) -> frozenset[str]:
                     and any(getattr(t, "id", "") == "call" for t in stmt.targets)
                     and isinstance(stmt.value, ast.Call)
                 ):
-                    return frozenset(
+                    return stmt.lineno, frozenset(
                         kw.arg for kw in stmt.value.keywords if kw.arg is not None
                     )
     raise AssertionError(
@@ -185,18 +194,107 @@ def test_comprehension_is_a_family_and_keeps_its_dont_know_shape():
     )
 
 
-def test_amendment_4_uses_the_amendment_status_label():
-    text = _ADR.read_text(encoding="utf-8")
-    assert "## Amendment 4" in text, "ADR-0210 amendment 4 is missing"
-    assert "## Amendment 5" in text, "ADR-0210 amendment 5 is missing"
-    assert "## Amendment 6" in text, "ADR-0210 amendment 6 is missing"
-    for n in ("4", "6"):
-        head = text.split("## Amendment " + n, 1)[1].split("\n## ", 1)[0]
-        assert "**Amendment status:**" in head, (
-            f"RULES §9: amendment {n} must label its status '**Amendment "
-            "status:**'. The bare label shadows the ADR's own status line."
+def _line(text: str, pos: int) -> int:
+    return text.count("\n", 0, pos) + 1
+
+
+def _label_findings(text: str) -> tuple[list[int], list[str]]:
+    """(the ADR lines the status-label claim is judged on, what is wrong).
+
+    The one walk the test and the emitter share: the heading of amendments 4,
+    5 and 6, the ``**Amendment status:**`` line of amendments 4 and 6, and
+    every bare ``**Status:**`` line (there must be exactly one, the ADR's
+    own). A missing heading or label has no line: it is a problem only."""
+    sites: list[int] = []
+    problems: list[str] = []
+    for n in ("4", "5", "6"):
+        marker = "## Amendment " + n
+        pos = text.find(marker)
+        if pos < 0:
+            problems.append(f"ADR-0210 amendment {n} is missing")
+            continue
+        sites.append(_line(text, pos))
+        if n == "5":
+            continue
+        start = pos + len(marker)
+        end = text.find("\n## ", start)
+        label = text.find("**Amendment status:**", start, len(text) if end < 0 else end)
+        if label < 0:
+            problems.append(
+                f"RULES §9: amendment {n} must label its status '**Amendment "
+                "status:**'. The bare label shadows the ADR's own status line."
+            )
+        else:
+            sites.append(_line(text, label))
+    bare = [m.start() + 1 for m in re.finditer(r"\n\*\*Status:\*\*", text)]
+    sites += [_line(text, pos) for pos in bare]
+    if len(bare) != 1:
+        problems.append(
+            "an amendment used the bare '**Status:**' label — the ADR checker "
+            "reads the FIRST one as the ADR's own status."
         )
-    assert text.count("\n**Status:**") == 1, (
-        "an amendment used the bare '**Status:**' label — the ADR checker "
-        "reads the FIRST one as the ADR's own status."
-    )
+    return sorted(set(sites)), problems
+
+
+def test_amendment_4_uses_the_amendment_status_label():
+    _, problems = _label_findings(_ADR.read_text(encoding="utf-8"))
+    assert problems == [], problems
+
+
+def adjudicated_sites(root: Path) -> list[tuple[str, int]]:
+    """Report mode (`tools/claim_inventory.py`, the emit contract): the
+    `file:line` sites this guard adjudicated -- the ``call = ...`` statement
+    of ``LiveLLM.read`` (the seam claim) and the ADR-0210 lines of
+    :func:`_label_findings` (the status-label claim).
+
+    TWO OF THIS GUARD'S FOUR CLAIMS HAVE NO SITE. That ``prompts`` is
+    dual-scope and that ``comprehension`` is a family are judged on IMPORTED
+    values; the guard reads no line of any file to judge them, so it emits
+    none. Neither file here is a live page, so these sites add nothing to any
+    page's coverage."""
+    lineno, _ = _seam_call((root / _LIVE_REL).read_text(encoding="utf-8"))
+    label_lines, _ = _label_findings((root / _ADR_REL).read_text(encoding="utf-8"))
+    return [(_ADR_REL, n) for n in label_lines] + [(_LIVE_REL, lineno)]
+
+
+# -- report mode -----------------------------------------------------------
+
+_FAB_LIVE = (
+    "class LiveLLM:\n"
+    "    def read(self, **kw):\n"
+    "        x = 1\n"
+    "        call = dict(prompt_text=1)\n"
+    "        return call\n"
+)
+_FAB_ADR = (
+    "# ADR\n\n**Status:** Accepted\n\n"
+    "## Amendment 4\n**Amendment status:** Accepted\n"
+    "## Amendment 5\nwords\n"
+    "## Amendment 6\n\n**Amendment status:** Accepted\n"
+)
+
+
+def _tree(root: Path, adr: str = _FAB_ADR) -> Path:
+    for rel, text in ((_LIVE_REL, _FAB_LIVE), (_ADR_REL, adr)):
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text, encoding="utf-8")
+    return root
+
+
+def test_it_emits_the_judged_lines_and_only_those(tmp_path):
+    """ADR: the status line (3), the three amendment headings (5, 7, 9) and
+    the two amendment labels (6, 11); line 8 is plain words. live.py: the
+    ``call`` statement (4), not the lines around it."""
+    assert adjudicated_sites(_tree(tmp_path)) == [
+        (_ADR_REL, 3), (_ADR_REL, 5), (_ADR_REL, 6), (_ADR_REL, 7), (_ADR_REL, 9), (_ADR_REL, 11),
+        (_LIVE_REL, 4),
+    ]
+    assert _label_findings(_FAB_ADR)[1] == []
+
+
+def test_a_bare_status_label_in_an_amendment_is_a_problem_on_an_emitted_line(tmp_path):
+    bad = _FAB_ADR.replace("## Amendment 6\n\n**Amendment status:**", "## Amendment 6\n\n**Status:**")
+    sites, problems = _label_findings(bad)
+    assert len(problems) == 2 and 11 in sites, (sites, problems)
+    assert (_ADR_REL, 11) in adjudicated_sites(_tree(tmp_path, bad))
