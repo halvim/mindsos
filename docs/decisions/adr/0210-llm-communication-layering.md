@@ -809,8 +809,11 @@ satisfy the second, and a substitute given the reader's exact inputs would have 
 handed the model's answer.
 
 **Build state.** Two gates (plan §6, 2026-10-03 and 2026-10-04). Gate 1 — clauses
-1 to 3 — built at `d1ce6b3`: `Capacity.model_answer_inputs`,
+1 to 3 — merged as PR #262 (`8b11345`): `Capacity.model_answer_inputs`,
 `admission.answer_input_problems`, and `admission.substitute_problems` as amended; a
 reader whose every input carries the answer cannot be paired (R19). Gate 2 — clauses
-4 and 5 — not built.
+4 and 5 — built: `excision.rerun` re-applies the pairing rule against the reader in
+the dispatcher's scope and names a substitute that no longer pairs
+(`RERUN_SUBSTITUTE_NO_LONGER_PAIRS`); clause 4 needed no change of its own, because
+`rerun` already dispatches a substitute on its own declared inputs.
 
