@@ -75,5 +75,5 @@ def test_constructor_reattaches_a_stripped_global() -> None:
 
 def test_reattach_rejects_an_unknown_scope() -> None:
     kl = KnowledgeLayer.bootstrap()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="scope must be 'global' or 'local'"):
         reattach_role_schemas(kl.global_metagraph(), "both")
