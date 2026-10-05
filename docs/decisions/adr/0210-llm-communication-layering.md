@@ -799,11 +799,18 @@ itself consult the model. Both are SUPERSEDED for an answer-fed reader:
    declares neither.
 4. Re-run withholds the answer: the substitute is dispatched on the source only
    (amends clause 17).
+5. Re-run re-checks the pairing against the reader as declared in the dispatcher's
+   scope; a substitute that no longer pairs is named and not run (R45, 2026-10-04 —
+   a registration-time check can go stale under upsert and Local shadowing).
 
 **WHY.** Identification reads the origin record; pairing read the capacity. A
 conclusion minted from a handed-over answer satisfied the first and could never
 satisfy the second, and a substitute given the reader's exact inputs would have been
 handed the model's answer.
 
-**Build state.** Nothing built. Two gates (plan §6, 2026-10-03).
+**Build state.** Two gates (plan §6, 2026-10-03 and 2026-10-04). Gate 1 — clauses
+1 to 3 — built at `d1ce6b3`: `Capacity.model_answer_inputs`,
+`admission.answer_input_problems`, and `admission.substitute_problems` as amended; a
+reader whose every input carries the answer cannot be paired (R19). Gate 2 — clauses
+4 and 5 — not built.
 

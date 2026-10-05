@@ -406,6 +406,29 @@ dropping the reader-side check alone (the substitute could still consume the ans
 so "without the model" would be a claim nothing checks); requiring every model call
 inside a consulting capacity (the substitute would have to reproduce the whole answer
 exactly). Authority: §1 (*re-run without it*), R19, R26, R41.
+⚠ **As built at gate 1 (2026-10-04):** the field is `model_answer_inputs`; the
+declaration is checked by `admission.answer_input_problems` (its names are the
+capacity's own inputs; never with `consults_llm=True`) and the pairing by
+`admission.substitute_problems`. One case is read out of R19 rather than R44's list —
+**a reader whose every input carries the answer cannot be paired**: with the answer
+withheld there is no source left to re-derive from.
+
+**R45 — re-run CHECKS the pairing again, against the reader as declared where the
+re-run happens (2026-10-04, ruled before gate 2).** Measured 2026-10-03: (i) `rerun`
+already hands a substitute only the inputs the substitute declares, and
+`_validate_inputs` refuses any other, so once R44's pairing holds the answer is
+withheld with no change to `rerun`; (ii) the pairing is checked ONLY at registration,
+and it can stop holding afterwards — `register_capacity(if_exists="upsert")` re-binds
+a reader's declaration, and a Local reader shadows the Global one of the same IRI
+with a declaration of its own — while `substitutes_for` matches by IRI alone. So a
+reader that later declares one more answer input leaves its substitute consuming it.
+**Ruled:** `rerun` resolves the reader's declaration in the dispatcher's scope and
+re-applies `substitute_problems`; a substitute that no longer pairs, or a reader that
+does not resolve, is named and NOT run, `agrees` empty. "Without the model's answer"
+is then mechanical where it is claimed, not a fact remembered from registration.
+Authority: R41 (*mechanical, not declared*), R43(c) (re-run re-checks what
+registration cannot keep true), R44(d). **Approval:** delegated (the I-18 brief:
+*rule what the plan lets you rule*).
 
 ## 3. THE ITEM LIST
 
@@ -779,3 +802,26 @@ amendment.)*
   born red: a core test builds the shape and shows a substitute is refused today.
   The contract's row 12 wording and ADR-0210 amendment 8 (Proposed) follow I-18.
   **Approval:** OWNER, "approved A".
+
+- **2026-10-04 (I-18 guard and gate 1; R45)** — Premises re-measured at `7c7ea71`
+  before any code: both of R44's hold (`substitute_problems` is the one site that
+  ties pairing to `consults_llm`, and it required equal inputs). **Two measurements
+  changed the build:** `rerun` already dispatches a substitute on its own declared
+  inputs, so gate 2 as first written changed nothing; and a pairing checked only at
+  registration can go stale (upsert, Local shadowing). **R45** (§2) rules the re-check
+  that gate 2 now builds. Passes: seven, the last three reversed nothing. **Guard
+  first, born red** at `5c12777`: `tests/llm_seam/test_answer_fed_reader_is_paired.py`
+  exercises `substitute_problems` over plain declarations, so the red is the refusal
+  itself — 2 failed / 1 passed on the gate box, the two names predicted. **Gate 1** at
+  `d1ce6b3`: `Capacity.model_answer_inputs`, `admission.answer_input_problems`, the
+  amended `substitute_problems`; registration applies both. `tests/llm_seam` +
+  `tests/architecture`: 659 passed / 4 skipped / 0 failed. Mutations, each one line,
+  all as predicted by name: the substitute keeps the answer input → 4 reds; a
+  declaring reader no longer counts as a reader → 2; the `consults_llm` exclusion
+  off → 1; the own-input check off → 1; a substitute may declare an answer input → 1.
+  One check was written twice and reduced to one: that a substitute declares no
+  answer input lives in the pairing rule only. The gate-3 test of I-12 keeps its
+  claim; its match string follows the reworded refusal. **Not claimed:** whether a
+  substitute's OTHER inputs came from the model is not checked by I-18 — `rerun`
+  does not look at where an input came from. **No call to a model provider was
+  made** (OWNER rule 2026-09-30). **Approval:** R44 OWNER; R45 delegated.
