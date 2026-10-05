@@ -188,9 +188,6 @@ EMITTER = "adjudicated_sites"
 #: tests/architecture/test_claim_inventory.py holds its ceiling, and reddens
 #: when a guard here gains an emitter without leaving the set.
 EMITS_PENDING: frozenset[str] = frozenset({
-    "adr-status-index",
-    "retired-design-pointer",
-    "adr-0210-am4-record-shape",
     "live-page-verified-at",
 })
 
