@@ -176,6 +176,12 @@ GUARDED_EXTRACTED: dict[str, frozenset[str]] = {
 #: nothing to coverage, and saying so is the honest report. What proves such
 #: an emitter is alive is a fabricated corner in the guard's own file, which
 #: the registry test requires.
+#:
+#: A GUARD THAT JUDGES A FILE, NOT A LINE, EMITS LINE 1 OF THAT FILE. The
+#: closed set of coordination files is a claim about which files exist; the
+#: site of each judgement is the file, and (file, 1) is how the common unit
+#: says so. A file that should exist and does not has no site: it is reported
+#: as a problem and emits nothing.
 EMITTER = "adjudicated_sites"
 
 #: Guards that do not emit yet. This set may only SHRINK:
@@ -183,12 +189,9 @@ EMITTER = "adjudicated_sites"
 #: when a guard here gains an emitter without leaving the set.
 EMITS_PENDING: frozenset[str] = frozenset({
     "adr-status-index",
-    "adr-sentinel-no-skip",
     "retired-design-pointer",
-    "coordination-files-closed-set",
     "adr-0210-am4-record-shape",
     "live-page-verified-at",
-    "core-names-no-consumer",
 })
 
 
