@@ -33,6 +33,15 @@ def _load():
     return mod
 
 
+def adjudicated_sites(root):
+    """Report mode (`tools/claim_inventory.py`, the emit contract): the
+    `file:line` sites this guard adjudicated. The judging lives in the
+    checker, so the report does too -- built on the same walks as its
+    problem lists (`_judge_rows`, `_judge_page`). See the checker's
+    `adjudicated_sites` for exactly which lines are judged."""
+    return _load().adjudicated_sites(Path(root))
+
+
 def test_adr_status_consistent_across_docs():
     mod = _load()
     adr_status, file_problems = mod.load_adr_statuses()
@@ -229,3 +238,86 @@ def test_effective_supersession_rows_must_be_superseded(tmp_path):
     )
     problems = mod.check_index_page(page, _FAKE, superseded_section="Effective supersessions")
     assert len(problems) == 1 and "0001-a.md" in problems[0], problems
+
+
+# --------------------------------------------------------------------------
+# Report mode: the sites the checker adjudicated (the claim-coverage gate).
+# --------------------------------------------------------------------------
+
+_D = "docs/decisions"
+
+
+def _tree(root):
+    files = {
+        f"{_D}/adr/0001-a.md": "---\nstatus: accepted\n---\n# A\n\n**Status:** Accepted\n",
+        f"{_D}/adr/0002-b.md": "---\nstatus: proposed\n---\n# B\n",
+        f"{_D}/adr/README.md": (
+            "# Index\n\n| ADR | Title | Status |\n|---|---|---|\n"
+            "| [0001](0001-a.md) | A | Accepted |\n| [0002](0002-b.md) | B | Deferred |\n"
+            "\nProse naming 0001-a.md outside any table.\n"
+        ),
+        f"{_D}/summary/core.md": (
+            "| ADR | Status |\n|---|---|\n| [0001](../adr/0001-a.md) | Accepted |\n"
+            "| plain cell | Accepted |\n"
+        ),
+        f"{_D}/proposed.md": (
+            "## Open\n### Thing — ADR-0002\n### Done — ADR-0001\n### No number — ADR\n"
+            "| ADR # | Status |\n|---|---|\n| 0001 | Proposed |\n| [0002](adr/0002-b.md) | Proposed |\n"
+        ),
+        f"{_D}/superseded.md": (
+            "## Effective supersessions\n| Original | Superseded by |\n|---|---|\n"
+            "| [0001](adr/0001-a.md) | [0002](adr/0002-b.md) |\n## Other\n| [0002](adr/0002-b.md) | x |\n"
+        ),
+    }
+    for rel, text in files.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text, "utf-8")
+    return root
+
+
+def test_it_emits_the_judged_lines_and_only_those(tmp_path):
+    """ADR files: their status lines. README and summary: the linked status
+    rows, not the header, the separator, an unlinked row or prose. proposed.md:
+    the two headings naming an ADR number (not the one naming none), the
+    bare-number row and the linked row. superseded.md: the linked row of the
+    effective section only."""
+    assert adjudicated_sites(_tree(tmp_path)) == [
+        (f"{_D}/adr/0001-a.md", 2),
+        (f"{_D}/adr/0001-a.md", 6),
+        (f"{_D}/adr/0002-b.md", 2),
+        (f"{_D}/adr/README.md", 5),
+        (f"{_D}/adr/README.md", 6),
+        (f"{_D}/proposed.md", 2),
+        (f"{_D}/proposed.md", 3),
+        (f"{_D}/proposed.md", 7),
+        (f"{_D}/proposed.md", 8),
+        (f"{_D}/summary/core.md", 3),
+        (f"{_D}/superseded.md", 4),
+    ]
+
+
+def test_a_reported_problem_sits_on_an_emitted_line(tmp_path):
+    """The walk that emits a line is the walk that reports it: the README's
+    disagreeing row is line 6, and the index page's three problems are on
+    lines 3, 7 (proposed.md) and 4 (superseded.md)."""
+    mod = _load()
+    root = _tree(tmp_path)
+    readme = (root / _D / "adr" / "README.md").read_text("utf-8")
+    assert [(n, bool(p)) for n, p in mod._judge_rows(readme, "README.md", _FAKE_TREE, set())] == [
+        (5, False), (6, True),
+    ]
+    proposed = (root / _D / "proposed.md").read_text("utf-8")
+    assert sorted((n, bool(p)) for n, p in mod._judge_page(proposed, "proposed.md", _FAKE_TREE, headings_claim_open=True)) == [
+        (2, False), (3, True), (7, True),
+    ]
+    superseded = (root / _D / "superseded.md").read_text("utf-8")
+    assert [(n, bool(p)) for n, p in mod._judge_page(
+        superseded, "superseded.md", _FAKE_TREE, superseded_section="Effective supersessions")] == [(4, True)]
+    emitted = set(adjudicated_sites(root))
+    for rel, n in ((f"{_D}/adr/README.md", 6), (f"{_D}/proposed.md", 3), (f"{_D}/proposed.md", 7), (f"{_D}/superseded.md", 4)):
+        assert (rel, n) in emitted
+
+
+#: the statuses of the fabricated tree above
+_FAKE_TREE = {"0001-a.md": "accepted", "0002-b.md": "proposed"}
