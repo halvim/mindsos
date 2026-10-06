@@ -783,8 +783,8 @@ because clauses 1 and 5 are I-12's; ⚠ **I-12 DONE(bf7bd43), 2026-10-03 — Acc
 
 ## Amendment 8 — a reader calls the model or declares the answer it is handed (2026-10-03)
 
-**Amendment status:** Proposed — I-18 of `docs/plans/MINDSOS_LLM_PLAN.md` flips it to
-Accepted when it ships. The decision above stands. This transcribes plan ruling
+**Amendment status:** Accepted (2026-10-05) — I-18 of `docs/plans/MINDSOS_LLM_PLAN.md`
+is DONE(`f1603af`). The decision above stands. This transcribes plan ruling
 **R44** (OWNER 2026-10-03), which amends R37 and therefore amendment 7 clause 13.
 
 **WHAT CHANGES.** Amendment 7 clause 13 says registration refuses a substitute unless
@@ -812,8 +812,12 @@ handed the model's answer.
 1 to 3 — merged as PR #262 (`8b11345`): `Capacity.model_answer_inputs`,
 `admission.answer_input_problems`, and `admission.substitute_problems` as amended; a
 reader whose every input carries the answer cannot be paired (R19). Gate 2 — clauses
-4 and 5 — built: `excision.rerun` re-applies the pairing rule against the reader in
+4 and 5 — merged as PR #266 (`f1603af`): `excision.rerun` re-applies the pairing rule against the reader in
 the dispatcher's scope and names a substitute that no longer pairs
 (`RERUN_SUBSTITUTE_NO_LONGER_PAIRS`); clause 4 needed no change of its own, because
 `rerun` already dispatches a substitute on its own declared inputs.
+
+⚠ **Not decided here, not built.** Only the inputs a reader declares are withheld.
+Whether a substitute's other inputs descend from a model reading is not checked
+(plan §6, 2026-10-05).
 
