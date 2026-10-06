@@ -423,9 +423,13 @@ a reader's declaration, and a Local reader shadows the Global one of the same IR
 with a declaration of its own — while `substitutes_for` matches by IRI alone. So a
 reader that later declares one more answer input leaves its substitute consuming it.
 **Ruled:** `rerun` resolves the reader's declaration in the dispatcher's scope and
-re-applies `substitute_problems`; a substitute that no longer pairs, or a reader that
-does not resolve, is named and NOT run, `agrees` empty. "Without the model's answer"
-is then mechanical where it is claimed, not a fact remembered from registration.
+re-applies `substitute_problems`; a substitute that no longer pairs is named and NOT
+run, `agrees` empty. "Without the model's answer" is then mechanical where it is
+claimed, not a fact remembered from registration. ⚠ **NARROWED at gate 2, measured:**
+as first ruled this also named *a reader that does not resolve*. That case cannot
+arise — a substitute registers only where its reader is in scope, and nothing in
+`mindsos_capacity` unregisters a capacity — so no branch is built for it: a branch no
+test can reach is a claim nothing holds.
 Authority: R41 (*mechanical, not declared*), R43(c) (re-run re-checks what
 registration cannot keep true), R44(d). **Approval:** delegated (the I-18 brief:
 *rule what the plan lets you rule*).
@@ -825,3 +829,30 @@ amendment.)*
   substitute's OTHER inputs came from the model is not checked by I-18 — `rerun`
   does not look at where an input came from. **No call to a model provider was
   made** (OWNER rule 2026-09-30). **Approval:** R44 OWNER; R45 delegated.
+
+- **2026-10-05 (I-18 gate 1 merged; gate 2)** — **Gate 1 merged as PR #262**
+  (`8b11345`, tag `llm-answer-fed-pairing-confirmed`). Full suite at `78d1a76` on
+  `7c7ea71`: 5498 passed / 5 skipped / 1 xpassed / 0 failed, 256 CLI tests collected.
+  `main` moved FOUR times before and during the merge (`362a140`, `a4fc73b`,
+  `e4643e1`, then `a839b60` between CI and the squash) — every time 0 `mindsos_*`
+  files and no overlap, so the narrowed rule applied each time: `tests/architecture`
+  + `tests/llm_seam` at `2d63087` (668 passed / 0 failed), at `53fe3e0` (676 / 0),
+  and — because the squash landed on a tree nobody had gated, `53fe3e0^{tree}` ≠
+  `8b11345^{tree}` — on the squash commit itself (682 / 0); the difference between
+  the two trees is exactly `a839b60`'s five files. Collect delta against `main` read
+  back by name each time: +8 / −0, all in
+  `tests/llm_seam/test_answer_fed_reader_is_paired.py`. CI's full suite green on
+  `53fe3e0` and on `8b11345`. The tag was made only after that. **Passes re-run: no
+  ruling reversed; R45 narrowed** (§2 — the unresolvable-reader case cannot arise).
+  **Gate 2 builds R45**: `excision.rerun` resolves the reader in the dispatcher's
+  scope and re-applies `admission.substitute_problems`; a substitute that no longer
+  pairs is `RERUN_SUBSTITUTE_NO_LONGER_PAIRS`, not run. Guard first, born red at
+  `d4b8be1` (`tests/llm_seam/test_rerun_rechecks_the_pairing.py`): 2 failed / 1
+  passed, the names predicted, and the red is the defect itself — the stale
+  substitute ran and its value was reported as agreeing (`(True, None)`). The third
+  test holds R44(d) and was green at birth: since gate 1 a substitute is handed the
+  source only, because `rerun` dispatches it on its own declared inputs. The row
+  flips to `DONE(<sha>)`, ADR-0210 am-8 to Accepted and contract row 12 is reworded
+  in the closeout that follows the merge. **No call to a model provider was made.**
+  **Approval:** delegated (R45).
+

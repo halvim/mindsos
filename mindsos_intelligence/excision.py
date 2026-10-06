@@ -30,10 +30,16 @@ NOTHING is shown in its place: the words only when the stored edition's digest
 matches what ran; the source text, schema, framing and model settings only
 when the recomputed key matches, since the key hashes all of them.
 
-**Re-run** (R19, R25, R37, R41, R42): every substitute paired with the reader
-that produced the conclusion is dispatched on the inputs that reader consumed,
-through a dispatcher with NO model bound — one with a client bound is refused,
-so "without the model" is mechanical. L3's ``predicate.rederived_agrees``
+**Re-run** (R19, R25, R37, R41, R42, R44, R45): every substitute paired with
+the reader that produced the conclusion is dispatched on the inputs that
+reader consumed — MINUS any the reader declares as carrying the model's
+answer, which a substitute never declares (R44) — through a dispatcher with
+NO model bound: one with a client bound is refused, so "without the model" is
+mechanical. The pairing is checked again here, against the reader as declared
+in the dispatcher's scope, and a substitute that no longer pairs is named and
+not run (R45). ⚠ Not checked: where a substitute's OTHER inputs came from —
+one that is itself a model-read value is handed over as it stands. L3's
+``predicate.rederived_agrees``
 judges each value against the model's. No substitute → not yet excisable.
 Nothing is written: the calls bypass the grounding executor, a substitute that
 declares ``writes`` is not run, and the report is returned, never stored.
@@ -44,6 +50,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
+from mindsos_capacity.admission import substitute_problems
 from mindsos_capacity.builtins.excision_v0 import (
     DS_REDERIVED_CLAIM,
     DS_REDERIVED_VERDICT,
@@ -240,6 +247,9 @@ RERUN_NOT_IN_THE_GROUNDING_GRAPH = "conclusion_not_in_the_grounding_graph"
 RERUN_SUBSTITUTE_WRITES = "substitute_declares_writes"
 RERUN_VALUE_NOT_PRODUCED = "substitute_does_not_produce_the_value"
 RERUN_SUBSTITUTE_FAILED = "substitute_did_not_run"
+#: The pairing held at registration and no longer does (plan R45): the reader
+#: was re-declared since, or a Local reader shadows the one it was paired with.
+RERUN_SUBSTITUTE_NO_LONGER_PAIRS = "substitute_no_longer_pairs"
 RERUN_CHECK_DID_NOT_RUN = "agreement_check_did_not_run"
 
 
@@ -300,7 +310,7 @@ def rerun(
     *,
     dispatcher: Any,
 ) -> RerunReport:
-    """Re-derive ``conclusion`` without the model (R19, R25, R37, R41, R42).
+    """Re-derive ``conclusion`` without the model (R19, R25, R37, R41–R45).
 
     ``dispatcher`` must have NO model client bound and reach L3's
     ``predicate.rederived_agrees`` (``install_excision_v0``); its capacity
@@ -324,8 +334,20 @@ def rerun(
     value_node = _produced(graph, producer, conclusion.value_datastate)
     if value_node is None:
         return RerunReport(conclusion, reader_iri, True, RERUN_NOT_IN_THE_GROUNDING_GRAPH, ())
+    # Plan R45 — the pairing is checked AGAIN, against the reader as declared
+    # in this dispatcher's scope. Registration checked it once; an upsert of
+    # the reader, or a Local reader shadowing it, can have changed which
+    # inputs carry the model's answer since. A substitute is in scope only
+    # where its reader is, and nothing unregisters a capacity, so the reader
+    # resolves.
+    reader = dispatcher.capacity_layer.resolve_declaration(reader_iri, session=dispatcher.session)
     runs: List[SubstituteRun] = []
     for substitute in substitutes:
+        if substitute_problems(substitute, reader):
+            runs.append(
+                SubstituteRun(substitute.iri, None, None, RERUN_SUBSTITUTE_NO_LONGER_PAIRS)
+            )
+            continue
         consumed = {ds: _consumed(graph, producer, ds) for ds in substitute.inputs}
         if any(node is None for node in consumed.values()):
             return RerunReport(conclusion, reader_iri, True, RERUN_NOT_IN_THE_GROUNDING_GRAPH, ())
@@ -347,6 +369,7 @@ __all__ = [
     "RERUN_CHECK_DID_NOT_RUN",
     "RERUN_NOT_IN_THE_GROUNDING_GRAPH",
     "RERUN_SUBSTITUTE_FAILED",
+    "RERUN_SUBSTITUTE_NO_LONGER_PAIRS",
     "RERUN_SUBSTITUTE_WRITES",
     "RERUN_VALUE_NOT_PRODUCED",
     "RerunReport",
