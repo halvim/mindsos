@@ -82,8 +82,12 @@ def _canon(text: str) -> str | None:
     return None
 
 
+_FM_STATUS = re.compile(r"^status:\s*(\w+)", re.MULTILINE)
+_PROSE_STATUS = re.compile(r"^[-*\s]*\*\*Status:\*\*\s*(.+)$", re.MULTILINE)
+
+
 def _frontmatter_status(md: str) -> str | None:
-    m = re.search(r"^status:\s*(\w+)", md, re.MULTILINE)
+    m = _FM_STATUS.search(md)
     return m.group(1).lower() if m else None
 
 
@@ -93,8 +97,22 @@ def _prose_status(md: str) -> str | None:
     # line counts — an in-file amendment section must therefore label
     # its own status differently (``**Amendment status:**``) so it does
     # not shadow the base ADR's.
-    m = re.search(r"^[-*\s]*\*\*Status:\*\*\s*(.+)$", md, re.MULTILINE)
+    m = _PROSE_STATUS.search(md)
     return _canon(m.group(1)) if m else None
+
+
+def _status_line_numbers(md: str) -> list[int]:
+    """The 1-based lines an ADR file states its status on: the front-matter
+    line and the first prose ``**Status:**`` line, whichever exist. These are
+    the two lines :func:`load_adr_statuses` reads and compares."""
+    out: list[int] = []
+    m = _FM_STATUS.search(md)
+    if m:
+        out.append(md.count("\n", 0, m.start()) + 1)
+    m = _PROSE_STATUS.search(md)
+    if m:
+        out.append(md.count("\n", 0, md.index("**Status:**", m.start())) + 1)
+    return out
 
 
 def load_adr_statuses(adr_dir: Path | None = None) -> tuple[dict[str, str], list[str]]:
@@ -129,27 +147,35 @@ def load_adr_statuses(adr_dir: Path | None = None) -> tuple[dict[str, str], list
     return out, problems
 
 
-def _iter_table_rows(md: str):
-    """Yield ``(status_cell, adr_filename)`` for every markdown-table row
-    that lives under a header containing a 'Status' column.
+def _iter_table_rows_n(md: str):
+    """Yield ``(line number, status_cell, adr_filename)`` for every
+    markdown-table row that lives under a header containing a 'Status' column
+    and links an ADR file.
 
     A table is in scope iff its header row has a cell that is exactly
     ``status``. The previous version additionally required a cell
     containing "adr", which no shipped table has — so no row was ever
     yielded. See the module docstring.
     """
-    for first, status in _status_table_rows(md):
+    for n, first, status in _status_table_rows_n(md):
         m = _ADR_HREF.search(first)
         if not m:
             continue
-        yield status, m.group(1)
+        yield n, status, m.group(1)
 
 
-def _status_table_rows(md: str):
-    """Yield ``(first_cell, status_cell)`` for every data row of a table
-    whose header has a cell that is exactly ``status``."""
+def _iter_table_rows(md: str):
+    """``(status_cell, adr_filename)`` — :func:`_iter_table_rows_n` without
+    the line number."""
+    for _, status, fname in _iter_table_rows_n(md):
+        yield status, fname
+
+
+def _status_table_rows_n(md: str):
+    """Yield ``(line number, first_cell, status_cell)`` for every data row of
+    a table whose header has a cell that is exactly ``status``."""
     status_col = None
-    for line in md.splitlines():
+    for n, line in enumerate(md.splitlines(), 1):
         if not line.lstrip().startswith("|"):
             status_col = None
             continue
@@ -162,7 +188,42 @@ def _status_table_rows(md: str):
             continue
         if set(cells[0]) <= {"-", ":", " "}:  # separator row
             continue
-        yield cells[0], cells[status_col]
+        yield n, cells[0], cells[status_col]
+
+
+def _status_table_rows(md: str):
+    """``(first_cell, status_cell)`` — :func:`_status_table_rows_n` without
+    the line number."""
+    for _, first, status in _status_table_rows_n(md):
+        yield first, status
+
+
+def _judge_rows(md: str, name: str, adr_status: dict[str, str], seen: set[str]):
+    """Yield ``(line number, problem or None)`` for every linked status row —
+    the one walk :func:`check_index` and :func:`adjudicated_sites` share, so
+    what is reported as adjudicated and what can be reported as a problem
+    cannot drift apart. ``seen`` collects the ADR files that have a row."""
+    for n, cell, fname in _iter_table_rows_n(md):
+        truth = adr_status.get(fname)
+        if truth is None:
+            yield n, f"{name}: row links '{fname}', which is not an ADR file"
+            continue
+        seen.add(fname)
+        low = cell.lower()
+        if "amended by" in low:
+            yield n, None  # amendment does not change base status
+            continue
+        cell_status = _canon(cell)
+        if cell_status is None:
+            yield n, None  # non-status annotation
+            continue
+        if cell_status != truth:
+            yield n, (
+                f"{name}: ADR {fname} cell '{cell}' != file status "
+                f"'{truth}'"
+            )
+        else:
+            yield n, None
 
 
 def check_index(
@@ -178,28 +239,9 @@ def check_index(
     summaries are deliberately partial, so they are checked for
     agreement but not for coverage.
     """
-    problems: list[str] = []
     md = path.read_text(encoding="utf-8")
     seen: set[str] = set()
-    for cell, fname in _iter_table_rows(md):
-        truth = adr_status.get(fname)
-        if truth is None:
-            problems.append(
-                f"{path.name}: row links '{fname}', which is not an ADR file"
-            )
-            continue
-        seen.add(fname)
-        low = cell.lower()
-        if "amended by" in low:
-            continue  # amendment does not change base status
-        cell_status = _canon(cell)
-        if cell_status is None:
-            continue  # non-status annotation
-        if cell_status != truth:
-            problems.append(
-                f"{path.name}: ADR {fname} cell '{cell}' != file status "
-                f"'{truth}'"
-            )
+    problems = [p for _, p in _judge_rows(md, path.name, adr_status, seen) if p]
     if require_complete:
         for fname in sorted(set(adr_status) - seen):
             problems.append(
@@ -214,6 +256,65 @@ def _statuses_by_number(adr_status: dict[str, str]) -> dict[str, set[str]]:
     for fname, status in adr_status.items():
         out.setdefault(fname[:4], set()).add(status)
     return out
+
+
+def _judge_page(
+    md: str,
+    name: str,
+    adr_status: dict[str, str],
+    *,
+    headings_claim_open: bool = False,
+    superseded_section: str | None = None,
+):
+    """Yield ``(line number, problem or None)`` for claims 2-4 of
+    :func:`check_index_page` — the one walk it and :func:`adjudicated_sites`
+    share. A heading that names no ADR number, and a row with no link in a
+    superseded section, are scanned and never judged."""
+    by_number = _statuses_by_number(adr_status)
+
+    for n, first, status in _status_table_rows_n(md):
+        m = _BARE_NUMBER_CELL.match(first)
+        if m:
+            if _canon(status) is not None:
+                yield n, (
+                    f"{name}: row '{m.group(1)}' states status '{status}' "
+                    "without linking the ADR file, so nothing checks it"
+                )
+            else:
+                yield n, None
+
+    section = ""
+    for n, line in enumerate(md.splitlines(), 1):
+        if line.startswith("## "):
+            section = line[3:]
+        if headings_claim_open and line.startswith("#") and "ADR" in line:
+            nums = re.findall(r"\b([0-9]{4})\b", line)
+            if "resolved" in section.lower() or "resolved" in line.lower():
+                if nums:
+                    yield n, None
+                continue
+            for num in nums:
+                truth = by_number.get(num)
+                if truth is None:
+                    yield n, f"{name}: heading names ADR-{num}, which is not an ADR file"
+                elif not truth & _OPEN:
+                    yield n, (
+                        f"{name}: heading presents ADR-{num} as open but it is "
+                        f"{'/'.join(sorted(truth))}: {line.strip()}"
+                    )
+                else:
+                    yield n, None
+        if superseded_section and section.startswith(superseded_section):
+            if line.startswith("|"):
+                m = _ADR_HREF.search(line.split("|")[1] if line.count("|") > 1 else "")
+                if m:
+                    if adr_status.get(m.group(1)) != "superseded":
+                        yield n, (
+                            f"{name}: '{superseded_section}' lists {m.group(1)}, "
+                            f"which is {adr_status.get(m.group(1))}"
+                        )
+                    else:
+                        yield n, None
 
 
 def check_index_page(
@@ -240,53 +341,70 @@ def check_index_page(
     """
     md = path.read_text(encoding="utf-8")
     problems = check_index(path, adr_status)
-    by_number = _statuses_by_number(adr_status)
-
-    for first, status in _status_table_rows(md):
-        m = _BARE_NUMBER_CELL.match(first)
-        if m and _canon(status) is not None:
-            problems.append(
-                f"{path.name}: row '{m.group(1)}' states status '{status}' "
-                "without linking the ADR file, so nothing checks it"
-            )
-
-    section = ""
-    for line in md.splitlines():
-        if line.startswith("## "):
-            section = line[3:]
-        if headings_claim_open and line.startswith("#") and "ADR" in line:
-            if "resolved" in section.lower() or "resolved" in line.lower():
-                continue
-            for num in re.findall(r"\b([0-9]{4})\b", line):
-                truth = by_number.get(num)
-                if truth is None:
-                    problems.append(
-                        f"{path.name}: heading names ADR-{num}, which is not an ADR file"
-                    )
-                elif not truth & _OPEN:
-                    problems.append(
-                        f"{path.name}: heading presents ADR-{num} as open but it is "
-                        f"{'/'.join(sorted(truth))}: {line.strip()}"
-                    )
-        if superseded_section and section.startswith(superseded_section):
-            if line.startswith("|"):
-                m = _ADR_HREF.search(line.split("|")[1] if line.count("|") > 1 else "")
-                if m and adr_status.get(m.group(1)) != "superseded":
-                    problems.append(
-                        f"{path.name}: '{superseded_section}' lists {m.group(1)}, "
-                        f"which is {adr_status.get(m.group(1))}"
-                    )
+    problems += [
+        p
+        for _, p in _judge_page(
+            md,
+            path.name,
+            adr_status,
+            headings_claim_open=headings_claim_open,
+            superseded_section=superseded_section,
+        )
+        if p
+    ]
     return problems
+
+
+#: The two decision index pages and the claims each one's own text makes.
+#: Read by :func:`check_index_pages` and by :func:`adjudicated_sites`, so the
+#: checker and its report cannot disagree about which page claims what.
+_PAGE_CLAIMS: tuple[tuple[str, dict], ...] = (
+    ("proposed.md", {"headings_claim_open": True}),
+    ("superseded.md", {"superseded_section": "Effective supersessions"}),
+)
 
 
 def check_index_pages(adr_status: dict[str, str]) -> list[str]:
     """``check_index_page`` over the two decision index pages, each with the
     claims its own text makes."""
-    return check_index_page(
-        PROPOSED_PAGE, adr_status, headings_claim_open=True
-    ) + check_index_page(
-        SUPERSEDED_PAGE, adr_status, superseded_section="Effective supersessions"
-    )
+    problems: list[str] = []
+    for name, claims in _PAGE_CLAIMS:
+        problems += check_index_page(DECISIONS_DIR / name, adr_status, **claims)
+    return problems
+
+
+def adjudicated_sites(root: Path) -> list[tuple[str, int]]:
+    """Report mode (``tools/claim_inventory.py``, the emit contract): the
+    ``(repo-relative file, line)`` sites this checker adjudicated under
+    ``root``, whichever way each judgement went:
+
+    * the status line(s) of every ADR file;
+    * every linked status row of the README index and of each summary page;
+    * on the two index pages, also every bare-number status row, every
+      heading that names an ADR number, and every linked row of the
+      effective-supersessions section.
+
+    An ADR file with NO row in the README has no site: it is reported as a
+    problem and emits nothing. Every other line was scanned, not judged."""
+    decisions = root / "docs" / "decisions"
+    adr_dir = decisions / "adr"
+    adr_status, _ = load_adr_statuses(adr_dir)
+    out: set[tuple[str, int]] = set()
+    for f in sorted(adr_dir.glob("[0-9][0-9][0-9][0-9]-*.md")):
+        rel = f.relative_to(root).as_posix()
+        out.update((rel, n) for n in _status_line_numbers(f.read_text(encoding="utf-8")))
+    pages: list[tuple[Path, dict | None]] = [(adr_dir / "README.md", None)]
+    pages += [(p, None) for p in sorted((decisions / "summary").glob("*.md"))]
+    pages += [(decisions / name, claims) for name, claims in _PAGE_CLAIMS]
+    for path, claims in pages:
+        if not path.is_file():
+            continue
+        md = path.read_text(encoding="utf-8")
+        rel = path.relative_to(root).as_posix()
+        out.update((rel, n) for n, _ in _judge_rows(md, path.name, adr_status, set()))
+        if claims is not None:
+            out.update((rel, n) for n, _ in _judge_page(md, path.name, adr_status, **claims))
+    return sorted(out)
 
 
 def main() -> int:

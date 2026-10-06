@@ -196,6 +196,45 @@ def _sources(root: Path | None = None) -> dict[str, str]:
     }
 
 
+def _token_sites(
+    sources: dict[str, str],
+    retired: tuple[tuple[str, str, str], ...] = RETIRED,
+):
+    """Every line claim 1 JUDGES: (file, line number, index of the retired row)
+    for each line that carries a retired token. The one walk the problem
+    finder and the emitter share. The judgement is made per FILE -- does the
+    file that carries this line name the replacement anywhere -- and the lines
+    carrying the token are where that judgement lands. No pattern spans
+    lines, so a line-by-line search finds what a whole-text search does."""
+    for rel, text in sorted(sources.items()):
+        for n, line in enumerate(text.split("\n"), 1):
+            for row, (_, pattern, _) in enumerate(retired):
+                if re.search(pattern, line):
+                    yield rel, n, row
+
+
+def _c4_sites(sources: dict[str, str]):
+    """Every line claim 2 JUDGES: (file, line number, item number) for each
+    ``C4Rn`` citation. The one walk the problem finder and the emitter share."""
+    for rel, text in sorted(sources.items()):
+        for n, line in enumerate(text.split("\n"), 1):
+            for num in _C4_CITED.findall(line):
+                yield rel, n, num
+
+
+def adjudicated_sites(root: Path) -> list[tuple[str, int]]:
+    """Report mode (`tools/claim_inventory.py`, the emit contract): the
+    `file:line` sites this guard adjudicated -- each line of a scanned file
+    that carries a retired token (claim 1) or cites a ``C4Rn`` item (claim 2),
+    whichever way the judgement went. Every other line was scanned, not
+    judged. The scanned domain includes the published docs, so these sites DO
+    count toward a live page's coverage."""
+    sources = _sources(root)
+    sites = {(rel, n) for rel, n, _ in _token_sites(sources)}
+    sites |= {(rel, n) for rel, n, _ in _c4_sites(sources)}
+    return sorted(sites)
+
+
 def _missing_pointers(
     sources: dict[str, str],
     retired: tuple[tuple[str, str, str], ...] = RETIRED,
@@ -205,10 +244,13 @@ def _missing_pointers(
     Pure over its inputs so the mutations below run on synthetic sources and
     never touch the tree.
     """
+    hits: dict[str, set[int]] = {}
+    for rel, _, row in _token_sites(sources, retired):
+        hits.setdefault(rel, set()).add(row)
     out: list[str] = []
-    for rel, text in sorted(sources.items()):
-        for name, pattern, current in retired:
-            if re.search(pattern, text) and current not in text:
+    for rel in sorted(hits):
+        for row, (name, _, current) in enumerate(retired):
+            if row in hits[rel] and current not in sources[rel]:
                 out.append(f"{rel}: names {name} but never names {current}")
     return out
 
@@ -224,9 +266,12 @@ def _declared_c4_ids(plan_text: str) -> set[str]:
 
 
 def _dangling_c4(sources: dict[str, str], declared: set[str]) -> list[str]:
+    cited: dict[str, set[str]] = {}
+    for rel, _, num in _c4_sites(sources):
+        cited.setdefault(rel, set()).add(num)
     out: list[str] = []
-    for rel, text in sorted(sources.items()):
-        for num in sorted(set(_C4_CITED.findall(text)), key=int):
+    for rel in sorted(cited):
+        for num in sorted(cited[rel], key=int):
             if num not in declared:
                 out.append(f"{rel}: cites CORE-C4R{num}, which {_PLAN} §5 does not declare")
     return out
@@ -347,3 +392,44 @@ def test_the_finder_max_depth_is_not_dragged_in() -> None:
         "docs/usage/capacity/retrieval.md": "`mindsos capacity find [--max-depth N]`\n",
     }
     assert not _missing_pointers(unrelated)
+
+
+# ── report mode ──────────────────────────────────────────────────────────
+
+
+def _tree(root: Path) -> Path:
+    files = {
+        "mindsos_core/m.py": (
+            "x = 1\n"
+            "# derive_goal is gone, see ADR-0206\n"
+            "MAX_DEPTH = 3\n"
+            "# unbuilt: CORE-C4R7 and CORE-C4R99\n"
+        ),
+        "docs/usage/p.md": "A plain line.\nRequestPattern -> SubgoalTemplate\n",
+        "docs/decisions/adr/0001-x.md": "derive_goal as decided then\n",
+    }
+    for rel, text in files.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text, encoding="utf-8")
+    return root
+
+
+def test_it_emits_the_judged_lines_and_only_those(tmp_path: Path) -> None:
+    """The token lines and the citation line are judged; `x = 1`, the plain
+    doc line and the whole excluded ADR are scanned or skipped, never judged."""
+    assert adjudicated_sites(_tree(tmp_path)) == [
+        ("docs/usage/p.md", 2),
+        ("mindsos_core/m.py", 2),
+        ("mindsos_core/m.py", 3),
+        ("mindsos_core/m.py", 4),
+    ]
+
+
+def test_every_reported_problem_is_in_a_file_with_an_emitted_site(tmp_path: Path) -> None:
+    root = _tree(tmp_path)
+    sources = _sources(root)
+    emitted_files = {rel for rel, _ in adjudicated_sites(root)}
+    problems = _missing_pointers(sources) + _dangling_c4(sources, {"7"})
+    assert [p.split(":", 1)[0] for p in problems] == ["docs/usage/p.md", "mindsos_core/m.py"]
+    assert {p.split(":", 1)[0] for p in problems} <= emitted_files
