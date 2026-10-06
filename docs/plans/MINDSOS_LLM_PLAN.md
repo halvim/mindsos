@@ -456,11 +456,11 @@ registration cannot keep true), R44(d). **Approval:** delegated (the I-18 brief:
 | I-15 | a capacity **declares** that it writes (R7): `writes=True` on the declaration, both invoke sites gate the `writeable` injection on it instead of on `outputs == ()`, and an AST guard reconciles the declaration against the body — the `context.llm` census shape. **Blocks I-10**, whose ruled declared output is unreachable without it | core-capacity-write-is-declared-not-inferred | DONE(8f1f7d4) |
 | I-17 | an answer names what was asked BY CONTENT (R20–R23): the client resolves and hands the transport everything the model receives, stamps the prompt and schema digests, `request_key` v2, and both digests plus the schema text reach the origin record. **Blocks I-12**, whose *shown* is unverifiable without it | core-llm-answer-names-what-was-asked | DONE(933bc6d) |
 | I-16 | I-9's writer gets its installer. Measured 2026-09-17: nothing in the tree calls `build_write_prompt_edition`, and `install_learn_parameter_capacities` is the precedent it skipped — so a `DONE` item is a declaration L4 cannot route to | core-llm-prompt-edition-has-no-installer | DONE(6e6514e) |
-| I-18 | an answer-fed reader can be paired and re-run: a capacity that is HANDED the model's answer and mints `read_by_model` conclusions from it declares which input carries the answer; a substitute takes the reader's inputs minus that answer, and re-run withholds it. **Specified by R44** (amends R37); two gates (§6, 2026-10-03) | core-llm-answer-fed-readers | TODO |
+| I-18 | an answer-fed reader can be paired and re-run: a capacity that is HANDED the model's answer and mints `read_by_model` conclusions from it declares which input carries the answer; a substitute takes the reader's inputs minus that answer, and re-run withholds it. **Specified by R44** (amends R37); two gates (§6, 2026-10-03) | core-llm-answer-fed-readers | DONE(f1603af) |
 
 **DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17, I-18.**
 
-**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅ → I-18.**
+**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅ → I-18 ✅.**
 I-9 and I-10 are blocked by I-8, the L2 record shape, and may ship in either order once
 it is ruled. ⚠ **I-9's dependency is the ROLE decision only** — measured: no prompt text crosses the
 transport seam, so the text is in no ANSWER. ⚠ **It does NOT follow that no run writes it**
@@ -856,3 +856,26 @@ amendment.)*
   in the closeout that follows the merge. **No call to a model provider was made.**
   **Approval:** delegated (R45).
 
+- **2026-10-05 (I-18 DONE)** — **Gate 2 merged as PR #266** (squash `f1603af`, tag
+  `llm-rerun-rechecks-pairing-confirmed`); gate 1 is PR #262 (`8b11345`, tag
+  `llm-answer-fed-pairing-confirmed`). **Every item on the DONE WHEN line is DONE.**
+  Evidence, Linux box: full suite at `df04021` 5524 passed / 5 skipped / 1 xpassed /
+  0 failed, predicted exactly; three one-line mutations (drop the re-check; resolve
+  the reader outside the dispatcher's scope; report a non-pairing substitute as
+  run) gave 2, 1 and 2 reds, each predicted by name. `origin/main` moved twice
+  before merge: the first delta held no package file (narrowed re-gate at `7dd5ba5`,
+  689 passed / 0 failed, collect +3/−0); the second changed two `mindsos_knowledge`
+  files, so the FULL suite was re-run on the merged head `a8263bc`: 5538 passed / 5
+  skipped / 1 xpassed / 0 failed. CI on PR #266: SUCCESS. RULES 12.2(a) discharged
+  by equal trees: `a8263bc^{tree}` == `f1603af^{tree}`, parent `875ca18`.
+  ⚠ **NOT CLAIMED.** I-18 withholds the inputs a reader DECLARES as carrying the
+  model's answer and re-checks the pairing at re-run. It does not check where a
+  substitute's other inputs came from: an input that itself descends from a model
+  reading, in this run graph or an earlier one, is handed to the substitute as
+  source, and the re-run is then reported as model-free when it is not. Measured
+  2026-10-04 (start values record no producer; a request is many run graphs linked
+  only in memory; `context.kl` reads are not declared). Found and put to the owner;
+  **no item is opened for it and nothing here says it is covered.** ADR-0210
+  amendment 8 is Accepted and the contract's row 12 is reworded in this PR.
+  **No call to a model provider was made:** every test replays a recorded answer or
+  builds its origin record directly. **Approval:** OWNER (R44), delegated (R45).

@@ -623,13 +623,22 @@
     },
     {
       "name": "core-llm-answer-fed-readers",
-      "status": "OPENED 2026-10-03 as plan item I-18, ruling R44 (OWNER, amends R37). NOTHING BUILT. MEASURED: mindsos_capacity/admission.py substitute_problems is the only place the tree ties 'model-produced' to consults_llm, while mindsos_intelligence/excision.py identifies by the origin record; and substitute_problems requires a substitute's inputs to equal the reader's, so for a capacity that is handed the model's answer the substitute would receive that answer. RULED: a capacity declares which inputs carry the model's answer (working name model_answer_inputs; not combinable with consults_llm=True); a substitute pairs with a capacity that consults the model or declares such inputs; its inputs are the reader's minus the answer; excision.rerun withholds the answer. Two gates: (1) declaration + pairing, (2) re-run withholds. Guard first, born red.",
-      "branch_to_open": "now - I-18 is the only open item",
+      "status": "CLOSED 2026-10-05 - plan item I-18 DONE(f1603af) in two gates (PRs #262, #266); see recent[] and plan section 6. NOT COVERED, recorded in the plan: where a substitute's other inputs came from is not checked. *** PREVIOUS STATUS FOLLOWS. OPENED 2026-10-03 as plan item I-18, ruling R44 (OWNER, amends R37). NOTHING BUILT. MEASURED: mindsos_capacity/admission.py substitute_problems is the only place the tree ties 'model-produced' to consults_llm, while mindsos_intelligence/excision.py identifies by the origin record; and substitute_problems requires a substitute's inputs to equal the reader's, so for a capacity that is handed the model's answer the substitute would receive that answer. RULED: a capacity declares which inputs carry the model's answer (working name model_answer_inputs; not combinable with consults_llm=True); a substitute pairs with a capacity that consults the model or declares such inputs; its inputs are the reader's minus the answer; excision.rerun withholds the answer. Two gates: (1) declaration + pairing, (2) re-run withholds. Guard first, born red.",
+      "branch_to_open": "none - closed",
       "spec": "docs/plans/MINDSOS_LLM_PLAN.md item I-18, ruling R44; ADR-0210 amendment 8",
       "consumer": "a consuming project that makes one model call and mints several conclusions from the answer"
     }
   ],
   "recent": [
+    {
+      "kind": "core",
+      "name": "mindsos_llm plan item I-18 - an answer-fed reader can be paired and re-run without the answer",
+      "sha": "f1603af (PR #266, gate 2); gate 1 is 8b11345 (PR #262). RULES 12.2(a): gate 2 by EQUAL TREES a8263bc^{tree} == f1603af^{tree}; gate 1's squash landed on a tree that differed by 5 non-package files from main, so the squash commit itself was gated (682 passed / 0 failed) before tagging.",
+      "tag": "llm-answer-fed-pairing-confirmed, llm-rerun-rechecks-pairing-confirmed",
+      "gate": "LINUX box. Gate 1 at 78d1a76: full suite 5498 passed / 5 skipped / 1 xpassed / 0 failed; ids +8/-0; five one-line mutations 4, 2, 1, 1, 1 reds, all predicted. Gate 2 at df04021: 5524 / 5 / 1 / 0, predicted exactly; three one-line mutations 2, 1, 2 reds, predicted by name; main then changed two mindsos_knowledge files, so the full suite was re-run on the merged head a8263bc: 5538 passed / 5 skipped / 1 xpassed / 0 failed; ids +3/-0. CI on PR #262 and PR #266: SUCCESS. Both guards born red, 2 failed / 1 passed each, as predicted.",
+      "what": "A capacity that is HANDED the model's answer declares which of its inputs carry it (Capacity.model_answer_inputs; not combinable with consults_llm=True; the names must be its own inputs). A substitute pairs with a capacity that consults the model OR declares such inputs; its inputs are the reader's minus the answer inputs, it declares none itself, and a reader with no input left cannot be paired (admission.answer_input_problems, admission.substitute_problems). excision.rerun re-applies the pairing rule against the reader as declared in the dispatcher's scope and reports RERUN_SUBSTITUTE_NO_LONGER_PAIRS instead of running a stale substitute (upsert re-declaration, Local shadowing). Rulings R44 (OWNER, amends R37) and R45 (delegated). Every item on the plan's DONE WHEN line is DONE. NOT CLAIMED: where a substitute's OTHER inputs came from is not checked - an input that descends from a model reading is handed over as source; put to the owner, no item opened. No call to a model provider was made.",
+      "docs": "docs/plans/MINDSOS_LLM_PLAN.md; docs/decisions/adr/0210-llm-communication-layering.md (am-8 Accepted); docs/usage/runtime/llm-capability-contract.md (row 12); HANDOFF.md; STATE.json"
+    },
     {
       "kind": "docs",
       "name": "claim-coverage gate, slice 5 - the last three guards emit (16 of 17 emit); the emitters are done",
