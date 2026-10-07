@@ -755,6 +755,8 @@ the I-12 chat against the plan's §1, each citing its authority there.
     discovery by "produces the same value DataState" (clause 1, R25) would have changed
     ordinary runs. Registration refuses unless it has the reader's inputs and value
     output and `consults_llm=False`. Supersedes clause 1's discovery, not its shape.
+    ⚠ **AMENDED by amendment 8 (R44):** the inputs are the reader's minus its
+    declared answer inputs.
 14. **Identify** (R38): `origin_method == read_by_model`, `environment_fault` not true,
     over a persisted Episode's run graphs. No producer writes an `environment_fault`
     record today; the exclusion is kept.
@@ -765,6 +767,8 @@ the I-12 chat against the plan's §1, each citing its authority there.
     place.
 17. **Re-run** (R41): every paired substitute, through a dispatcher with no model
     bound (one with a client is refused), no mental-model write, exact agreement.
+    ⚠ **AMENDED by amendment 8, clauses 4 and 5:** the answer is withheld and the
+    pairing is checked again at re-run.
 18. **The report is returned, not stored**; no CLI verb, no request pattern (R42).
 19. **Re-run's edges** (R43): substitutes in scope are Global's plus the session
     owner's Local; a substitute that declares `writes`, or whose outputs lack the
@@ -819,5 +823,6 @@ the dispatcher's scope and names a substitute that no longer pairs
 
 ⚠ **Not decided here, not built.** Only the inputs a reader declares are withheld.
 Whether a substitute's other inputs descend from a model reading is not checked
-(plan §6, 2026-10-05).
+(plan §6, 2026-10-05). A proposal to close it is recorded in plan §6, 2026-10-07 —
+not approved, not an item.
 

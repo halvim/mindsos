@@ -338,6 +338,9 @@ excision finds substitutes by exact pairing with the reader that wrote the recor
 and registration refuses unless the substitute consumes exactly the reader's inputs,
 outputs the reader's value DataState, and declares `consults_llm=False`. Removing
 the stand-in is then one declared change. **OWNER 2026-09-29** ("agreed", option (a)).
+⚠ **AMENDED by R44 (2026-10-03, built as I-18):** *"consumes exactly the reader's
+inputs"* is now *the reader's inputs minus its declared answer inputs*, and the
+reader may be a capacity that is handed the model's answer. Read R44.
 
 **R38 — identify** is `origin_method == read_by_model` with `environment_fault` not
 true, over the run graphs of a persisted Episode. ⚠ **Premise NARROWED, measured:** no
@@ -364,7 +367,8 @@ not verifiable, because the tree holds no v1 key function (R34). No source insta
 the grounding walk, or a recomputed key that differs → "the shown material is not
 what ran" (R24, R27). Authority: R24, R27, R34, R36.
 
-**R41 — re-run** dispatches every substitute paired with the reader (R37) through a
+**R41 — re-run** (⚠ **extended by R45, 2026-10-04:** the pairing is checked again at
+re-run) dispatches every substitute paired with the reader (R37) through a
 dispatcher with NO model bound — one with a client bound is refused, so "without the
 model" is mechanical, not declared. It writes no mental model and no grounding: the
 Episode under examination is not changed. Agreement is exact equality of canonical
@@ -461,6 +465,11 @@ registration cannot keep true), R44(d). **Approval:** delegated (the I-18 brief:
 **DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17, I-18.**
 
 **ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅ → I-18 ✅.**
+
+⚠ **PROPOSED, NOT AN ITEM — "I-19", a re-run that is PROVEN model-free.** Not on the
+DONE WHEN line, no ruling, nothing built. It needs an OWNER ruling before it becomes
+an item (it would extend §1's *re-run without it* and change ADR-0201). The proposal,
+what was measured and what is undecided: §6, 2026-10-07.
 I-9 and I-10 are blocked by I-8, the L2 record shape, and may ship in either order once
 it is ruled. ⚠ **I-9's dependency is the ROLE decision only** — measured: no prompt text crosses the
 transport seam, so the text is in no ANSWER. ⚠ **It does NOT follow that no run writes it**
@@ -879,3 +888,45 @@ amendment.)*
   amendment 8 is Accepted and the contract's row 12 is reworded in this PR.
   **No call to a model provider was made:** every test replays a recorded answer or
   builds its origin record directly. **Approval:** OWNER (R44), delegated (R45).
+
+- **2026-10-07 (proposal "I-19", NOT APPROVED — recorded so it is not re-derived)** —
+  **Status: put to the owner, unanswered. Not an item. Do not build from this entry;
+  get the ruling first.** The gap is the NOT CLAIMED paragraph of the entry above:
+  `excision.rerun` reports a substitute's agreement as "without the model" while any
+  of the substitute's inputs may itself descend from a model reading.
+  **Measured** (static reads at `c226f5e`, files byte-identical at `7c7ea71`; ⚠
+  **re-measure before designing** — `main` has moved and nothing here was run):
+  (i) inside ONE run graph the record is complete — every start value and every
+  step's inputs and outputs are there with their edges (`pipeline_execution.py`,
+  `capacity_mm_writer.record`); (ii) a request is MANY run graphs — one per
+  milestone, per map member and per fold — and values pass between them on an
+  in-memory blackboard, so the receiving graph shows them as start values with no
+  parent (`execution.py`, three seeding sites); only a fold records which member
+  graphs fed it (`member_graph_ids`); (iii) a stored Episode returns all its run
+  graphs and flags one that fails to load as `partial` (`episode_reader.read_episode`);
+  (iv) `context.kl` is handed to every capacity body whether declared or not
+  (`dispatch.build_context`), substitutes included; `policy_lookup_v0` reads L2
+  through it and the run graph does not record the read.
+  **Proposed scope, four parts:** (1) every start value records where it came from —
+  the graph and instance that produced it, or *given by the caller* — and the run
+  records which inputs each reader declared answer-carrying, because a declaration
+  can change after the run is stored (R45's reason). This changes the grounding
+  writer and ADR-0201. (2) An ancestry walk across run graphs: an input is the
+  model's if any ancestor carries a `read_by_model` record OR was consumed by a
+  reader as a declared answer input; a caller-given start is a PREMISE, not a
+  failure (the source text is one); a missing link or a `partial` Episode is
+  reported as *not proven*. (3) Chained re-run: upstream conclusions are re-derived
+  first and fed downstream. (4) Reads of stored knowledge are declared and recorded,
+  for readers and substitutes alike; otherwise *not proven*.
+  **Undecided:** (a) whether to open it at all, and whether on the DONE WHEN line —
+  OWNER; (b) the mechanism of part 3 — replay the recorded graphs step by step, or
+  re-run the request with readers swapped for substitutes; not measured enough to
+  choose; (c) part 4 needs a ruling of its own (it adds a declaration to every
+  capacity that reads L2).
+  **Considered and dropped, with the reason:** refusing a substitute whose input
+  directly carries a `read_by_model` record — a patch: a value computed by a plain
+  capacity FROM a model-read value has no such record and would pass; and *a start
+  value of unknown origin means not proven* — the source text is itself a
+  caller-given start, so every conclusion would come back *not proven*.
+  **What a report could then claim:** *without the model, given what the caller
+  handed in*; core cannot see further back than that.
