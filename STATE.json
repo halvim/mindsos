@@ -627,6 +627,13 @@
       "branch_to_open": "none - closed",
       "spec": "docs/plans/MINDSOS_LLM_PLAN.md item I-18, ruling R44; ADR-0210 amendment 8",
       "consumer": "a consuming project that makes one model call and mints several conclusions from the answer"
+    },
+    {
+      "name": "core-llm-rerun-proven-model-free",
+      "status": "PROPOSED 2026-10-07 as 'I-19' - NOT APPROVED, NOT A PLAN ITEM, NOTHING BUILT. The owner has not ruled; get the ruling before any design. Gap: excision.rerun reports agreement as 'without the model' while a substitute's other inputs may descend from a model reading (I-18 withholds only declared answer inputs). Proposed scope, the measurements, what is undecided and what was dropped: plan section 6, entry 2026-10-07. The measurements are static reads at c226f5e and must be re-measured.",
+      "branch_to_open": "none until the owner rules",
+      "spec": "docs/plans/MINDSOS_LLM_PLAN.md section 6, entry 2026-10-07 (proposal only)",
+      "consumer": "any consuming project whose reader takes an input produced by an earlier model step"
     }
   ],
   "recent": [
