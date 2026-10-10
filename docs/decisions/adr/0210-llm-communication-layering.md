@@ -826,3 +826,36 @@ Whether a substitute's other inputs descend from a model reading is not checked
 (plan §6, 2026-10-05). A proposal to close it is recorded in plan §6, 2026-10-07 —
 not approved, not an item.
 
+
+## Amendment 9 — a re-run is proven model-free, or says why not (2026-10-09)
+
+**Amendment status:** Proposed (2026-10-09) — plan items I-20 and I-21 of
+`docs/plans/MINDSOS_LLM_PLAN.md`, not built; flips to Accepted when both are DONE.
+The decision above stands. This transcribes plan rulings **R46–R49** (OWNER
+2026-10-09) and **R52–R53** (delegated). Where a run's starts came from is ADR-0201
+amendment 8 (I-19).
+
+**WHAT CHANGES.**
+
+1. *Re-run without the borrowed model* means no model anywhere in how the value was
+   derived, given what the caller handed in and the stored roles the derivation
+   declared it read (R46). Amendment 8's *"⚠ Not decided here"* paragraph is
+   answered here.
+2. **A chained conclusion is proven by agreement up the chain** (R47): every
+   model-produced value it descends from re-derives with exact agreement through its
+   own substitute, and only substitutes run. A disagreeing or not-yet-excisable
+   ancestor makes it *not proven*, naming that ancestor.
+3. **Reads of stored knowledge are declared by role** (R48): the read channels reach
+   a body only when declared, limited to those roles, on both invoke paths; the run
+   records the declaration; a proven re-run names the roles as premises.
+4. **What leaned on the model is listed** with its proof status (R49, amending
+   amendment 7 clause 14's domain only for this list — `identify` is unchanged).
+5. **What counts as the model's** (R52): a `read_by_model` record, a producer that
+   declared `consults_llm` when it ran, or a declared answer input; inherited by
+   whatever is derived from it; read from the run's own declaration snapshot.
+6. **A substitute receives only the channels it declares** at re-run; one declaring
+   `reads_mm` is named and not run (R53).
+
+**Not claimed.** That a capacity body does only what it declares — no check outside
+a body can see that; where stored content came from (R48); a conclusion derived from
+a reading's origin record rather than its value is never provable.

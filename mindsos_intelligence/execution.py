@@ -632,7 +632,9 @@ def run(
     bb: dict = blackboard if blackboard is not None else dict(solve_seed or {})
     # ADR-0201 amendment 8 — what the caller handed in is GIVEN. setdefault:
     # a retained blackboard already says where its values came from.
-    for ds in solve_seed or {}:
+    # A snapshot of the keys: a caller may hand the SAME dict as seed and
+    # blackboard. ``__`` keys are carriers, not values, and have no origin.
+    for ds in [k for k in (solve_seed or {}) if not k.startswith("__")]:
         bb.setdefault(start_origin_key(ds), dict(_GIVEN))
     start_idx, target_member = targeted if targeted is not None else (0, None)
     prs = _run_milestone_sequence(

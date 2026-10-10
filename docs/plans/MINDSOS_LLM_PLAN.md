@@ -438,6 +438,76 @@ Authority: R41 (*mechanical, not declared*), R43(c) (re-run re-checks what
 registration cannot keep true), R44(d). **Approval:** delegated (the I-18 brief:
 *rule what the plan lets you rule*).
 
+**R46–R53 are the rulings that open I-19, I-20 and I-21, 2026-10-09.** R46–R49 are
+**OWNER** (the owner took the chat's choice on each of the four questions put to him,
+§6 2026-10-09); R50–R53 were ruled by that chat, each citing its authority.
+
+**R46 — the gap I-18 left is opened, as three items on the DONE WHEN line.**
+*Re-run without the borrowed model* means no model anywhere in how the value was
+derived — given what the caller handed in and the stored roles the derivation
+declared it read. Today `rerun` reports agreement *"without the model"* while a
+substitute's other inputs may descend from a model reading (§6, 2026-10-05, NOT
+CLAIMED). Recording where a value came from cannot be added to an Episode already
+stored, so waiting has a cost. **OWNER 2026-10-09.** Authority: §1.
+
+**R47 — a chained conclusion is proven by AGREEMENT UP THE CHAIN; only substitutes
+are run.** A conclusion is proven model-free when every model-produced value it
+descends from re-derives, through its own substitute and from its own proven
+inputs, with exact agreement (R41), and its own substitute agrees. Then everything
+computed from those values stands as recorded, since the model's value is
+reproduced exactly. A disagreeing or not-yet-excisable ancestor makes it *not
+proven*, naming that ancestor. **Rejected:** replaying the recorded plain steps with
+re-derived values (they would read today's stored knowledge and today's
+declarations, so a disagreement could not be attributed to the model, and a step
+that writes cannot run, R43(b)); re-running the whole request with substitutes
+swapped in (R37: the finder never admits a substitute; R41: re-run writes nothing;
+R42). **OWNER 2026-10-09.**
+
+**R48 — reads of stored knowledge are DECLARED BY ROLE and named as premises.** A
+capacity declares the L2 roles it reads; the read channels (`kl`, the learned-
+parameters snapshot) reach a body only when declared, on both invoke paths, and are
+limited to the declared roles; the run records the declaration. A proven re-run
+names the roles it relied on. Where stored content itself came from is NOT claimed.
+**Rejected:** treating any read as *not proven* (MindsOS's own reader will need the
+lexicon and ontology, so the proof would be unreachable); recording the run behind
+every L2 write (every writer changes, and `append_only` / `admin_authored` are
+declared, not enforced). **OWNER 2026-10-09.** ⚠ Measured: R2's *"L3 cannot write
+Global"* is false in general — `builtins/trace.py` writes Global under a session
+capability — so *"Global is safe"* is not a line this ruling can draw.
+
+**R49 — what leaned on the model is listed, with its proof status (amends R26).**
+`identify` keeps listing readings (R26, R38). A walk lists every stored value that
+descends from a model reading — a decision computed from a reading by a plain
+capacity *"leaned on the borrowed model"* in §1's words and is not identified today
+— each with whether it is proven by R47. **OWNER 2026-10-09.**
+
+**R50 — where a start came from lives in the run MANIFEST, and absence means NOT
+RECORDED.** ADR-0201 amendment 8. Kinds `given`, `produced` (by named instances in
+named run graphs), `unrecorded`. Authority: ADR-0201 amendment 4 (the manifest holds
+what the run's own nodes cannot say) and amendment 5 (key presence means exactly one
+thing). An Episode stored before I-19 is *not proven: origins not recorded*, never
+*given*.
+
+**R51 — a start that came through Phase-1 interpretation is labelled so.**
+`phase_1._resolve_reference` runs ungrounded, and its output seeds the request; if
+interpretation dispatched a capacity that consults the model or declares answer
+inputs, a value descending from that start is *not proven*. Authority: R41
+(*mechanical, not declared*), R27.
+
+**R52 — what counts as the model's.** A value is the model's when its origin record
+says `read_by_model` (R26), or a capacity that declared `consults_llm` WHEN IT RAN
+produced it, or a reader consumed it as a declared answer input (R44); a value
+derived from one inherits it. Declarations are read from the run's own snapshot,
+not today's registry (R45's reason, the other way round: what ran is what was
+declared then). Authority: R26, R44, R45.
+
+**R53 — at re-run a substitute receives only the channels it declares.** One that
+declares `reads_mm` is named and not run: the mental model holds the Episode under
+examination. That *a body does only what it declares* cannot be verified from
+outside a body; it is stated as such in contract row 12 and ADR-0210 amendment 9 —
+not in `mindsos_llm`'s `UNVERIFIABLE_PROPERTIES`, which is the transport harness's
+list. Authority: R41, R43(b).
+
 ## 3. THE ITEM LIST
 
 | id | item | filed as | state |
@@ -461,15 +531,17 @@ registration cannot keep true), R44(d). **Approval:** delegated (the I-18 brief:
 | I-17 | an answer names what was asked BY CONTENT (R20–R23): the client resolves and hands the transport everything the model receives, stamps the prompt and schema digests, `request_key` v2, and both digests plus the schema text reach the origin record. **Blocks I-12**, whose *shown* is unverifiable without it | core-llm-answer-names-what-was-asked | DONE(933bc6d) |
 | I-16 | I-9's writer gets its installer. Measured 2026-09-17: nothing in the tree calls `build_write_prompt_edition`, and `install_learn_parameter_capacities` is the precedent it skipped — so a `DONE` item is a declaration L4 cannot route to | core-llm-prompt-edition-has-no-installer | DONE(6e6514e) |
 | I-18 | an answer-fed reader can be paired and re-run: a capacity that is HANDED the model's answer and mints `read_by_model` conclusions from it declares which input carries the answer; a substitute takes the reader's inputs minus that answer, and re-run withholds it. **Specified by R44** (amends R37); two gates (§6, 2026-10-03) | core-llm-answer-fed-readers | DONE(f1603af) |
+| I-19 | a run records where each of its starts came from — `given`, `produced` by named instances in named run graphs, or `unrecorded` — and snapshots the model declarations of the capacities it composed, as they were when it ran. **Specified by R50–R52**; ADR-0201 amendment 8; three gates (§6, 2026-10-09) | core-llm-rerun-proven-model-free | TODO |
+| I-20 | reads of stored knowledge are declared by role: the read channels reach a body only when declared, on both invoke paths, limited to the declared roles, held by an AST census; the run records the declaration. **Specified by R48**; two gates | core-llm-rerun-proven-model-free | TODO |
+| I-21 | a proven re-run: the walk lists every value that leaned on the model (R49), and a re-run is proven only when every model-produced ancestor re-derives with exact agreement (R47); the report names what it relied on. **Specified by R47, R49, R52, R53**; two gates | core-llm-rerun-proven-model-free | TODO |
 
-**DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17, I-18.**
+**DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17, I-18, I-19, I-20, I-21.**
 
-**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅ → I-18 ✅.**
+**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅ → I-18 ✅ → I-19 → I-20 → I-21.**
 
-⚠ **PROPOSED, NOT AN ITEM — "I-19", a re-run that is PROVEN model-free.** Not on the
-DONE WHEN line, no ruling, nothing built. It needs an OWNER ruling before it becomes
-an item (it would extend §1's *re-run without it* and change ADR-0201). The proposal,
-what was measured and what is undecided: §6, 2026-10-07.
+⚠ **I-19, I-20 and I-21 were OPENED 2026-10-09 (R46–R53)** from the 2026-10-07
+proposal, re-measured and amended (§6, 2026-10-09). The order is the dependency:
+I-21's proof reads what I-19 and I-20 record at run time.
 I-9 and I-10 are blocked by I-8, the L2 record shape, and may ship in either order once
 it is ruled. ⚠ **I-9's dependency is the ROLE decision only** — measured: no prompt text crosses the
 transport seam, so the text is in no ANSWER. ⚠ **It does NOT follow that no run writes it**
@@ -930,3 +1002,46 @@ amendment.)*
   caller-given start, so every conclusion would come back *not proven*.
   **What a report could then claim:** *without the model, given what the caller
   handed in*; core cannot see further back than that.
+
+- **2026-10-09 (I-19, I-20, I-21 opened; R46–R53; I-19 gate 1)** — The 2026-10-07
+  proposal was re-measured at `cd82c0c` (static reads of a clean worktree). **Held:**
+  (i) one run graph records its starts and steps completely; (ii) a request is many
+  run graphs joined only by the in-memory blackboard (three seeding sites in
+  `execution.py`). **Contradicted or missing:** (1) `policy_lookup_v0`, the only body
+  that reads L2 through `context.kl`, DOES record its read — as an origin record
+  naming the source and edition; (2) `kl` is not the only undeclared channel —
+  `learned_parameters_snapshot` reaches every body too, and the direct invoke path
+  injects `kl` into its dict context; (3) `read_episode`'s `partial` is not a
+  missing-run-graph signal — set for a missing chain graph or no client, not set for
+  a run graph never written, and without the index only the latest attempt per
+  position comes back — so a dangling origin reference, not `partial`, is what
+  *not proven* keys on; (4) the request's first start is not *given by the caller* —
+  it is the output of `phase_1._resolve_reference`, which runs ungrounded (R51);
+  (5) a capacity declaring `consults_llm` that writes no `read_by_model` record
+  produces model values neither `identify` nor the proposed walk would see (R52);
+  (6) R2's *"L3 cannot write Global"* is false in general (`builtins/trace.py`);
+  (7) ADR-0201 amendment 4 tells a renderer a parentless start is *"a premise the
+  run was given"* — for a value an earlier run computed, that is false today.
+  **Passes:** the proposal's part 3 (feed re-derived values downstream) became R47's
+  agreement rule; part 2 dropped `partial`; part 4 became a declaration that gates
+  the channel; *Global knowledge is a premise, Local is not* was reversed by (6);
+  the item order became record → reads → proof; placing *a body does only what it
+  declares* in `UNVERIFIABLE_PROPERTIES` was reversed (wrong layer). Two further
+  passes reversed nothing. **Put to the owner, with options:** (a) open it, and on the
+  DONE WHEN line; (b) the chained re-run's mechanism; (c) reads of stored knowledge;
+  (d) whether what leaned on the model is listed. He took the chat's choice on each:
+  R46, R47, R48, R49. **Not claimed, recorded so it is not re-derived:** replay of
+  plain steps with re-derived values (R47); the run behind an L2 write (R48); a step
+  that consumed a reading's ORIGIN RECORD rather than its value is never provable,
+  since a substitute's record necessarily differs.
+  **I-19 gate 1 — a seeded start names where it came from (ADR-0201 amendment 8).**
+  Guard first, born red at `04ae967`
+  (`tests/llm_seam/test_a_start_names_where_it_came_from.py`): 6 failed / 1 passed,
+  the names predicted, and every red was `_origins(...)` returning `None` — the
+  record missing, not the harness. The passing test holds R50's corner (a caller that
+  records no origins leaves the key absent) and was green at birth. First
+  implementation `4969bac` failed one existing test,
+  `test_slice3b_targeted_reexec.py::test_targeted_reexec_reruns_only_named_member_keeps_siblings_refires_fold`:
+  that caller hands the SAME dict as seed and blackboard, and marking the seeds
+  `given` grew the dict it iterated. Fixed by iterating a snapshot of the keys and
+  skipping `__` carriers. **No call to a model provider was made.**
