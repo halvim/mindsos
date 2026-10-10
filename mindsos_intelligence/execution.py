@@ -135,6 +135,9 @@ from mindsos_capacity.identifiers import (
     PROP_DATASTATE_INSTANCE_TYPE,
     RUN_STOPPED_EMPTY_DOMAIN,
     RUN_STOPPED_PARTIAL_DOMAIN,
+    START_ORIGIN_GIVEN,
+    START_ORIGIN_PRODUCED,
+    START_ORIGIN_UNRECORDED,
 )
 
 #: Slice 1b — hard cap on per-member sub-run attempts (initial + retries) inside
@@ -173,6 +176,65 @@ def member_completed_key(out_ds: str) -> str:
     return f"__member_completed__:{out_ds}"
 
 
+def start_origin_key(ds: str) -> str:
+    """The blackboard key carrying where the value under ``ds`` came from
+    (ADR-0201 amendment 8, ``mindsos_llm`` plan I-19).
+
+    A request is many run graphs and the blackboard is the only thing that
+    crosses between them, so where a value came from has to ride beside the
+    value, with the same lifetime — the :func:`member_graph_ids_key` argument
+    (a targeted re-run keeps the retained blackboard, so it keeps these too).
+    Read when a run is SEEDED, so its manifest can say which starts were
+    handed in and which an earlier run produced."""
+    return f"__start_origin__:{ds}"
+
+
+def member_origins_key(out_ds: str) -> str:
+    """The blackboard key carrying each map member's ``sub_target`` origin, in
+    member order — ``None`` for a stopped member — so a targeted re-run
+    splices it exactly as it splices outputs and ids (ADR-0201 amendment 8)."""
+    return f"__member_origins__:{out_ds}"
+
+
+_GIVEN = {"kind": START_ORIGIN_GIVEN}
+_UNRECORDED = {"kind": START_ORIGIN_UNRECORDED}
+
+
+def _origins_of(blackboard, datastates) -> Dict[str, Any]:
+    """Where each of ``datastates`` came from, read off ``blackboard``. A
+    value with no recorded origin is ``unrecorded`` — never ``given``."""
+    return {ds: blackboard.get(start_origin_key(ds), _UNRECORDED) for ds in datastates}
+
+
+def _produced_origins(result) -> Dict[str, Any]:
+    """``start_origin_key(ds) -> produced-by`` for every value a step of this
+    grounded run produced. Empty when the run grounded nothing."""
+    graph = getattr(result, "capacity_graph", None)
+    if graph is None:
+        return {}
+    return {
+        start_origin_key(ds): {
+            "kind": START_ORIGIN_PRODUCED,
+            "by": [{"graph_id": graph.graph_id, "instance_id": instance}],
+        }
+        for ds, instance in (getattr(result, "produced_instances", None) or {}).items()
+    }
+
+
+def _collection_origin(member_origins) -> Dict[str, Any]:
+    """The origin of a map's compact output list: every COMPLETED member's
+    producers, in member order. Any completed member whose own origin is not
+    ``produced`` makes the whole list ``unrecorded`` — a partial claim about
+    where a collection came from would read as a whole one."""
+    completed = [o for o in member_origins if o is not None]
+    if not all(o.get("kind") == START_ORIGIN_PRODUCED for o in completed):
+        return dict(_UNRECORDED)
+    return {
+        "kind": START_ORIGIN_PRODUCED,
+        "by": [ref for o in completed for ref in o["by"]],
+    }
+
+
 class _MemberOutcome(NamedTuple):
     """One map member's result (coordination §63 Q1: an explicit structural
     flag, never a sentinel in the value channel). ``value`` is meaningful only
@@ -183,6 +245,9 @@ class _MemberOutcome(NamedTuple):
     value: Any
     graph_id: Optional[str]
     completed: bool
+    #: Where ``value`` came from (ADR-0201 amendment 8); ``None`` when the
+    #: member did not complete.
+    origin: Optional[Dict[str, Any]] = None
 
 
 #: The closed PipelineRun status vocabulary the conceded classifier consumes
@@ -565,6 +630,10 @@ def run(
     # v0/1a/1b/2/3 path) a fresh blackboard is seeded and the whole sequence runs
     # from index 0 — byte-identical.
     bb: dict = blackboard if blackboard is not None else dict(solve_seed or {})
+    # ADR-0201 amendment 8 — what the caller handed in is GIVEN. setdefault:
+    # a retained blackboard already says where its values came from.
+    for ds in solve_seed or {}:
+        bb.setdefault(start_origin_key(ds), dict(_GIVEN))
     start_idx, target_member = targeted if targeted is not None else (0, None)
     prs = _run_milestone_sequence(
         dispatcher, writer, request_run,
@@ -799,6 +868,7 @@ def _run_leaf_pipeline(
         mm=mm,
         pipeline_run_ref=run_ref,
         case_label=case_label,
+        start_origins=_origins_of(blackboard, seed),
     )
     # Real provenance: one StepExecutionRecord per executed capacity step
     # (replaces the single notional record).
@@ -812,7 +882,9 @@ def _run_leaf_pipeline(
     pr.status = "completed" if result.success else "failed"
     if capacity_graphs is not None and result.capacity_graph is not None:
         capacity_graphs.append(result.capacity_graph)
-    return dict(result.outputs)
+    outputs = dict(result.outputs)
+    outputs.update(_produced_origins(result))
+    return outputs
 
 
 def _run_map_milestone(
@@ -865,6 +937,13 @@ def _run_map_milestone(
     shared = _resolve_shared_inputs(spec, blackboard, leaf_ref)
     compose_cache: Dict[str, Any] = {}
     members = list(blackboard.get(collection_ds) or [])
+    # ADR-0201 amendment 8 — a member is an element of the collection, so it
+    # came from where the collection came from; the member value wins over a
+    # shared input of the same name, as it does for the value.
+    origins = {
+        **_origins_of(blackboard, shared),
+        spec["member_ds"]: blackboard.get(start_origin_key(collection_ds), _UNRECORDED),
+    }
     if only_member is not None:
         # Slice 3b — targeted: re-run just this one member and splice its output
         # into the retained ordered outputs; the untargeted siblings (and their
@@ -876,6 +955,7 @@ def _run_map_milestone(
             dispatcher, writer, request_run, pr, leaf_ref, spec, mm,
             request_id, leaf_path, only_member, members[only_member],
             run_attempt, capacity_graphs, shared, compose_cache, case_label,
+            origins,
         )
         mask = blackboard.get(member_completed_key(out_ds))
         if mask is not None:
@@ -920,6 +1000,18 @@ def _run_map_milestone(
             else:
                 ids.append(outcome.graph_id)
             blackboard[member_graph_ids_key(out_ds)] = ids
+        retained = blackboard.get(member_origins_key(out_ds))
+        member_origins = list(retained or [])
+        if only_member >= len(member_origins):
+            member_origins.extend([None] * (only_member + 1 - len(member_origins)))
+        member_origins[only_member] = outcome.origin if outcome.completed else None
+        blackboard[member_origins_key(out_ds)] = member_origins
+        # A blackboard retained from before origins were recorded says nothing
+        # about the untargeted siblings, so the list as a whole is unrecorded.
+        blackboard[start_origin_key(out_ds)] = (
+            _collection_origin(member_origins) if retained is not None
+            else dict(_UNRECORDED)
+        )
         pr.status = (
             "completed" if (mask is None or all(mask)) else "stopped"
         )
@@ -927,11 +1019,13 @@ def _run_map_milestone(
     member_outputs: List[Any] = []
     member_gids: List[Optional[str]] = []
     member_mask: List[bool] = []
+    member_origins: List[Optional[Dict[str, Any]]] = []
     for member_idx, member_value in enumerate(members):
         outcome = _run_one_member(
             dispatcher, writer, request_run, pr, leaf_ref, spec, mm,
             request_id, leaf_path, member_idx, member_value,
             run_attempt, capacity_graphs, shared, compose_cache, case_label,
+            origins,
         )
         # ADR-0201 am-6 (partial results): a stopped member contributes NO
         # output — a machinery failure has no value, and a hole marker would
@@ -941,7 +1035,10 @@ def _run_map_milestone(
             member_outputs.append(outcome.value)
         member_gids.append(outcome.graph_id)
         member_mask.append(outcome.completed)
+        member_origins.append(outcome.origin if outcome.completed else None)
     blackboard[out_ds] = member_outputs
+    blackboard[member_origins_key(out_ds)] = member_origins
+    blackboard[start_origin_key(out_ds)] = _collection_origin(member_origins)
     # ADR-0201 amendment 5 — the ordered member grounding-graph ids ride the
     # same blackboard as the ordered outputs they correlate to, for the fold's
     # manifest. Only when the run grounds AND collects graphs: an id pointing
@@ -964,6 +1061,7 @@ def _run_one_member(
     shared: Optional[Dict[str, Any]] = None,
     compose_cache: Optional[Dict[str, Any]] = None,
     case_label: Optional[str] = None,
+    origins: Optional[Dict[str, Any]] = None,
 ) -> "_MemberOutcome":
     """Run one map member; return a :class:`_MemberOutcome`
     ``(value, graph_id, completed)`` (Slice 3b factoring; the id is ADR-0201
@@ -1010,6 +1108,8 @@ def _run_one_member(
         # map inside the sub-plan can see them (a nested map re-declares the ones
         # it needs — there is no implicit inheritance past the sub-blackboard).
         sub_blackboard: dict = {**shared, member_ds: member_value}
+        for ds, origin in (origins or {}).items():
+            sub_blackboard[start_origin_key(ds)] = origin
         graphs_before = len(capacity_graphs) if capacity_graphs is not None else 0
         sub_prs = _run_milestone_sequence(
             dispatcher, writer, request_run,
@@ -1051,6 +1151,7 @@ def _run_one_member(
                 sub_blackboard.get(sub_target),
                 _produced_graph_id(member_slice, sub_target) or None,
                 True,
+                sub_blackboard.get(start_origin_key(sub_target), dict(_UNRECORDED)),
             )
         return _MemberOutcome(
             None,
@@ -1073,6 +1174,7 @@ def _run_one_member(
                 request_id, run_ref, mm,
                 shared=shared, spec=spec, leaf_ref=leaf_ref,
                 compose_cache=compose_cache, case_label=case_label,
+                origins=origins,
             )
         except LeafPipelineNotFound:
             # An unroutable member leaves its manifest-only graph (the run-4
@@ -1128,7 +1230,10 @@ def _run_one_member(
             milestone_ref=leaf_ref,
             confidence=1.0,
         )
-    return _MemberOutcome(accepted.outputs.get(sub_target), member_gid, True)
+    return _MemberOutcome(
+        accepted.outputs.get(sub_target), member_gid, True,
+        _produced_origins(accepted).get(start_origin_key(sub_target), dict(_UNRECORDED)),
+    )
 
 
 def _failure_is_retryable(dispatcher, result) -> bool:
@@ -1172,6 +1277,7 @@ def _run_member_pipeline(
     leaf_ref: str = "",
     compose_cache: Optional[Dict[str, Any]] = None,
     case_label: Optional[str] = None,
+    origins: Optional[Dict[str, Any]] = None,
 ):
     """Find + run one member's sub-pipeline, isolated per member (Slice 1b).
 
@@ -1217,6 +1323,7 @@ def _run_member_pipeline(
         mm=mm,
         pipeline_run_ref=run_ref,
         case_label=case_label,
+        start_origins=dict(origins or {}),
     )
     return result, pipeline
 
@@ -1380,10 +1487,12 @@ def _run_fold_milestone(
         member_graph_ids=member_gids,
         stop_before_dispatch=stop_reason,
         stop_detail=stop_detail,
+        start_origins=_origins_of(blackboard, (in_ds,)),
     )
     success = bool(result.success)
     if success:
         blackboard.update(dict(result.outputs))
+        blackboard.update(_produced_origins(result))
     if capacity_graphs is not None and result.capacity_graph is not None:
         capacity_graphs.append(result.capacity_graph)
     writer.emit_step_execution_record(

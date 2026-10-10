@@ -63,6 +63,8 @@ from mindsos_capacity.identifiers import (
     MANIFEST_CASE_LABEL,
     MANIFEST_DECLARED_STARTS,
     MANIFEST_MEMBER_GRAPH_IDS,
+    MANIFEST_START_ORIGINS,
+    START_ORIGIN_KINDS,
     MANIFEST_STOP_REASON_PHRASES,
     NODE_TYPE_RUN_MANIFEST,
     RUN_STOPPED_PHRASES,
@@ -193,6 +195,7 @@ class CapacityMMWriter:
         capacity_phrases: Mapping[str, str],
         case_label: Optional[str] = None,
         member_graph_ids: Optional[Iterable[str]] = None,
+        start_origins: Optional[Mapping[str, Mapping[str, Any]]] = None,
     ) -> str:
         """Mint this run's manifest node — the three things the run's own
         nodes cannot say about it.
@@ -240,6 +243,12 @@ class CapacityMMWriter:
         directly — leaves the key ABSENT (critic §60 point 2: presence must
         never flip on emptiness).
 
+        ``start_origins`` (ADR-0201 amendment 8) is supplied by ``execution``
+        for every run it seeds: per seeded start, ``given``, ``produced`` by
+        named instances in named run graphs, or ``unrecorded``. ``None`` — any
+        other caller — leaves the key ABSENT, which means not recorded, never
+        given.
+
         Everything lives in the node's **value**, as a dict:
         ``Graph.add_node`` validates ``properties`` as primitives only, and
         all the fields are collections.
@@ -268,6 +277,20 @@ class CapacityMMWriter:
                         "graph id is an upstream defect, not a value to coerce"
                     )
                 value[MANIFEST_MEMBER_GRAPH_IDS] = ids
+            if start_origins is not None:
+                # ADR-0201 amendment 8 — where each seeded start came from.
+                # A kind outside the closed set is an upstream defect and
+                # surfaces HERE, not as a premise printed on a page later.
+                origins = {ds: dict(o) for ds, o in start_origins.items()}
+                bad = {
+                    ds: o for ds, o in origins.items()
+                    if o.get("kind") not in START_ORIGIN_KINDS
+                }
+                if bad:
+                    raise ValueError(
+                        f"start_origins kinds must be one of {START_ORIGIN_KINDS}; got {bad!r}"
+                    )
+                value[MANIFEST_START_ORIGINS] = origins
             return graph.add_node(
                 value=value,
                 type_name=NODE_TYPE_RUN_MANIFEST,

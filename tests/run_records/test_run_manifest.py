@@ -27,6 +27,7 @@ from mindsos_capacity.identifiers import (
     MANIFEST_CAPACITY_PHRASES,
     MANIFEST_CASE_LABEL,
     MANIFEST_DECLARED_STARTS,
+    MANIFEST_START_ORIGINS,
     MANIFEST_STOP_REASON_PHRASES,
     NODE_TYPE_CAPACITY_INSTANCE,
     NODE_TYPE_DATASTATE_INSTANCE,
@@ -87,6 +88,8 @@ def test_the_manifest_carries_its_contents_in_the_value_not_the_properties():
         MANIFEST_CAPACITY_PHRASES,
         MANIFEST_STOP_REASON_PHRASES,
         MANIFEST_CASE_LABEL,
+        # ADR-0201 amendment 8 — execution records where each start came from.
+        MANIFEST_START_ORIGINS,
     }
 
 
