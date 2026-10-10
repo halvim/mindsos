@@ -375,3 +375,14 @@ def test_a_blackboard_value_nobody_recorded_is_unrecorded_never_given():
     assert len(members) == 2
     for member in members:
         assert _origins(member) == {DS_MEMBER: UNRECORDED}
+
+
+def test_a_leaf_seeded_from_a_value_nobody_recorded_is_unrecorded_never_given():
+    """The leaf path reads origins off the blackboard too: a value placed
+    there by the caller but not in the seed is ``unrecorded`` when a leaf
+    is seeded from it."""
+    graphs = _run(
+        _chain_plan(), {}, _harness(with_context=True),
+        blackboard={DS_RAW: "abc"},
+    )
+    assert _origins(_one_graph_running(graphs, CAP_SPLIT)) == {DS_RAW: UNRECORDED}
