@@ -343,3 +343,35 @@ def test_a_manifest_minted_without_origins_carries_no_key():
     assert result.success
     manifest = _nodes(result.capacity_graph, NODE_TYPE_RUN_MANIFEST)[0]
     assert KEY not in manifest.value
+
+
+UNRECORDED = {"kind": "unrecorded"}
+
+
+def test_a_start_the_caller_names_no_origin_for_is_unrecorded_never_given():
+    """``execute_pipeline`` handed origins that omit a seeded start records
+    it ``unrecorded`` — a missing origin is never read as a premise."""
+    mm, dispatcher, _, _ = _harness(with_context=True)
+    pipeline = execution._compose_pipeline(
+        dispatcher, (DS_RAW,), DS_COLL, execution.FINDER_BFS,
+    ).pipeline
+    result = execute_pipeline(
+        dispatcher, pipeline, {DS_RAW: "ab"},
+        request_id="named", mm=mm, pipeline_run_ref="pipelinerun:named",
+        start_origins={},
+    )
+    assert result.success
+    assert _origins(result.capacity_graph) == {DS_RAW: UNRECORDED}
+
+
+def test_a_blackboard_value_nobody_recorded_is_unrecorded_never_given():
+    """A value on a caller-supplied blackboard that is not in the seed has no
+    recorded origin, so the members seeded from it say ``unrecorded``."""
+    graphs = _run(
+        _flat_map_plan(), {}, _harness(with_context=False),
+        blackboard={DS_COLL: ["p", "q"]},
+    )
+    members = _graphs_running(graphs, CAP_READ)
+    assert len(members) == 2
+    for member in members:
+        assert _origins(member) == {DS_MEMBER: UNRECORDED}
