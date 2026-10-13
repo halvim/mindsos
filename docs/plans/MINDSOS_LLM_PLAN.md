@@ -1044,4 +1044,16 @@ amendment.)*
   `test_slice3b_targeted_reexec.py::test_targeted_reexec_reruns_only_named_member_keeps_siblings_refires_fold`:
   that caller hands the SAME dict as seed and blackboard, and marking the seeds
   `given` grew the dict it iterated. Fixed by iterating a snapshot of the keys and
-  skipping `__` carriers. **No call to a model provider was made.**
+  skipping `__` carriers. Two unrecorded-default corners were added after the code
+  (green at birth, held instead by mutations 4–6 below). **Evidence, Linux box, at
+  `45028f6` on `cd82c0c` (`main` had not moved):** full suite 5548 passed / 5
+  skipped / 1 xpassed / 0 failed, CLI suites collected (256); collect delta against
+  `cd82c0c` +10 / −0, all in the guard file, once the import-isolation suites'
+  absolute paths are normalised. Six one-line mutations, each predicted by name before
+  it ran: leaf passes no origins → 4 reds; a map's output list always `unrecorded` →
+  3; the caller's seed marked `unrecorded` → 2; `execute_pipeline`'s missing-origin
+  default flipped to `given` → 1; the leaf path's missing-origin default flipped → 1;
+  the map's own missing-origin default flipped → 1. ⚠ **The fifth first reddened
+  NOTHING:** the corner test written for it reached the map's default, not the leaf
+  path's, so that line was held by no test; a leaf corner was added and the row
+  re-run red. **No call to a model provider was made.**
