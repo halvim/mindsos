@@ -469,7 +469,14 @@ MANIFEST_START_ORIGINS = "start_origins"
 START_ORIGIN_GIVEN = "given"
 START_ORIGIN_PRODUCED = "produced"
 START_ORIGIN_UNRECORDED = "unrecorded"
-START_ORIGIN_KINDS = (START_ORIGIN_GIVEN, START_ORIGIN_PRODUCED, START_ORIGIN_UNRECORDED)
+#: ``interpreted``: the request's value as Phase-1 interpretation produced it,
+#: which runs ungrounded; ``model_capacities`` lists every capacity it
+#: dispatched that consults the model or declares answer inputs (plan R51).
+START_ORIGIN_INTERPRETED = "interpreted"
+START_ORIGIN_KINDS = (
+    START_ORIGIN_GIVEN, START_ORIGIN_PRODUCED, START_ORIGIN_UNRECORDED,
+    START_ORIGIN_INTERPRETED,
+)
 
 #: Registered prose for the closed run-stopped set. Core owns the tokens, so
 #: core owns their phrases — *tokens branch, phrases print* (ADR-0207 rule 2).

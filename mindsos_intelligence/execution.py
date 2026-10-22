@@ -570,6 +570,7 @@ def run(
     blackboard: Optional[dict] = None,
     targeted: Optional[tuple] = None,
     case_label: Optional[str] = None,
+    seed_origins: Optional[Dict[str, Any]] = None,
 ) -> List[str]:
     """Run each leaf Pipeline; return the top-level PipelineRun IRIs.
 
@@ -634,8 +635,10 @@ def run(
     # a retained blackboard already says where its values came from.
     # A snapshot of the keys: a caller may hand the SAME dict as seed and
     # blackboard. ``__`` keys are carriers, not values, and have no origin.
+    # ``seed_origins`` (plan R51) names a seed that did NOT come straight from
+    # the caller — the orchestrator's interpreted request value.
     for ds in [k for k in (solve_seed or {}) if not k.startswith("__")]:
-        bb.setdefault(start_origin_key(ds), dict(_GIVEN))
+        bb.setdefault(start_origin_key(ds), dict((seed_origins or {}).get(ds, _GIVEN)))
     start_idx, target_member = targeted if targeted is not None else (0, None)
     prs = _run_milestone_sequence(
         dispatcher, writer, request_run,

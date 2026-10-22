@@ -34,7 +34,11 @@ from enum import IntEnum
 from typing import Any, Optional
 
 from mindsos_capacity.builtins.orchestration_v0 import DS_SCORE, DS_SCORE_INPUT
-from mindsos_capacity.identifiers import CATEGORY_SCORING, capacity_iri
+from mindsos_capacity.identifiers import (
+    CATEGORY_SCORING,
+    START_ORIGIN_INTERPRETED,
+    capacity_iri,
+)
 from mindsos_capacity.needs_input import NeedsInput
 from mindsos_capacity.tiers import TierEnum
 
@@ -359,6 +363,18 @@ class Orchestrator:
             {solve_target["start_datastate"]: p1.resolved_reference}
             if solve_target is not None else None
         )
+        # ``mindsos_llm`` plan R51 — the seed is interpretation's output, not a
+        # value the caller handed in, and interpretation runs ungrounded: its
+        # manifest origin says so and names any model-using step it ran.
+        seed_origins = (
+            {
+                solve_target["start_datastate"]: {
+                    "kind": START_ORIGIN_INTERPRETED,
+                    "model_capacities": list(p1.model_capacities),
+                }
+            }
+            if solve_target is not None else None
+        )
         # Dream PRE-0 Slice 2 — stream each run's capacity grounding graph
         # to Falkor as the run completes (crash durability), instead of
         # batching at terminal consolidation. The sink IS the ``capacity_graphs``
@@ -391,6 +407,7 @@ class Orchestrator:
             execution.run(
                 self._dispatcher, writer, plan_result, request_run,
                 mm=self._mm, run_scope=scope, solve_seed=solve_seed,
+                seed_origins=seed_origins,
                 capacity_graphs=capacity_graphs, run_attempt=replans,
                 blackboard=blackboard, targeted=targeted,
             )
