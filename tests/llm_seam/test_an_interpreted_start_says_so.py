@@ -239,3 +239,27 @@ def test_a_seed_interpreted_with_the_model_names_the_capacity():
     assert _lifecycle(model_process=True) == {
         DS_TASK: {"kind": "interpreted", "model_capacities": [MODEL_PROCESS_IRI]},
     }
+
+
+ANSWER_FED_PROCESS_IRI = capacity_iri(CATEGORY_PROCESS, "isso_take_answer")
+
+
+def test_an_interpretation_step_handed_the_model_answer_is_named():
+    """A step that does not call the model but is HANDED its answer (R44)
+    leans on it just the same — the request text it reads is that answer."""
+    layer = CapacityLayer()
+    install_phase1_v0(layer)
+    layer.register_capacity(
+        Capacity(
+            name="isso_take_answer", category=CATEGORY_PROCESS,
+            inputs=(DS_RAW_INPUT,), outputs=(DS_STRUCTURED_INPUT,),
+            implementation=lambda **kw: {DS_STRUCTURED_INPUT: kw.get(DS_RAW_INPUT)},
+            model_answer_inputs=(DS_RAW_INPUT,),
+            description="takes a model's answer as the request",
+        )
+    )
+    dispatcher = L4Dispatcher(
+        layer, phase1_profile=Phase1Profile(process=ANSWER_FED_PROCESS_IRI),
+    )
+    result = interpret(dispatcher, "anything")
+    assert result.model_capacities == (ANSWER_FED_PROCESS_IRI,)
