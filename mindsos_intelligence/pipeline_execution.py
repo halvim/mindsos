@@ -46,6 +46,7 @@ from mindsos_capacity.identifiers import (
     RUN_STOPPED_NEEDS_INPUT,
     RUN_STOPPED_PARTIAL_DOMAIN,
     RUN_STOPPED_STEP_FAILED,
+    START_ORIGIN_UNRECORDED,
 )
 
 #: The reasons a caller may order a stop BEFORE the first dispatch (ADR-0201
@@ -92,6 +93,10 @@ class PipelineExecutionResult:
     #: the run grounded (manifest + seeds + ``RunStopped`` alone) but no step
     #: ran. ``None`` on every other path.
     stopped_before_dispatch: Optional[str] = None
+    #: ADR-0201 amendment 8 — DataState IRI -> the instance a STEP of this run
+    #: produced for it (the last one, as ``CapacityMMWriter.index`` routes
+    #: it). Seeded starts are not in it. Empty when nothing was grounded.
+    produced_instances: Dict[str, str] = field(default_factory=dict)
 
 
 def _is_cancelled(token: Any) -> bool:
@@ -114,6 +119,7 @@ def execute_pipeline(
     member_graph_ids: Optional[Any] = None,
     stop_before_dispatch: Optional[str] = None,
     stop_detail: Optional[str] = None,
+    start_origins: Optional[Mapping[str, Mapping[str, Any]]] = None,
 ) -> PipelineExecutionResult:
     """Execute ``pipeline`` step-by-step via ``dispatcher``.
 
@@ -149,6 +155,11 @@ def execute_pipeline(
     ``member_graph_ids`` (ADR-0201 amendment 5) rides onto the run's manifest
     verbatim — supplied by ``_run_fold_milestone`` only (the ordered member
     grounding-graph ids); ``None`` leaves the manifest key absent.
+
+    ``start_origins`` (ADR-0201 amendment 8) maps a seeded start to where it
+    came from and rides onto the manifest; a seeded start it does not name is
+    recorded ``unrecorded``, never ``given``. ``None`` (every caller but
+    ``execution``) leaves the manifest key absent: not recorded.
 
     ``stop_before_dispatch`` (ADR-0201 amendment 5): when set to a stop
     reason token, the run GROUNDS — manifest, seeded starts — and then stops
@@ -210,6 +221,13 @@ def execute_pipeline(
             capacity_phrases=capacity_phrases(dispatcher, pipeline),
             case_label=case_label,
             member_graph_ids=member_graph_ids,
+            start_origins=(
+                None if start_origins is None
+                else {
+                    ds: start_origins.get(ds, {"kind": START_ORIGIN_UNRECORDED})
+                    for ds in blackboard
+                }
+            ),
         )
         for ds, value in blackboard.items():
             # Idempotent seed: a start input already carried in the index (e.g.
@@ -221,6 +239,8 @@ def execute_pipeline(
 
     def _cap_graph():
         return writer.graph if writer is not None else None
+
+    produced: Dict[str, str] = {}
 
     steps = tuple(getattr(pipeline, "steps", ()) or ())
 
@@ -331,12 +351,14 @@ def execute_pipeline(
         # so it is never held across the dispatch above).
         if writer is not None:
             writer.record(step.capacity_iri, step.input_datastates, outs)
+            for ds in outs:
+                produced[ds] = writer.index[ds]
         for ds, value in outs.items():
             blackboard[ds] = value
 
     return PipelineExecutionResult(
         success=True, outputs=blackboard, steps_run=len(steps),
-        capacity_graph=_cap_graph(),
+        capacity_graph=_cap_graph(), produced_instances=produced,
     )
 
 

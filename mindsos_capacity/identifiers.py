@@ -452,6 +452,24 @@ MANIFEST_CASE_LABEL = "case_label"
 #: (``mindsos_core/cypher/builders.py``); different layer, different object —
 #: a grep for the bare string spans both.
 MANIFEST_MEMBER_GRAPH_IDS = "member_graph_ids"
+#: ADR-0201 amendment 8 (``mindsos_llm`` plan I-19, R50) — where each SEEDED
+#: start of the run came from: ``{start DataState IRI: origin}``. A request is
+#: many run graphs, and a value an earlier run produced arrives here as a
+#: parentless start exactly like one the caller handed in; without this a
+#: renderer prints a computed value as a premise (amendment 4's own failure,
+#: one level up). Written by ``execution`` for every run it seeds. Key ABSENT
+#: when the caller recorded no origins — absent means NOT RECORDED, never
+#: given (amendment 5's key-presence rule).
+MANIFEST_START_ORIGINS = "start_origins"
+#: An origin's ``kind``. ``given``: handed to ``execution.run`` by its caller.
+#: ``produced``: made by the instances listed under ``by``, each
+#: ``{"graph_id", "instance_id"}`` (a collection assembled from map members
+#: lists every member's, in order). ``unrecorded``: the run was seeded with a
+#: value whose origin nobody recorded — never read as given.
+START_ORIGIN_GIVEN = "given"
+START_ORIGIN_PRODUCED = "produced"
+START_ORIGIN_UNRECORDED = "unrecorded"
+START_ORIGIN_KINDS = (START_ORIGIN_GIVEN, START_ORIGIN_PRODUCED, START_ORIGIN_UNRECORDED)
 
 #: Registered prose for the closed run-stopped set. Core owns the tokens, so
 #: core owns their phrases — *tokens branch, phrases print* (ADR-0207 rule 2).

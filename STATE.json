@@ -630,9 +630,9 @@
     },
     {
       "name": "core-llm-rerun-proven-model-free",
-      "status": "PROPOSED 2026-10-07 as 'I-19' - NOT APPROVED, NOT A PLAN ITEM, NOTHING BUILT. The owner has not ruled; get the ruling before any design. Gap: excision.rerun reports agreement as 'without the model' while a substitute's other inputs may descend from a model reading (I-18 withholds only declared answer inputs). Proposed scope, the measurements, what is undecided and what was dropped: plan section 6, entry 2026-10-07. The measurements are static reads at c226f5e and must be re-measured.",
-      "branch_to_open": "none until the owner rules",
-      "spec": "docs/plans/MINDSOS_LLM_PLAN.md section 6, entry 2026-10-07 (proposal only)",
+      "status": "OPENED 2026-10-09 as plan items I-19 (start origins + declaration snapshot), I-20 (declared reads of stored knowledge), I-21 (proven re-run) - rulings R46-R53, all on the DONE WHEN line. I-19 gate 1 (start origins, ADR-0201 am-8) in progress on feat/rerun-model-free. The plan (section 2 R46-R53, section 6 entry 2026-10-09) is the authority.",
+      "branch_to_open": "feat/rerun-model-free",
+      "spec": "docs/plans/MINDSOS_LLM_PLAN.md section 2 R46-R53, section 6 entry 2026-10-09; ADR-0201 amendment 8; ADR-0210 amendment 9",
       "consumer": "any consuming project whose reader takes an input produced by an earlier model step"
     }
   ],
