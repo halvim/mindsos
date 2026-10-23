@@ -1057,3 +1057,29 @@ amendment.)*
   NOTHING:** the corner test written for it reached the map's default, not the leaf
   path's, so that line was held by no test; a leaf corner was added and the row
   re-run red. **No call to a model provider was made.**
+
+- **2026-10-22 (I-19 gate 1 merged; gate 2)** — **Gate 1 merged as PR #269** (squash
+  `48ae5de`, tag `llm-start-origins-confirmed`); `main` had not moved since
+  `cd82c0c`, and the squash tree equals the gated branch's (`157569c^{tree}`).
+  **Gate 2 builds R51 — a start that came through interpretation says so.** New
+  origin kind `interpreted` with `model_capacities`; `interpret` names every
+  capacity it dispatched that consults the model or declares answer inputs (its
+  four steps and the resolve pipeline's steps that ran); the orchestrator passes
+  it to `execution.run(seed_origins=...)`. Guard first, born red at `d6e2548`
+  (`tests/llm_seam/test_an_interpreted_start_says_so.py`): 5 failed / 0 passed,
+  predicted by name — three `assert None ==` (no field), two `given` where
+  `interpreted` was owed. First implementation `1e77faf` failed one existing test,
+  the targeted-replan test whose fake `execution.run` has a fixed signature; the
+  fake takes `seed_origins` now. A sixth test (a step HANDED the model's answer,
+  R44) was added green while predicting the mutations: no test held that half of
+  the check. **Evidence, Linux box, at `ac117af`:** `tests/llm_seam`,
+  `tests/run_records`, `tests/phase_48`, `tests/phase1_seam`, `tests/architecture`
+  and the ADR status check, 1037 passed / 0 failed; six one-line mutations, each
+  red as predicted by name (interpretation steps stop noting → 3; resolve steps
+  skipped → 1; the answer-input half removed → 1; the orchestrator drops
+  `seed_origins` → 2; the model list emptied → 1; `execution` ignores
+  `seed_origins` → 2). ⚠ Three of them first came back *unapplied*: their sed
+  expressions carried quotes or brackets and did not survive the paste into
+  `gate.sh`; line-addressed expressions without either applied and went red. A
+  mutation that did not apply is not a mutation that passed. **No call to a model
+  provider was made.**
