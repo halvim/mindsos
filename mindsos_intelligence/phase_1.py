@@ -35,7 +35,7 @@ reports an indirect ``reference_kind`` and the profile names a
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional
+from typing import Any, List, Mapping, Optional, Tuple
 
 from mindsos_capacity.identifiers import (
     CATEGORY_DECISION,
@@ -86,6 +86,10 @@ class InterpretationResult:
     request_pattern_iri: str
     mapping_confidence: float
     resolved_reference: Any = None
+    #: ``mindsos_llm`` plan R51 — every capacity interpretation dispatched that
+    #: consults the model or declares answer inputs, in dispatch order. Empty
+    #: when none did. Interpretation is ungrounded, so this is the only record.
+    model_capacities: Tuple[str, ...] = ()
 
 
 @dataclass
@@ -104,6 +108,21 @@ class Phase1Result:
     #: REFERENCE). Byte-identical when absent — every existing caller reads a
     #: default ``None``.
     resolved_reference: Any = None
+    #: Carried from :class:`InterpretationResult` (plan R51).
+    model_capacities: Tuple[str, ...] = ()
+
+
+def _leans_on_model(declaration) -> bool:
+    """A capacity that calls the model, or is handed its answer (R44)."""
+    return bool(
+        getattr(declaration, "consults_llm", False)
+        or tuple(getattr(declaration, "model_answer_inputs", ()) or ())
+    )
+
+
+def _note_model(used: Optional[List[str]], declaration, capacity_iri: str) -> None:
+    if used is not None and _leans_on_model(declaration) and capacity_iri not in used:
+        used.append(capacity_iri)
 
 
 def _slot(profile: Optional[Phase1Profile], attr: str, default: str) -> str:
@@ -113,7 +132,7 @@ def _slot(profile: Optional[Phase1Profile], attr: str, default: str) -> str:
     return getattr(profile, attr) or default
 
 
-def _run_step(dispatcher, capacity_iri: str, env: dict) -> Any:
+def _run_step(dispatcher, capacity_iri: str, env: dict, used: Optional[List[str]] = None) -> Any:
     """Run one interpretation step, wiring its inputs from ``env`` by the
     selected capacity's declared ``CONSUMES`` and merging its outputs back
     (ADR-0197 §Build-decision-2 — environment-threaded spine).
@@ -130,6 +149,7 @@ def _run_step(dispatcher, capacity_iri: str, env: dict) -> Any:
             f"phase-1 step {capacity_iri!r} needs {missing!r} not produced "
             f"upstream (mis-wired profile; env has {sorted(env)})"
         )
+    _note_model(used, decl, capacity_iri)
     result = dispatcher.dispatch(capacity_iri, {ds: env[ds] for ds in decl.inputs})
     env.update(result.outputs)
     return result.outputs[decl.outputs[0]]
@@ -152,7 +172,8 @@ def _map_target_resolves(dispatcher, request_pattern_iri: str) -> bool:
 
 
 def _resolve_reference(
-    dispatcher, profile: Phase1Profile, hints: Mapping[str, Any], request_id: str
+    dispatcher, profile: Phase1Profile, hints: Mapping[str, Any], request_id: str,
+    used: Optional[List[str]] = None,
 ) -> Any:
     """Compose + run the reference-resolve chain by DataState type
     (ADR-0195 §Decision.3). Returns the canonical reference, ``None`` (no
@@ -187,6 +208,14 @@ def _resolve_reference(
     exec_result = execute_pipeline(
         dispatcher, pipeline, {start: reference}, request_id=request_id
     )
+    for step in tuple(getattr(pipeline, "steps", ()) or ())[: exec_result.steps_run]:
+        _note_model(
+            used,
+            dispatcher.capacity_layer.resolve_declaration(
+                step.capacity_iri, session=dispatcher.session
+            ),
+            step.capacity_iri,
+        )
     if exec_result.needs_input is not None:
         return exec_result.needs_input
     if not exec_result.success:
@@ -266,10 +295,11 @@ def interpret(
         )
     env: dict = {ingress_ds: value}
 
-    structured = _run_step(dispatcher, process_iri, env)
-    hints = _run_step(dispatcher, _slot(profile, "hint", HINT_IRI), env)
-    goal = _run_step(dispatcher, _slot(profile, "derive_goal", DERIVE_GOAL_IRI), env)
-    mapping = _run_step(dispatcher, _slot(profile, "map", MAP_IRI), env)
+    used: List[str] = []
+    structured = _run_step(dispatcher, process_iri, env, used)
+    hints = _run_step(dispatcher, _slot(profile, "hint", HINT_IRI), env, used)
+    goal = _run_step(dispatcher, _slot(profile, "derive_goal", DERIVE_GOAL_IRI), env, used)
+    mapping = _run_step(dispatcher, _slot(profile, "map", MAP_IRI), env, used)
 
     request_pattern_iri = mapping["request_pattern_iri"]
     mapping_confidence = mapping["mapping_confidence"]
@@ -288,7 +318,7 @@ def interpret(
                 f"map target {request_pattern_iri!r} does not resolve in "
                 f"{ROLE_REQUEST_PATTERNS!r}"
             )
-        resolved_reference = _resolve_reference(dispatcher, profile, hints, request_id)
+        resolved_reference = _resolve_reference(dispatcher, profile, hints, request_id, used)
         # ADR-0196 — the resolve body asked the user; surface it directly.
         if isinstance(resolved_reference, NeedsInput):
             return resolved_reference
@@ -300,6 +330,7 @@ def interpret(
         request_pattern_iri=request_pattern_iri,
         mapping_confidence=mapping_confidence,
         resolved_reference=resolved_reference,
+        model_capacities=tuple(used),
     )
 
 
@@ -326,6 +357,7 @@ def run(dispatcher, writer, request_input) -> "Phase1Result | NeedsInput":
         mapping_confidence=r.mapping_confidence,
         mapping_result_ref=mr.iri,
         resolved_reference=r.resolved_reference,
+        model_capacities=r.model_capacities,
     )
 
 

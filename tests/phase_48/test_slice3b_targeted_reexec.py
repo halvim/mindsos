@@ -276,7 +276,8 @@ def test_orchestrator_targeted_replan_retains_blackboard_and_wires_execution(mon
 
     def _fake_run(dispatcher, writer, plan_result, request_run, *, mm=None,
                   run_scope=None, solve_seed=None, capacity_graphs=None,
-                  run_attempt=0, blackboard=None, targeted=None):
+                  run_attempt=0, blackboard=None, targeted=None,
+                  seed_origins=None):
         calls.append({"targeted": targeted, "bb_id": id(blackboard), "attempt": run_attempt})
         request_run.pipeline_runs.append(f"pr{run_attempt}a")
         request_run.pipeline_runs.append(f"pr{run_attempt}b")

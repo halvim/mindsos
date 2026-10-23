@@ -2,9 +2,10 @@
 
 **Status:** Proposed (2026-10-09). Built as `mindsos_llm` plan item I-19
 (`docs/plans/MINDSOS_LLM_PLAN.md`, rulings R46, R50–R52); flips to Accepted when
-I-19 is DONE. Gate 1 (start origins) is built; gates 2 (a start that came
-through interpretation) and 3 (the model declarations as they were when the
-run ran) are not.
+I-19 is DONE. Gate 1 (start origins) merged as `48ae5de` (PR #269, tag
+`llm-start-origins-confirmed`); gate 2 (a start that came through
+interpretation) is built; gate 3 (the model declarations as they were when the
+run ran) is not.
 
 ## Context
 
@@ -33,6 +34,7 @@ closed set (`START_ORIGIN_KINDS`):
 | `given` | handed to `execution.run` by its caller |
 | `produced` | made by the instances under `by`, each `{"graph_id", "instance_id"}`; a collection assembled from map members lists every completed member's, in member order |
 | `unrecorded` | seeded with a value whose origin nobody recorded — never read as `given` |
+| `interpreted` | the request's value as Phase-1 interpretation produced it; `model_capacities` lists every capacity interpretation dispatched that consults the model or declares answer inputs, in dispatch order (gate 2, plan R51) |
 
 **2. Where it rides.** Origins travel on the blackboard beside the values
 (`start_origin_key`, `member_origins_key`), for the lifetime argument of
@@ -60,9 +62,13 @@ does (amendment 5).
   name that run and instance.
 - The manifest's key set grows by one on every run `execution` seeds;
   `tests/run_records/test_run_manifest.py` pins the set.
-- **Not yet:** a start that came through Phase-1 interpretation is recorded
-  `given` (gate 2 labels it), and the run does not yet snapshot the model
-  declarations of the capacities it composed (gate 3).
+- **Gate 2:** `interpret` returns `model_capacities` (the four steps and the
+  resolve pipeline's steps that ran), `Phase1Result` carries it, and the
+  orchestrator hands `execution.run(seed_origins=...)` the seed's
+  `interpreted` origin. Interpretation itself stays ungrounded; this is its
+  only record.
+- **Not yet:** the run does not yet snapshot the model declarations of the
+  capacities it composed (gate 3).
 
 ## Alternatives considered
 
