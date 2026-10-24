@@ -45,6 +45,7 @@ from mindsos_capacity.datastate import DataState, ShapeDescriptor
 from mindsos_capacity.identifiers import CATEGORY_DERIVATION, capacity_iri, datastate_iri
 from mindsos_intelligence.dispatch import L4Dispatcher
 from mindsos_knowledge import KnowledgeLayer
+from mindsos_knowledge.declared_reads import UndeclaredRoleReadError
 from mindsos_knowledge.exceptions import UnknownRoleError
 from mindsos_knowledge.identifiers import ROLE_LEARNED_PARAMETERS, ROLE_ONTOLOGY
 from mindsos_knowledge.learned_parameters_snapshot import read_learned_parameter_snapshot
@@ -67,12 +68,6 @@ CAP_PEEK_PARAMS = capacity_iri(CATEGORY_DERIVATION, "rdr_peek_params")
 
 PARAM_SET = "parameterset:rdr"
 PARAM_TARGET = "parameter:rdr.threshold"
-
-
-def _undeclared_role_error():
-    from mindsos_knowledge.declared_reads import UndeclaredRoleReadError
-
-    return UndeclaredRoleReadError
 
 
 def _channels(context):
@@ -163,7 +158,7 @@ def test_the_declared_handle_satisfies_the_kl_protocol():
 def test_the_view_reads_a_declared_role_and_refuses_the_rest():
     view = build_kl_with_both().declared_reads((ROLE_POLICIES,), user_id="u").global_view()
     assert len(list(view.iter_nodes(ROLE_POLICIES, type_=NODE_POLICY_EDITION))) == 2
-    with pytest.raises(_undeclared_role_error()):
+    with pytest.raises(UndeclaredRoleReadError):
         list(view.iter_nodes(ROLE_ONTOLOGY))
     assert view.roles() == {ROLE_POLICIES}
 
@@ -172,7 +167,7 @@ def test_read_at_version_refuses_a_node_in_an_undeclared_role():
     kl = build_kl_with_both()
     iri = next(iter(kl.global_view().iter_nodes(ROLE_POLICIES))).node_id
     assert kl.declared_reads((ROLE_POLICIES,), user_id="u").read_at_version(iri, 0) is not None
-    with pytest.raises(_undeclared_role_error()):
+    with pytest.raises(UndeclaredRoleReadError):
         kl.declared_reads((ROLE_ONTOLOGY,), user_id="u").read_at_version(iri, 0)
 
 
@@ -218,7 +213,7 @@ def test_l4_hands_a_declared_body_only_its_roles():
     )
     assert ctx.kl is not None and ctx.kl is not kl
     assert len(list(ctx.kl.global_view().iter_nodes(ROLE_POLICIES))) == 2
-    with pytest.raises(_undeclared_role_error()):
+    with pytest.raises(UndeclaredRoleReadError):
         list(ctx.kl.global_view().iter_nodes(ROLE_LEARNED_PARAMETERS))
     assert ctx.learned_parameters_snapshot is None
 
@@ -229,7 +224,7 @@ def test_l4_hands_the_snapshot_only_to_a_body_declaring_learned_parameters():
         reads_roles=(ROLE_LEARNED_PARAMETERS,)
     )
     assert dict(ctx.learned_parameters_snapshot) == learned
-    with pytest.raises(_undeclared_role_error()):
+    with pytest.raises(UndeclaredRoleReadError):
         list(ctx.kl.global_view().iter_nodes(ROLE_POLICIES))
 
 
