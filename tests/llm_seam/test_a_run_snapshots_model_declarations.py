@@ -67,6 +67,14 @@ class FakeSession:
         return False
 
 
+class _NoCallModel:
+    """Bound so dispatch admits a ``consults_llm`` capacity; never called —
+    the bodies here ignore it, and calling it fails the test."""
+
+    def read(self, **kwargs):
+        raise AssertionError("no model call is made in this file")
+
+
 def _register(layer, session, name, inputs, outputs, body, *, upsert=False, **flags):
     layer.register_capacity(
         Capacity(
@@ -102,7 +110,7 @@ def _harness():
               lambda **kw: {DS_VERDICT: f"read {kw[DS_ANSWER]}"},
               model_answer_inputs=(DS_ANSWER,))
     mm = MentalModel(session_id="s", user_id="u")
-    dispatcher = L4Dispatcher(layer, session=session)
+    dispatcher = L4Dispatcher(layer, session=session, llm=_NoCallModel())
     return layer, session, mm, dispatcher
 
 
