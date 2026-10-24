@@ -247,6 +247,19 @@ def test_direct_invoke_withholds_both_read_channels_from_an_undeclared_body():
     assert result.outputs[DS_SEEN] == {"kl": None, "snapshot": None}
 
 
+def test_direct_invoke_hands_a_declared_body_only_its_roles():
+    kl = build_kl_with_both()
+    layer, session = _layer(kl, _peek_declaration(reads_roles=(ROLE_POLICIES,)))
+    result = layer.invoke(CAP_PEEK, {}, session=session, request_id="T")
+    assert result.success, result.error
+    seen = result.outputs[DS_SEEN]
+    assert seen["kl"] is not None and seen["kl"] is not kl
+    assert len(list(seen["kl"].global_view().iter_nodes(ROLE_POLICIES))) == 2
+    with pytest.raises(UndeclaredRoleReadError):
+        list(seen["kl"].global_view().iter_nodes(ROLE_LEARNED_PARAMETERS))
+    assert seen["snapshot"] is None
+
+
 def test_direct_invoke_hands_a_declared_reader_its_roles():
     """The policy lookup, on the path where it could not read at all."""
     session = Session()
