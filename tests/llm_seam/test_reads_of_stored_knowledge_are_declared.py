@@ -436,3 +436,45 @@ def test_the_checker_does_not_count_prose_construction_or_empty_declarations():
     assert declares_reads(source) == 0
     assert declares_reads("cap = Capacity(name='x', reads_roles=(ROLE,))\n") == 1
     assert declares_reads("ctx = d.build_context(reads_roles=tuple(roles))\n") == 0
+
+
+# ── the write handle ──────────────────────────────────────────────────
+#
+# A write body also holds ``KLWriteHandle``. Its ``graph()`` is the one role
+# being written and is the object the body writes THROUGH (``remove_node``,
+# ``add_node``, ``add_edge``), so a read there is part of the write and is not
+# declared (owner, 2026-10-24: the reads ``learn_parameter`` and
+# ``consolidate`` make there decide only whether and what to write, never a
+# value a later step consumes). Its ``metagraph()`` is every role in the
+# scope; no capacity calls it, and this census keeps it so - a body that
+# needs another role reads it through ``kl`` and declares it.
+
+
+def write_handle_metagraph_reaches(source: str) -> int:
+    """``<name>.metagraph()`` calls with no arguments, ``self`` excluded."""
+    return sum(
+        1
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Call)
+        and not node.args
+        and not node.keywords
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "metagraph"
+        and not (isinstance(node.func.value, ast.Name) and node.func.value.id == "self")
+    )
+
+
+def test_no_body_reads_every_role_through_its_write_handle():
+    got = _census(write_handle_metagraph_reaches)
+    assert got == {}, (
+        "these modules call a handle's metagraph(), which reads every role in "
+        "the scope without a declaration; read the role through kl and "
+        f"declare it in reads_roles: {got!r}"
+    )
+
+
+def test_the_checker_sees_a_fabricated_metagraph_read():
+    assert write_handle_metagraph_reaches("mg = handle.metagraph()\n") == 1
+    assert write_handle_metagraph_reaches(
+        "def metagraph(self):\n    return self._metagraph\nx = self.metagraph()\n"
+    ) == 0

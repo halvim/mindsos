@@ -481,6 +481,18 @@ amendment 8 §5), as one more field in each composed capacity's entry beside
 `consults_llm` and `model_answer_inputs` — not under a key of their own. A field
 absent from an entry means *not recorded*.
 
+⚠ **R48's premises, re-measured at `48eb503` (I-20 gate 1, 2026-10-24).**
+(1) The learned-parameters snapshot did NOT reach every body: only under
+`L4Dispatcher`; on the direct path a write body got `{}` and a read body none.
+(2) The policy lookup could not read on the direct path at all — it asks
+`getattr(context, "kl")` of a dict. (3) Two more read paths exist: a write
+body's `KLWriteHandle.graph()` (the role it writes — **owner, 2026-10-24: part
+of the write, not declared**; `metagraph()`, every role, is kept unused by a
+census) and the mental-model handle, which reads L2 by IRI for a `reads_mm`
+body (ruled by this chat: governed by `reads_mm`, not by role; R53 already keeps
+such a body out of a re-run). (4) `KnowledgeLayer.read_at_version` scans every
+user's Local; the declared handle reads Global and the caller's own Local only.
+
 **R49 — what leaned on the model is listed, with its proof status (amends R26).**
 `identify` keeps listing readings (R26, R38). A walk lists every stored value that
 descends from a model reading — a decision computed from a reading by a plain
