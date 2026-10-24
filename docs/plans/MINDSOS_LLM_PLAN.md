@@ -475,6 +475,12 @@ declared, not enforced). **OWNER 2026-10-09.** ⚠ Measured: R2's *"L3 cannot wr
 Global"* is false in general — `builtins/trace.py` writes Global under a session
 capability — so *"Global is safe"* is not a line this ruling can draw.
 
+⚠ **R48's record — where it goes (OWNER 2026-10-23, *"A for now"*):** the declared
+reads are recorded in the run manifest's `capacity_declarations` map (ADR-0201
+amendment 8 §5), as one more field in each composed capacity's entry beside
+`consults_llm` and `model_answer_inputs` — not under a key of their own. A field
+absent from an entry means *not recorded*.
+
 **R49 — what leaned on the model is listed, with its proof status (amends R26).**
 `identify` keeps listing readings (R26, R38). A walk lists every stored value that
 descends from a model reading — a decision computed from a reading by a plain
@@ -962,6 +968,9 @@ amendment.)*
   builds its origin record directly. **Approval:** OWNER (R44), delegated (R45).
 
 - **2026-10-07 (proposal "I-19", NOT APPROVED — recorded so it is not re-derived)** —
+  ⚠ **SUPERSEDED 2026-10-09:** the owner ruled R46–R49 and I-19, I-20 and I-21 were
+  opened (entry 2026-10-09); I-19 is DONE(659e46f) (entry 2026-10-24). The status
+  line below is history, not the current state.
   **Status: put to the owner, unanswered. Not an item. Do not build from this entry;
   get the ruling first.** The gap is the NOT CLAIMED paragraph of the entry above:
   `excision.rerun` reports a substitute's agreement as "without the model" while any
@@ -1136,3 +1145,9 @@ amendment.)*
   (I-20); an Episode stored before I-19 says *not recorded*, by design (R50).
   Interpretation's own dispatches are recorded only as the IRIs that leaned on the
   model, not as a declaration snapshot. **No call to a model provider was made.**
+  **Consistency pass, same day:** the statements I-19 made untrue are marked
+  SUPERSEDED where they stand — this plan's 2026-10-07 entry (its status line);
+  ADR-0210 amendment 8's *"Not decided here"* paragraph; ADR-0201 amendment 4's
+  *"inside the set it is a premise the run was given"*. R48 now names where its
+  record goes (owner, 2026-10-23); ADR-0210 amendment 9 and the contract's row 12
+  say what I-19 built and what is still owed.
