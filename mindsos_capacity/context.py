@@ -183,12 +183,19 @@ class CapacityContext:
 
     session_id: str
     user_id: str
-    learned_parameters_snapshot: Mapping[str, Any]
+    #: The ``learned-parameters`` role, folded Local over Global per knob.
+    #: ``None`` unless the declaration names that role in ``reads_roles``
+    #: (plan R48, I-20) - ``None``, not ``{}``: an empty snapshot reads as
+    #: *"no knob set"* and a body would fall back to its defaults silently.
+    learned_parameters_snapshot: Optional[Mapping[str, Any]] = None
     mm_handle: Optional[MMHandle] = None
     cancel_token: Optional[CancelTokenView] = None
     current_request_iri: Optional[str] = None
     current_pattern_iri: Optional[str] = None
     version_snapshot: Mapping[str, int] = MappingProxyType({})
+    #: The read handle: only the roles the declaration names in
+    #: ``reads_roles`` (plan R48, I-20), built by L2; ``None`` for a body that
+    #: declares no reads. Never the knowledge layer itself.
     kl: Optional[KLHandle] = None
     cl: Optional[CapacityLayerHandle] = None
     writeable: Optional[Callable[..., Any]] = None
@@ -205,7 +212,9 @@ class CapacityContext:
             object.__setattr__(
                 self, "version_snapshot", MappingProxyType(dict(self.version_snapshot))
             )
-        if not isinstance(self.learned_parameters_snapshot, MappingProxyType):
+        if self.learned_parameters_snapshot is not None and not isinstance(
+            self.learned_parameters_snapshot, MappingProxyType
+        ):
             object.__setattr__(
                 self,
                 "learned_parameters_snapshot",

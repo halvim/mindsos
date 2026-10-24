@@ -564,6 +564,30 @@ class KnowledgeLayer:
             )
         return existing
 
+    # ── declared reads (mindsos_llm plan I-20, R48) ──────────────────
+
+    def declared_reads(self, roles, *, user_id=None):
+        """The read handle for a body that declared ``roles``.
+
+        A :class:`~mindsos_knowledge.declared_reads.DeclaredReads`: it reads
+        only those roles, Global and ``user_id``'s own Local. Raises
+        :class:`UnknownRoleError` for a name that is not a knowledge role.
+        Both capacity invoke paths call this; neither hands a body ``self``.
+        """
+        from .declared_reads import DeclaredReads  # local: avoid cycle.
+
+        return DeclaredReads(self, roles, user_id=user_id)
+
+    def unknown_roles(self, roles):
+        """The entries of ``roles`` that are not knowledge roles (plan I-20).
+
+        Registration asks this so a misspelt ``reads_roles`` is refused when
+        the capacity is registered, not at its first run.
+        """
+        from .declared_reads import unknown_roles  # local: avoid cycle.
+
+        return unknown_roles(roles)
+
     # ── introspection ────────────────────────────────────────────────
 
     def has_local(self, user_id: str) -> bool:

@@ -134,6 +134,8 @@ def test_a_capacity_declares_no_reads_by_default():
 
 
 def test_the_policy_lookup_declares_the_role_it_reads():
+    """Spelled as a literal in the L3 module (it imports no L2 at module
+    level); this is what keeps the literal equal to L2's constant."""
     assert lookup_declaration().reads_roles == (ROLE_POLICIES,)
 
 
@@ -348,18 +350,19 @@ def read_channel_reaches(source: str) -> int:
 
 
 def declares_reads(source: str) -> int:
-    """``reads_roles=`` keywords whose value is not an empty literal."""
-    n = 0
-    for node in ast.walk(ast.parse(source)):
-        if not isinstance(node, ast.Call):
-            continue
-        for kw in node.keywords:
-            if kw.arg != "reads_roles":
-                continue
-            if isinstance(kw.value, (ast.Tuple, ast.List)) and not kw.value.elts:
-                continue
-            n += 1
-    return n
+    """``reads_roles=`` keywords whose value is a NON-EMPTY tuple or list
+    literal - a declaration names its roles. A forwarded value
+    (``build_context(reads_roles=tuple(...))`` in the dispatcher) is plumbing,
+    not a declaration, exactly as ``writes=bool(...)`` is not one next door."""
+    return sum(
+        1
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Call)
+        for kw in node.keywords
+        if kw.arg == "reads_roles"
+        and isinstance(kw.value, (ast.Tuple, ast.List))
+        and kw.value.elts
+    )
 
 
 def _census(fn) -> dict:
@@ -424,3 +427,4 @@ def test_the_checker_does_not_count_prose_construction_or_empty_declarations():
     assert read_channel_reaches(source) == 0
     assert declares_reads(source) == 0
     assert declares_reads("cap = Capacity(name='x', reads_roles=(ROLE,))\n") == 1
+    assert declares_reads("ctx = d.build_context(reads_roles=tuple(roles))\n") == 0
