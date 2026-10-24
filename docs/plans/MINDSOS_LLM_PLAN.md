@@ -531,13 +531,13 @@ list. Authority: R41, R43(b).
 | I-17 | an answer names what was asked BY CONTENT (R20–R23): the client resolves and hands the transport everything the model receives, stamps the prompt and schema digests, `request_key` v2, and both digests plus the schema text reach the origin record. **Blocks I-12**, whose *shown* is unverifiable without it | core-llm-answer-names-what-was-asked | DONE(933bc6d) |
 | I-16 | I-9's writer gets its installer. Measured 2026-09-17: nothing in the tree calls `build_write_prompt_edition`, and `install_learn_parameter_capacities` is the precedent it skipped — so a `DONE` item is a declaration L4 cannot route to | core-llm-prompt-edition-has-no-installer | DONE(6e6514e) |
 | I-18 | an answer-fed reader can be paired and re-run: a capacity that is HANDED the model's answer and mints `read_by_model` conclusions from it declares which input carries the answer; a substitute takes the reader's inputs minus that answer, and re-run withholds it. **Specified by R44** (amends R37); two gates (§6, 2026-10-03) | core-llm-answer-fed-readers | DONE(f1603af) |
-| I-19 | a run records where each of its starts came from — `given`, `produced` by named instances in named run graphs, or `unrecorded` — and snapshots the model declarations of the capacities it composed, as they were when it ran. **Specified by R50–R52**; ADR-0201 amendment 8; three gates (§6, 2026-10-09) | core-llm-rerun-proven-model-free | TODO |
+| I-19 | a run records where each of its starts came from — `given`, `produced` by named instances in named run graphs, or `unrecorded` — and snapshots the model declarations of the capacities it composed, as they were when it ran. **Specified by R50–R52**; ADR-0201 amendment 8; three gates (§6, 2026-10-09) | core-llm-rerun-proven-model-free | DONE(659e46f) |
 | I-20 | reads of stored knowledge are declared by role: the read channels reach a body only when declared, on both invoke paths, limited to the declared roles, held by an AST census; the run records the declaration. **Specified by R48**; two gates | core-llm-rerun-proven-model-free | TODO |
 | I-21 | a proven re-run: the walk lists every value that leaned on the model (R49), and a re-run is proven only when every model-produced ancestor re-derives with exact agreement (R47); the report names what it relied on. **Specified by R47, R49, R52, R53**; two gates | core-llm-rerun-proven-model-free | TODO |
 
 **DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17, I-18, I-19, I-20, I-21.**
 
-**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅ → I-18 ✅ → I-19 → I-20 → I-21.**
+**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅ → I-18 ✅ → I-19 ✅ → I-20 → I-21.**
 
 ⚠ **I-19, I-20 and I-21 were OPENED 2026-10-09 (R46–R53)** from the 2026-10-07
 proposal, re-measured and amended (§6, 2026-10-09). The order is the dependency:
@@ -1120,3 +1120,19 @@ amendment.)*
   `--mutate`), so pytest was handed the sed expression as a path and exited 4;
   re-run with the current script, all five applied and went red. **No call to
   a model provider was made.**
+
+- **2026-10-24 (I-19 DONE)** — **Gate 3 merged as PR #271** (squash `659e46f`, tag
+  `llm-declaration-snapshot-confirmed`); gates 1 and 2 are PR #269 (`48ae5de`) and
+  PR #270 (`0a010f8`). Evidence, Linux box: full suite at `47ae32c` 5559 passed / 5
+  skipped / 1 xpassed / 0 failed, predicted exactly; collect delta against `0a010f8`
+  +5 / −0, all in the guard file. CI on PR #271: SUCCESS. `main` had not moved:
+  RULES 12.2(a) discharged by equal trees, `659e46f^{tree}` == `47ae32c^{tree}`.
+  ADR-0201 amendment 8 is Accepted. **What I-19 now records, and nothing more:**
+  where each seeded start came from (`given`, `produced` by named instances,
+  `unrecorded`, `interpreted` with the model capacities interpretation dispatched),
+  and each composed capacity's model declarations as they were when the run
+  started. ⚠ **NOT CLAIMED.** Nothing READS these records yet — the walk (R49) and
+  the proven re-run (R47) are I-21; reads of stored knowledge are still undeclared
+  (I-20); an Episode stored before I-19 says *not recorded*, by design (R50).
+  Interpretation's own dispatches are recorded only as the IRIs that leaned on the
+  model, not as a declaration snapshot. **No call to a model provider was made.**

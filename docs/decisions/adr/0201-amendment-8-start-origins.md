@@ -1,12 +1,11 @@
 # ADR-0201 — Amendment 8: a run records where each of its starts came from
 
-**Status:** Proposed (2026-10-09). Built as `mindsos_llm` plan item I-19
-(`docs/plans/MINDSOS_LLM_PLAN.md`, rulings R46, R50–R52); flips to Accepted when
-I-19 is DONE. Gate 1 (start origins) merged as `48ae5de` (PR #269, tag
-`llm-start-origins-confirmed`); gate 2 (a start that came through
-interpretation) merged as `0a010f8` (PR #270, tag
-`llm-interpreted-start-confirmed`); gate 3 (the model declarations as they
-were when the run ran) is built.
+**Status:** Accepted (2026-10-24). Built as `mindsos_llm` plan item I-19
+(`docs/plans/MINDSOS_LLM_PLAN.md`, rulings R46, R50–R52), DONE(659e46f). Gate 1
+(start origins) merged as `48ae5de` (PR #269, tag `llm-start-origins-confirmed`);
+gate 2 (a start that came through interpretation) as `0a010f8` (PR #270, tag
+`llm-interpreted-start-confirmed`); gate 3 (the model declarations as they were
+when the run ran) as `659e46f` (PR #271, tag `llm-declaration-snapshot-confirmed`).
 
 ## Context
 

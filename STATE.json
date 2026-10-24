@@ -630,13 +630,22 @@
     },
     {
       "name": "core-llm-rerun-proven-model-free",
-      "status": "OPENED 2026-10-09 as plan items I-19 (start origins + declaration snapshot), I-20 (declared reads of stored knowledge), I-21 (proven re-run) - rulings R46-R53, all on the DONE WHEN line. I-19 gates 1 and 2 merged (48ae5de, 0a010f8); gate 3 (declaration snapshot, ADR-0201 am-8 section 5) in progress on feat/rerun-model-free. The plan (section 2 R46-R53, section 6 entry 2026-10-09) is the authority.",
+      "status": "OPENED 2026-10-09 as plan items I-19 (start origins + declaration snapshot), I-20 (declared reads of stored knowledge), I-21 (proven re-run) - rulings R46-R53, all on the DONE WHEN line. I-19 DONE(659e46f) 2026-10-24 (PRs #269, #270, #271). NEXT: I-20. The plan (section 2 R46-R53, section 6 entries 2026-10-09 to 2026-10-24) is the authority.",
       "branch_to_open": "feat/rerun-model-free",
       "spec": "docs/plans/MINDSOS_LLM_PLAN.md section 2 R46-R53, section 6 entry 2026-10-09; ADR-0201 amendment 8; ADR-0210 amendment 9",
       "consumer": "any consuming project whose reader takes an input produced by an earlier model step"
     }
   ],
   "recent": [
+    {
+      "kind": "core",
+      "name": "mindsos_llm plan item I-19 - a run records where each of its starts came from, and the model declarations of what it composed",
+      "sha": "659e46f (PR #271, gate 3); gate 1 48ae5de (PR #269); gate 2 0a010f8 (PR #270). RULES 12.2(a) by EQUAL TREES at every gate: 157569c, 53249de, 47ae32c.",
+      "tag": "llm-start-origins-confirmed, llm-interpreted-start-confirmed, llm-declaration-snapshot-confirmed",
+      "gate": "LINUX box. Full suites: gate 1 at 45028f6 5548/5/1/0, ids +10/-0; gate 2 at 53249de 5554/5/1/0, ids +6/-0; gate 3 at 47ae32c 5559/5/1/0, ids +5/-0 - each predicted exactly. Mutations 6, 6, 5, every red predicted by name. CI on PRs #269, #270, #271: SUCCESS. Every guard born red.",
+      "what": "Run manifest start_origins (given / produced by named instances / unrecorded / interpreted with model_capacities) and capacity_declarations (consults_llm, model_answer_inputs per composed capacity, snapshotted at run start). ADR-0201 amendment 8 Accepted. NOT CLAIMED: nothing reads these yet (I-21); stored-knowledge reads are still undeclared (I-20). No call to a model provider was made.",
+      "docs": "docs/plans/MINDSOS_LLM_PLAN.md; docs/decisions/adr/0201-amendment-8-start-origins.md (Accepted); HANDOFF.md; STATE.json"
+    },
     {
       "kind": "core",
       "name": "mindsos_llm plan item I-18 - an answer-fed reader can be paired and re-run without the answer",
