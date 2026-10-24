@@ -147,8 +147,9 @@ class _CapacityBase:
     # takes the reader's inputs MINUS these (``admission.substitute_problems``),
     # so a re-run is never handed the model's answer. Not combinable with
     # ``consults_llm=True`` (``admission.answer_input_problems``), and a
-    # substitute declares none. A registration-time fact, not emitted to the
-    # graph.
+    # substitute declares none. Not a node property; every run manifest
+    # snapshots it with ``consults_llm`` (``capacity_declarations``, ADR-0201
+    # amendment 8 gate 3), so a stored run says what was declared when it ran.
     model_answer_inputs: Tuple[str, ...] = ()
     # Bounded member retry (ADR-0201 am-6 / MEMBER_RETRY_CAP) is now
     # DECLARED rather than blanket. Default ``False``: a deterministic

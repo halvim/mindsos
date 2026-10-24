@@ -4,8 +4,9 @@
 (`docs/plans/MINDSOS_LLM_PLAN.md`, rulings R46, R50–R52); flips to Accepted when
 I-19 is DONE. Gate 1 (start origins) merged as `48ae5de` (PR #269, tag
 `llm-start-origins-confirmed`); gate 2 (a start that came through
-interpretation) is built; gate 3 (the model declarations as they were when the
-run ran) is not.
+interpretation) merged as `0a010f8` (PR #270, tag
+`llm-interpreted-start-confirmed`); gate 3 (the model declarations as they
+were when the run ran) is built.
 
 ## Context
 
@@ -56,6 +57,19 @@ produced for each DataState, so `execution` can name it.
 kind is outside the closed set raises, as an empty `member_graph_ids` entry
 does (amendment 5).
 
+**5. `MANIFEST_CAPACITY_DECLARATIONS` (`"capacity_declarations"`, gate 3,
+plan R52).** For every capacity the run composed, its model declarations as
+resolved when the run started — `{capacity_iri: {"consults_llm": bool,
+"model_answer_inputs": [ds, ...]}}` — beside `capacity_phrases` and for the
+same reason (ADR-0207 amendment 1: the catalog is mutable; R45: an upsert
+re-binds a declaration and a Local one shadows the Global). Every resolvable
+capacity gets an entry with both fields, `False` and `[]` included; a
+capacity MISSING from the map is *not recorded*, never *does not consult the
+model*, and within an entry a field absent is *not recorded* — later items
+(I-20's declared reads) add fields to the same entries. `execute_pipeline`
+writes it on every manifest it mints; the no-route manifest writes `{}` (the
+run composed nothing). A caller that passes none leaves the key ABSENT.
+
 ## Consequences
 
 - A renderer can tell a premise from a value computed by an earlier run, and
@@ -67,8 +81,11 @@ does (amendment 5).
   orchestrator hands `execution.run(seed_origins=...)` the seed's
   `interpreted` origin. Interpretation itself stays ungrounded; this is its
   only record.
-- **Not yet:** the run does not yet snapshot the model declarations of the
-  capacities it composed (gate 3).
+- **Gate 3:** every manifest `execute_pipeline` mints carries
+  `capacity_declarations`; R52's *"declared when it ran"* is read from it,
+  never from today's registry. `model_answer_inputs` and `consults_llm`
+  remain registration-time facts on the declaration and are not node
+  properties; the manifest is their only record in a stored run.
 
 ## Alternatives considered
 

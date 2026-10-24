@@ -461,6 +461,18 @@ MANIFEST_MEMBER_GRAPH_IDS = "member_graph_ids"
 #: when the caller recorded no origins — absent means NOT RECORDED, never
 #: given (amendment 5's key-presence rule).
 MANIFEST_START_ORIGINS = "start_origins"
+#: ADR-0201 amendment 8, gate 3 (plan R52) — for every capacity the run
+#: composed, its model declarations as resolved when the run started:
+#: ``{capacity_iri: {"consults_llm": bool, "model_answer_inputs": [ds, ...]}}``.
+#: A snapshot because the registry is mutable (an upsert re-binds a
+#: declaration; a Local one shadows the Global) and R52 reads what was
+#: declared WHEN IT RAN. A capacity MISSING from the map is NOT RECORDED,
+#: never "does not consult the model"; within an entry, a field absent is not
+#: recorded (later fields are added by later items). Empty when nothing was
+#: composed. Key ABSENT on a manifest minted by a caller that passes none.
+MANIFEST_CAPACITY_DECLARATIONS = "capacity_declarations"
+DECLARED_CONSULTS_LLM = "consults_llm"
+DECLARED_MODEL_ANSWER_INPUTS = "model_answer_inputs"
 #: An origin's ``kind``. ``given``: handed to ``execution.run`` by its caller.
 #: ``produced``: made by the instances listed under ``by``, each
 #: ``{"graph_id", "instance_id"}`` (a collection assembled from map members

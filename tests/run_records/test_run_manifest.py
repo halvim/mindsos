@@ -24,6 +24,7 @@ from __future__ import annotations
 import pytest
 
 from mindsos_capacity.identifiers import (
+    MANIFEST_CAPACITY_DECLARATIONS,
     MANIFEST_CAPACITY_PHRASES,
     MANIFEST_CASE_LABEL,
     MANIFEST_DECLARED_STARTS,
@@ -90,6 +91,8 @@ def test_the_manifest_carries_its_contents_in_the_value_not_the_properties():
         MANIFEST_CASE_LABEL,
         # ADR-0201 amendment 8 — execution records where each start came from.
         MANIFEST_START_ORIGINS,
+        # Gate 3 — the model declarations of what the run composed.
+        MANIFEST_CAPACITY_DECLARATIONS,
     }
 
 

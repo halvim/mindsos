@@ -1083,3 +1083,40 @@ amendment.)*
   `gate.sh`; line-addressed expressions without either applied and went red. A
   mutation that did not apply is not a mutation that passed. **No call to a model
   provider was made.**
+
+- **2026-10-23 (I-19 gate 2 merged; gate 3)** — **Gate 2 merged as PR #270**
+  (squash `0a010f8`, tag `llm-interpreted-start-confirmed`); the squash tree
+  equals the gated tree (`53249de^{tree}`). Its full suite, Linux box at
+  `53249de`: 5554 passed / 5 skipped / 1 xpassed / 0 failed; collect delta
+  against `48ae5de` +6 / −0, all in the guard file. ⚠ The first launch of that
+  suite never ran: Docker refused to create the project network (*all
+  predefined address pools have been fully subnetted*) — 27 FalkorDB containers
+  left by gate runs since June held every pool, because `compose run --rm`
+  removes only the test container and those runs never called `down`, and
+  `restart: unless-stopped` brought each back after every reboot. They were
+  removed (volumes kept) with the owner's consent. **Gate 3 builds R52's
+  snapshot — ADR-0201 amendment 8 §5.** `capacity_declarations` on every
+  manifest `execute_pipeline` mints: per composed capacity, `consults_llm` and
+  `model_answer_inputs` as resolved when the run started, both fields always
+  present; a capacity missing is *not recorded*; the no-route manifest writes
+  `{}`. The key is one map for every declaration field (owner's choice, 2026-10-23,
+  *"A for now"*): I-20's declared reads extend the same entries rather than
+  adding a key. Passes before the guard: one reversal (an entry per composed
+  capacity with both fields, so absence can only mean *not recorded*); two
+  further passes reversed nothing. Guard first, born red at `7e22616`
+  (`tests/llm_seam/test_a_run_snapshots_model_declarations.py`): 5 failed / 0
+  passed, predicted by name — four on the missing key, one `None == {}`. ⚠ The
+  guard's first commit `cf2c1f9` was red for the WRONG reason in four tests:
+  dispatch refuses a `consults_llm` capacity with no client bound
+  (`LLMUnavailableError`); the harness now binds a stub that fails the test if
+  called. **Evidence, Linux box, at `ecc1e08`:** `tests/llm_seam`,
+  `tests/run_records`, `tests/phase_48`, `tests/phase1_seam`,
+  `tests/architecture` and the ADR status check, 1042 passed / 0 failed; five
+  one-line mutations, each red as predicted by name (`execute_pipeline` drops
+  the snapshot → 5, the key-set pin included; the no-route manifest drops it →
+  1; `consults_llm` always `False` → 2; `model_answer_inputs` never read → 1;
+  the writer stores `consults_llm` as `True` → 3). ⚠ The first mutation run
+  came back empty: the Linux clone's `tools/gate.sh` is stale (`8ffd6b2`, no
+  `--mutate`), so pytest was handed the sed expression as a path and exited 4;
+  re-run with the current script, all five applied and went red. **No call to
+  a model provider was made.**
