@@ -43,7 +43,7 @@ the words; a v1 set refuses a replay config rather than missing every read.
 carries the schema text, both digests, the framing and the key version, so a
 stored conclusion's `request_key` can be recomputed from the record plus its
 source text — including a refusal for an undecodable answer, which until then
-carried no model identity, mode or level at all. **I-12** added **row 12** (`bf7bd43`): the excision capability lives in L3 and L4, not in `mindsos_llm`. **I-18** widened it (`8b11345`, `f1603af`) to a capacity that is handed the model's answer instead of calling the model.
+carried no model identity, mode or level at all. **I-12** added **row 12** (`bf7bd43`): the excision capability lives in L3 and L4, not in `mindsos_llm`. **I-18** widened it (`8b11345`, `f1603af`) to a capacity that is handed the model's answer instead of calling the model. The row's *"Not checked"* clause is being closed by plan items I-19–I-21 (ADR-0210 amendment 9): **I-19** (DONE, `659e46f`) records where each run's starts came from and the model declarations of what it composed; the check itself is I-21, and until it is DONE the clause stands.
 
 ⚠ **`model_version` is a configured label, not a fact about the call** (R35): no
 provider is sent it, so unlike `model_id` and `temperature` it is stamped as
