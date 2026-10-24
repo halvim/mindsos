@@ -52,7 +52,11 @@ first version and they printed straight onto the no-route page — where the
 starts are the only thing there is to say, so the leak lands on the one page
 with nothing else to dilute it. The mapping is also what makes a parentless
 `DataStateInstance` decidable: inside the set it is a premise the run was given;
-outside it, a gap where a producer should have been.
+outside it, a gap where a producer should have been. ⚠ **SUPERSEDED IN PART by
+amendment 8 (2026-10-09, Accepted 2026-10-24):** inside the set is *"seeded into
+this run"*, not *"given"* — a value an earlier run of the same request produced is
+seeded too. Whether it was given is the manifest's `start_origins` (`given`,
+`produced`, `unrecorded`, `interpreted`); with the key absent, *not recorded*.
 
 **A start with no registered description maps to `None`, never to its own
 IRI.** The IRI was this CR's own first fallback and it is wrong for the reason

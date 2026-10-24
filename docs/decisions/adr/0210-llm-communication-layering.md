@@ -824,7 +824,9 @@ the dispatcher's scope and names a substitute that no longer pairs
 ⚠ **Not decided here, not built.** Only the inputs a reader declares are withheld.
 Whether a substitute's other inputs descend from a model reading is not checked
 (plan §6, 2026-10-05). A proposal to close it is recorded in plan §6, 2026-10-07 —
-not approved, not an item.
+not approved, not an item. ⚠ **SUPERSEDED 2026-10-09:** decided by amendment 9
+below (plan R46–R53; items I-19, I-20, I-21). Still not checked at re-run until
+I-21 is DONE.
 
 
 ## Amendment 9 — a re-run is proven model-free, or says why not (2026-10-09)
@@ -834,6 +836,14 @@ not approved, not an item.
 The decision above stands. This transcribes plan rulings **R46–R49** (OWNER
 2026-10-09) and **R52–R53** (delegated). Where a run's starts came from is ADR-0201
 amendment 8 (I-19).
+
+**Build state (2026-10-24).** I-19 — the RECORD this amendment reads — is DONE
+(`659e46f`; ADR-0201 amendment 8 Accepted): each run's manifest says where its
+seeded starts came from (`start_origins`) and snapshots each composed capacity's
+`consults_llm` and `model_answer_inputs` (`capacity_declarations`). Clause 5's
+*"run's own declaration snapshot"* is that map. Clause 3's *"the run records the
+declaration"* adds a field to the same entries (owner, 2026-10-23). Clauses 1–6
+are otherwise unbuilt: I-20 (clause 3), I-21 (clauses 2, 4, 5, 6).
 
 **WHAT CHANGES.**
 
