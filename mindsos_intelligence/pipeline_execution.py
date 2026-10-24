@@ -195,6 +195,7 @@ def execute_pipeline(
             )
         from .capacity_mm_writer import (
             CapacityMMWriter,
+            capacity_declarations,
             capacity_phrases,
             start_phrases,
         )
@@ -219,6 +220,7 @@ def execute_pipeline(
         writer.manifest(
             declared_starts=start_phrases(dispatcher, tuple(blackboard)),
             capacity_phrases=capacity_phrases(dispatcher, pipeline),
+            capacity_declarations=capacity_declarations(dispatcher, pipeline),
             case_label=case_label,
             member_graph_ids=member_graph_ids,
             start_origins=(

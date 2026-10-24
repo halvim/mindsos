@@ -59,6 +59,9 @@ from typing import Any, Dict, Iterable, Mapping, Optional
 from mindsos_core import Graph
 
 from mindsos_capacity.identifiers import (
+    DECLARED_CONSULTS_LLM,
+    DECLARED_MODEL_ANSWER_INPUTS,
+    MANIFEST_CAPACITY_DECLARATIONS,
     MANIFEST_CAPACITY_PHRASES,
     MANIFEST_CASE_LABEL,
     MANIFEST_DECLARED_STARTS,
@@ -196,6 +199,7 @@ class CapacityMMWriter:
         case_label: Optional[str] = None,
         member_graph_ids: Optional[Iterable[str]] = None,
         start_origins: Optional[Mapping[str, Mapping[str, Any]]] = None,
+        capacity_declarations: Optional[Mapping[str, Mapping[str, Any]]] = None,
     ) -> str:
         """Mint this run's manifest node — the three things the run's own
         nodes cannot say about it.
@@ -249,6 +253,12 @@ class CapacityMMWriter:
         other caller — leaves the key ABSENT, which means not recorded, never
         given.
 
+        ``capacity_declarations`` (ADR-0201 amendment 8, gate 3) is supplied
+        by ``execute_pipeline`` and by ``execution``'s no-route manifest: per
+        composed capacity, its ``consults_llm`` and ``model_answer_inputs`` as
+        resolved when the run started (:func:`capacity_declarations`). ``None``
+        — any other caller — leaves the key ABSENT: not recorded.
+
         Everything lives in the node's **value**, as a dict:
         ``Graph.add_node`` validates ``properties`` as primitives only, and
         all the fields are collections.
@@ -277,6 +287,16 @@ class CapacityMMWriter:
                         "graph id is an upstream defect, not a value to coerce"
                     )
                 value[MANIFEST_MEMBER_GRAPH_IDS] = ids
+            if capacity_declarations is not None:
+                value[MANIFEST_CAPACITY_DECLARATIONS] = {
+                    iri: {
+                        DECLARED_CONSULTS_LLM: bool(entry[DECLARED_CONSULTS_LLM]),
+                        DECLARED_MODEL_ANSWER_INPUTS: list(
+                            entry[DECLARED_MODEL_ANSWER_INPUTS]
+                        ),
+                    }
+                    for iri, entry in capacity_declarations.items()
+                }
             if start_origins is not None:
                 # ADR-0201 amendment 8 — where each seeded start came from.
                 # A kind outside the closed set is an upstream defect and
@@ -604,6 +624,44 @@ def capacity_phrases(dispatcher: Any, pipeline: Any) -> Dict[str, str]:
         if phrase:
             phrases[iri] = phrase
     return phrases
+
+
+def capacity_declarations(dispatcher: Any, pipeline: Any) -> Dict[str, Dict[str, Any]]:
+    """Snapshot the model declarations of every capacity this run composed.
+
+    ``mindsos_llm`` plan R52: a value is the model's when a capacity that
+    declared ``consults_llm`` WHEN IT RAN produced it, or a reader consumed it
+    as a declared answer input — read from the run's own snapshot, because
+    the registry can re-bind a declaration afterwards (R45's measurement).
+
+    Resolution is scope-correct, exactly as :func:`capacity_phrases`. Every
+    resolvable capacity gets an entry with BOTH fields, ``False`` and ``[]``
+    included: an entry missing means NOT RECORDED, never *does not consult
+    the model*, so a declaration that will not resolve is left out rather
+    than guessed.
+    """
+    snapshot: Dict[str, Dict[str, Any]] = {}
+    layer = getattr(dispatcher, "capacity_layer", None)
+    if layer is None:
+        return snapshot
+    session = getattr(dispatcher, "session", None)
+    for step in getattr(pipeline, "steps", ()) or ():
+        iri = getattr(step, "capacity_iri", None)
+        if not iri or iri in snapshot:
+            continue
+        try:
+            declaration = layer.resolve_declaration(iri, session=session)
+        except Exception:  # noqa: BLE001 — unresolvable is not recorded
+            continue
+        if declaration is None:
+            continue
+        snapshot[iri] = {
+            DECLARED_CONSULTS_LLM: bool(getattr(declaration, "consults_llm", False)),
+            DECLARED_MODEL_ANSWER_INPUTS: list(
+                getattr(declaration, "model_answer_inputs", ()) or ()
+            ),
+        }
+    return snapshot
 
 
 def start_phrases(dispatcher: Any, start_iris: Iterable[str]) -> Dict[str, Optional[str]]:

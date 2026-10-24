@@ -804,6 +804,7 @@ def _mint_no_route_graph(
     mm_writer.manifest(
         declared_starts=start_phrases(dispatcher, starts),
         capacity_phrases={},
+        capacity_declarations={},
         case_label=case_label,
     )
     if capacity_graphs is not None and mm_writer.graph is not None:
