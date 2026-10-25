@@ -61,6 +61,8 @@ from mindsos_core import Graph
 from mindsos_capacity.identifiers import (
     DECLARED_CONSULTS_LLM,
     DECLARED_MODEL_ANSWER_INPUTS,
+    DECLARED_READS_MM,
+    DECLARED_READS_ROLES,
     MANIFEST_CAPACITY_DECLARATIONS,
     MANIFEST_CAPACITY_PHRASES,
     MANIFEST_CASE_LABEL,
@@ -294,6 +296,8 @@ class CapacityMMWriter:
                         DECLARED_MODEL_ANSWER_INPUTS: list(
                             entry[DECLARED_MODEL_ANSWER_INPUTS]
                         ),
+                        DECLARED_READS_ROLES: list(entry[DECLARED_READS_ROLES]),
+                        DECLARED_READS_MM: bool(entry[DECLARED_READS_MM]),
                     }
                     for iri, entry in capacity_declarations.items()
                 }
@@ -627,16 +631,17 @@ def capacity_phrases(dispatcher: Any, pipeline: Any) -> Dict[str, str]:
 
 
 def capacity_declarations(dispatcher: Any, pipeline: Any) -> Dict[str, Dict[str, Any]]:
-    """Snapshot the model declarations of every capacity this run composed.
+    """Snapshot the model and read declarations of every capacity this run composed.
 
     ``mindsos_llm`` plan R52: a value is the model's when a capacity that
     declared ``consults_llm`` WHEN IT RAN produced it, or a reader consumed it
     as a declared answer input — read from the run's own snapshot, because
     the registry can re-bind a declaration afterwards (R45's measurement).
 
-    Resolution is scope-correct, exactly as :func:`capacity_phrases`. Every
-    resolvable capacity gets an entry with BOTH fields, ``False`` and ``[]``
-    included: an entry missing means NOT RECORDED, never *does not consult
+    Since plan I-20 gate 2 an entry also carries ``reads_roles`` and
+    ``reads_mm`` (R48, R53). Resolution is scope-correct, exactly as
+    :func:`capacity_phrases`. Every resolvable capacity gets an entry with
+    EVERY field, ``False`` and ``[]`` included: an entry missing means NOT RECORDED, never *does not consult
     the model*, so a declaration that will not resolve is left out rather
     than guessed.
     """
@@ -660,6 +665,11 @@ def capacity_declarations(dispatcher: Any, pipeline: Any) -> Dict[str, Dict[str,
             DECLARED_MODEL_ANSWER_INPUTS: list(
                 getattr(declaration, "model_answer_inputs", ()) or ()
             ),
+            # Plan R48 (I-20 gate 2) — the reads it declared, so a stored run
+            # names the roles a re-run relies on (R48) and whether the
+            # capacity read the mental model (R53), as declared WHEN IT RAN.
+            DECLARED_READS_ROLES: list(getattr(declaration, "reads_roles", ()) or ()),
+            DECLARED_READS_MM: bool(getattr(declaration, "reads_mm", False)),
         }
     return snapshot
 

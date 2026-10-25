@@ -69,6 +69,14 @@ model*, and within an entry a field absent is *not recorded* — later items
 writes it on every manifest it mints; the no-route manifest writes `{}` (the
 run composed nothing). A caller that passes none leaves the key ABSENT.
 
+**5a. The reads (plan I-20 gate 2, R48, 2026-10-24).** Each entry gains
+`reads_roles` (the L2 roles the capacity declared it reads, as declared;
+ADR-0180 §amendment-5) and `reads_mm` (whether it declared the mental-model
+channel; plan R53 names such a capacity and does not run it at re-run). Both
+are always present in an entry minted from this gate on; in an entry minted
+before it they are absent — *not recorded*, never *read nothing* — as §5
+already provides. The map stays one key (owner, 2026-10-23, *"A for now"*).
+
 ## Consequences
 
 - A renderer can tell a premise from a value computed by an earlier run, and

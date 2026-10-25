@@ -853,6 +853,10 @@ role it writes, through `graph()`, which is not declared (owner, 2026-10-24) —
 and the mental-model handle (`reads_mm`) reads L2 by IRI, not by role. Both are
 stated as not claimed in ADR-0180 §amendment-5.
 
+**Build state (I-20 gate 2, 2026-10-24).** The run records the declaration:
+every `capacity_declarations` entry carries `reads_roles` and `reads_mm`
+(ADR-0201 amendment 8 §5a). Clause 3 is built; clauses 2, 4, 5 and 6 are I-21.
+
 **WHAT CHANGES.**
 
 1. *Re-run without the borrowed model* means no model anywhere in how the value was
