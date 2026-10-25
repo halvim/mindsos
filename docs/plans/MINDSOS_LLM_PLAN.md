@@ -1210,3 +1210,29 @@ amendment.)*
   role limits on the mental-model handle; that a body uses only what it is
   handed (R53). The run does not yet record the declaration — gate 2. **No call
   to a model provider was made.**
+
+- **2026-10-24 (I-20 gate 1 merged; gate 2 — the run records the reads
+  declared)** — **Gate 1 merged as PR #274** (squash `b775bb9`, tag
+  `llm-declared-reads-confirmed`); `main` had not moved, and the squash tree
+  equals the gated tree (`12da08c^{tree}`); after the docs-only §6 commit,
+  `tests/architecture`, `tests/llm_seam` and the ADR status check re-ran green at
+  `12da08c` (748 passed). **Gate 2 builds R48's *"the run records the
+  declaration"*** where the owner placed it (2026-10-23, *"A for now"*): every
+  `capacity_declarations` entry gains `reads_roles` (as declared) and `reads_mm`
+  — the latter because R53 names a `reads_mm` capacity rather than running it,
+  and R52's reason says that is read from the run's snapshot (ruled by this chat;
+  ADR-0201 amendment 8 §5a). Guard first, born red at `679da30`
+  (`tests/llm_seam/test_a_run_records_declared_reads.py`): 5 failed / 0 passed,
+  predicted by name — three `KeyError: 'reads_roles'`, one `KeyError:
+  'reads_mm'`, one field-set assertion. Gate 3's exact-entry tests take the two
+  fields; `test_every_composed_capacity_has_an_entry_with_both_fields` is
+  renamed `..._with_every_field`. **Evidence, Linux box, at `b8f39b9` on
+  `b775bb9` (`main` had not moved):** full suite 5591 passed / 5 skipped / 1
+  xpassed / 0 failed, predicted exactly; collect delta +6 / −1 — five in the
+  guard file and the rename. Five one-line mutations, each red as predicted by
+  name: the writer drops `reads_roles` → 8 (both files); drops `reads_mm` → 6;
+  the snapshot records no roles → 2; records `reads_mm` false → 1; the writer
+  stores `reads_mm` true → 4. **Not claimed:** nothing reads these fields yet —
+  a proven re-run naming its roles is I-21; an entry minted before this gate
+  says *not recorded*; interpretation's own dispatches are still not
+  snapshotted. **No call to a model provider was made.**
