@@ -481,6 +481,18 @@ amendment 8 §5), as one more field in each composed capacity's entry beside
 `consults_llm` and `model_answer_inputs` — not under a key of their own. A field
 absent from an entry means *not recorded*.
 
+⚠ **R48's premises, re-measured at `48eb503` (I-20 gate 1, 2026-10-24).**
+(1) The learned-parameters snapshot did NOT reach every body: only under
+`L4Dispatcher`; on the direct path a write body got `{}` and a read body none.
+(2) The policy lookup could not read on the direct path at all — it asks
+`getattr(context, "kl")` of a dict. (3) Two more read paths exist: a write
+body's `KLWriteHandle.graph()` (the role it writes — **owner, 2026-10-24: part
+of the write, not declared**; `metagraph()`, every role, is kept unused by a
+census) and the mental-model handle, which reads L2 by IRI for a `reads_mm`
+body (ruled by this chat: governed by `reads_mm`, not by role; R53 already keeps
+such a body out of a re-run). (4) `KnowledgeLayer.read_at_version` scans every
+user's Local; the declared handle reads Global and the caller's own Local only.
+
 **R49 — what leaned on the model is listed, with its proof status (amends R26).**
 `identify` keeps listing readings (R26, R38). A walk lists every stored value that
 descends from a model reading — a decision computed from a reading by a plain
@@ -1151,3 +1163,50 @@ amendment.)*
   *"inside the set it is a premise the run was given"*. R48 now names where its
   record goes (owner, 2026-10-23); ADR-0210 amendment 9 and the contract's row 12
   say what I-19 built and what is still owed.
+
+- **2026-10-24 (I-20 gate 1 — the read channels reach a body only through its
+  declared roles)** — R48's premises re-measured at `48eb503` (see the ⚠ note
+  under R48): the snapshot reached every body only under `L4Dispatcher`; the
+  policy lookup could not read on the direct path; a write body also reads
+  through `KLWriteHandle`, and a `reads_mm` body through the mental-model handle;
+  `KnowledgeLayer.read_at_version` scans every user's Local. **Owner ruled
+  (2026-10-24)** that a write body's read of the role it writes, through
+  `graph()` — the object it writes through — is part of the write and is not
+  declared; `metagraph()` (every role) stays unused, held by a census. **Ruled
+  by this chat:** the mental-model handle stays governed by `reads_mm`, not by
+  role (R53 keeps such a body out of a re-run); one declaration covers both
+  channels, the snapshot being the `learned-parameters` role; an undeclared
+  body gets `None` for both, never `{}`; the declared handle reads Global and
+  the caller's own Local only. **Built** (ADR-0180 §amendment-5): `reads_roles`
+  on the declaration, refused at registration when it names no knowledge role;
+  `KnowledgeLayer.declared_reads` → `DeclaredReads` / `RoleLimitedView`
+  (`mindsos_knowledge/declared_reads.py`); both invoke paths hand a declared
+  body that handle and an undeclared one `None`; the direct path's dict context
+  no longer carries `"kl"`; the policy lookup declares `policies`. Guard first,
+  born red at `68c8f8d`
+  (`tests/llm_seam/test_reads_of_stored_knowledge_are_declared.py`): 17 failed /
+  4 passed, predicted by name; every red was the missing field or method, or a
+  body handed the whole knowledge layer — the policy lookup on the direct path
+  failing with `PolicyStoreUnreachableError`, as measured. Two guard defects
+  found before they could mislead: the census counted the dispatcher's
+  forwarded `reads_roles=` as a declaration (now literals only), and a
+  `pytest.raises` on a computed class tripped
+  `test_no_generic_raises_beyond_the_declared_set`. Planning the mutations
+  found the direct path's handing a DECLARED body the whole layer held by no
+  test; one was added. **Evidence, Linux box, at `529f528` on `48eb503`
+  (`main` had not moved):** full suite 5586 passed / 5 skipped / 1 xpassed /
+  0 failed, predicted exactly; collect delta +27 / −0 — 24 in the guard file
+  and 3 import-isolation cases (`phase_12`, `phase_13`, `phase_14`) picking up
+  the new L2 module (predicted +25: the last two were missed). Thirteen one-line
+  mutations, each red as predicted by name (gate 1 rows M1–M12 at `b3bccd6`, the
+  write-handle census row M13 at `529f528`): L4 hands the whole layer → 4; L4
+  hands the snapshot regardless → 3; `dispatch` drops the declaration → 1; the
+  direct path hands the whole layer → 1; the direct path keeps readers on the
+  dict context → 3; the direct path withholds a declared snapshot → 1; the view
+  stops refusing → 4; `read_at_version` stops refusing → 1; it scans every
+  user's Local → 1; registration stops refusing → 1; the lookup drops its
+  declaration → 4; L2 stops recognising unknown roles → 2; a writer calls its
+  handle's `metagraph()` → 1. **Not claimed:** a write body's own-role reads;
+  role limits on the mental-model handle; that a body uses only what it is
+  handed (R53). The run does not yet record the declaration — gate 2. **No call
+  to a model provider was made.**

@@ -130,6 +130,18 @@ class _CapacityBase:
     # Like ``input_group`` and ``decodes_refusals``, a registration-time
     # fact and NOT emitted to the graph.
     writes: bool = False
+    # ``mindsos_llm`` plan ruling **R48** (OWNER 2026-10-09, plan item I-20) -
+    # a capacity DECLARES the L2 roles it reads. Both read channels - ``kl``
+    # (the read handle) and ``learned_parameters_snapshot`` (the
+    # ``learned-parameters`` role) - reach a body only when declared, on both
+    # invoke paths, and the handle refuses every role not named here. Same
+    # discipline as ``reads_mm``, ``consults_llm`` and ``writes``: an
+    # undeclared body is handed ``None``. Role names are checked at
+    # registration when the layer has a knowledge layer bound. Reconciled
+    # against the bodies by
+    # ``tests/llm_seam/test_reads_of_stored_knowledge_are_declared.py``. A
+    # registration-time fact, not emitted to the graph.
+    reads_roles: Tuple[str, ...] = ()
     # ``mindsos_llm`` plan ruling **R37** (OWNER 2026-09-29) — a SUBSTITUTE
     # declares which model reader it re-derives, by IRI. Excision (plan
     # I-12) re-runs a model-produced conclusion with the substitute paired to

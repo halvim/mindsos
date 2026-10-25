@@ -514,6 +514,27 @@ class CapacityLayer:
                 "write declares writes=True (plan R7); a capacity that "
                 "produces a value declares it in outputs."
             )
+        # Plan R48 (I-20) — the roles a body reads are declared, and a name
+        # that is not a knowledge role is refused here rather than at the
+        # first read. Only L2 knows the role set (Phase 28: this module
+        # imports no ``mindsos_knowledge``), so the check is asked of the
+        # bound knowledge layer; without one, only the shape is checked.
+        roles = declaration.reads_roles
+        if not isinstance(roles, tuple) or not all(
+            isinstance(r, str) and r for r in roles
+        ):
+            raise CapacityRegistrationError(
+                f"Capacity {declaration.iri!r}: reads_roles must be a tuple of "
+                f"role names; got {roles!r} (plan R48)."
+            )
+        unknown_roles = getattr(self._kl, "unknown_roles", None)
+        if roles and unknown_roles is not None:
+            bad = unknown_roles(roles)
+            if bad:
+                raise CapacityRegistrationError(
+                    f"Capacity {declaration.iri!r}: reads_roles names "
+                    f"{bad!r}, which is not a knowledge role (plan R48)."
+                )
         if declaration.printable_phrase:
             problem = printable_phrase_problem(
                 declaration.printable_phrase, "printable_phrase"
@@ -769,16 +790,39 @@ class CapacityLayer:
         # working under ``L4Dispatcher``, which builds ``writeable``
         # unconditionally. One asymmetry, two dispatch paths, no error
         # message that named the cause.
-        if declaration.writes:
+        #
+        # Plan R48 (I-20) — a body that declares ``reads_roles`` gets the
+        # typed context too, carrying a read handle limited to those roles
+        # (built by L2) and, when it declares ``learned-parameters``, the
+        # snapshot. A body that declares neither keeps the dict context and
+        # is handed no read channel: before R48 this path put the whole
+        # knowledge layer into every body's dict as ``"kl"``, while the one
+        # body that reads L2 asks ``getattr(context, "kl")`` and so could not
+        # read at all here.
+        if declaration.writes or declaration.reads_roles:
             from .context import CapacityContext, make_writeable
 
+            reads = (
+                self._kl.declared_reads(
+                    declaration.reads_roles,
+                    user_id=getattr(session, "user_id", None),
+                )
+                if declaration.reads_roles and self._kl is not None
+                else None
+            )
             write_ctx = CapacityContext(
                 session_id=getattr(session, "session_id", "session"),
                 user_id=getattr(session, "user_id", "user"),
-                learned_parameters_snapshot={},
-                kl=self._kl,
+                learned_parameters_snapshot=(
+                    reads.learned_parameters_snapshot()
+                    if reads is not None and reads.reads_learned_parameters
+                    else None
+                ),
+                kl=reads,
                 cl=self,
-                writeable=make_writeable(self._kl, session),
+                writeable=(
+                    make_writeable(self._kl, session) if declaration.writes else None
+                ),
             )
             return _runtime_invoke(
                 declaration,
@@ -801,15 +845,10 @@ class CapacityLayer:
             ctx.setdefault("session", session)
         else:
             ctx = dict(context) if context else None
-        # Phase 34 (R0 PB-5 + R5 PB-B): conditional KL injection. Only
-        # write capacities consume ``context["kl"]``; reads ignore. When
-        # ``self._kl is None`` (legacy CapacityLayer construction), the
-        # key is NOT injected — capacity bodies see ``None`` from
-        # ``context.get("kl")`` and raise ``RuntimeError`` per R3 PB-F.
-        if self._kl is not None:
-            if ctx is None:
-                ctx = {}
-            ctx.setdefault("kl", self._kl)
+        # ⚠ No ``"kl"`` here any more (plan R48, I-20). Phase 34 injected the
+        # whole knowledge layer into every dict context for write bodies that
+        # have since moved to ``writeable``; a body that reads declares
+        # ``reads_roles`` and takes the typed branch above.
         return _runtime_invoke(
             declaration,
             inputs,

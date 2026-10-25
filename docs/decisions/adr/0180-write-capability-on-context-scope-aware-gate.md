@@ -136,3 +136,47 @@ withholds the capability, `build_context(writes=True)` supplies it - plus the
 declaration-vs-body reconciliation in
 `tests/architecture/test_write_is_declared.py`. Designated mutation: dropping
 the `if writes` guard reddens the withholding test alone.
+
+
+## §amendment-5 — the read channels are gated by a declaration of roles (2026-10-24)
+
+**Amendment status:** Accepted. `mindsos_llm` plan item I-20 gate 1, ruling
+**R48** (OWNER 2026-10-09). §amendment-3's rule — a narrowed capability is
+injected only for a declaration that asks for it — now covers the two read
+channels too, and narrows them to the roles named.
+
+**Before.** `L4Dispatcher.build_context` handed every body the whole
+`KnowledgeLayer` as `kl` and the whole learned-parameters snapshot;
+`CapacityLayer.invoke` put the `KnowledgeLayer` into every read body's dict
+context as `"kl"` and gave write bodies `kl` on the typed one. The one body
+that reads L2, the policy lookup, asks `getattr(context, "kl")`, so on the
+direct path (a dict) it could not read at all.
+
+**The decision.**
+
+1. `Capacity` gains `reads_roles: Tuple[str, ...] = ()` — the L2 roles the
+   body reads. Registration refuses a name that is not a knowledge role when
+   the layer has a knowledge layer bound (`KnowledgeLayer.unknown_roles`).
+2. Both invoke paths hand a body that declares roles a
+   `mindsos_knowledge.declared_reads.DeclaredReads`, built by L2
+   (`KnowledgeLayer.declared_reads`): `global_view()` is a `RoleLimitedView`
+   that refuses an undeclared role (`UndeclaredRoleReadError`), and
+   `read_at_version` reads Global and the caller's OWN Local only, refusing a
+   node in an undeclared role. A body that declares none gets `kl=None`.
+3. `learned_parameters_snapshot` is the `learned-parameters` role: it reaches a
+   body only when that role is declared, and is otherwise `None` — the field
+   is now `Optional`, default `None`. `None`, not `{}`: an empty snapshot reads
+   as *no knob set* and a body falls back to its defaults without a sound.
+4. On the direct path a body that declares roles takes the typed context, as a
+   write body does; the dict context no longer carries `"kl"`.
+
+**Not claimed.** A write body's reads of the role it is writing, through
+`KLWriteHandle.graph()` — the object it writes through; owner, 2026-10-24. No
+capacity calls the handle's every-role `metagraph()`, and a census keeps it so.
+The mental-model handle (`reads_mm`) resolves L2 nodes by IRI and is not
+limited by role. That a body uses only what it is handed (plan R53).
+
+**Enforcement.** `tests/llm_seam/test_reads_of_stored_knowledge_are_declared.py`
+— both channels on both paths, the role refusal, the own-Local limit, and an
+AST census of bodies reaching `kl` / `learned_parameters_snapshot` reconciled
+both ways against `reads_roles` declarations, plus the `metagraph()` census.

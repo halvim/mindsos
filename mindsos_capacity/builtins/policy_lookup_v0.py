@@ -196,6 +196,13 @@ def policy_limit_datastates(
     return [limit, origin]
 
 
+#: The L2 role this capacity reads (plan R48). Spelled here rather than
+#: imported: this module reaches L2 only inside its body ("L3 declares no L2
+#: dep"); ``tests/llm_seam/test_reads_of_stored_knowledge_are_declared.py``
+#: pins it equal to ``mindsos_knowledge.policies.ROLE_POLICIES``.
+_ROLE_POLICIES = "policies"
+
+
 def build_policy_limit_lookup(
     *,
     name: str,
@@ -380,6 +387,10 @@ def build_policy_limit_lookup(
         description=description or f"consults {source_identity_phrase}",
         printable_phrase=printable_phrase,
         implementation=_lookup,
+        # Plan R48 (I-20): the one role the body reads. Without it neither
+        # invoke path hands the body a read handle; with it, the handle
+        # refuses every other role.
+        reads_roles=(_ROLE_POLICIES,),
     )
 
 

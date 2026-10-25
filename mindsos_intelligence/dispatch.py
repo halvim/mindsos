@@ -28,7 +28,7 @@ authorization-free (ADR-0170 §amendment-1).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Tuple
 
 from mindsos_capacity.context import CancelTokenView, CapacityContext, make_writeable
 from mindsos_capacity.runtime import invoke as _runtime_invoke
@@ -132,19 +132,36 @@ class L4Dispatcher:
         reads_mm: bool = False,
         consults_llm: bool = False,
         writes: bool = False,
+        reads_roles: Tuple[str, ...] = (),
     ) -> CapacityContext:
         # ADR-0200 (C3) — the body-facing MM read handle is injected only
         # when the declaration sets ``reads_mm=True``. A ``reads_mm=False``
         # body (the default) receives ``mm_handle=None``, so its only
         # read-data source is its declared inputs — declared == body-reads
-        # becomes structurally true for the MM channel. ``kl`` and
-        # ``writeable`` are untouched (kl carries write handles; its read
-        # method has no v1 body caller).
+        # becomes structurally true for the MM channel. ``kl`` and the
+        # learned-parameters snapshot follow the same rule since plan R48
+        # (below); ``writeable`` since R7.
         session = self._session
+        # Plan R48 (I-20) — both read channels reach a body only when its
+        # declaration names the roles, and the handle refuses the rest. The
+        # knowledge layer itself is never handed to a body; L2 builds the
+        # limited handle. The snapshot is the ``learned-parameters`` role, so
+        # it comes through only when that role is declared.
+        reads = (
+            self._kl.declared_reads(
+                reads_roles, user_id=getattr(session, "user_id", None)
+            )
+            if reads_roles and self._kl is not None
+            else None
+        )
         return CapacityContext(
             session_id=getattr(session, "session_id", "session"),
             user_id=getattr(session, "user_id", "user"),
-            learned_parameters_snapshot=dict(self._learned_parameters),
+            learned_parameters_snapshot=(
+                dict(self._learned_parameters)
+                if reads is not None and reads.reads_learned_parameters
+                else None
+            ),
             mm_handle=self._mm_handle if reads_mm else None,
             cancel_token=(
                 CancelTokenView(cancel_token) if cancel_token is not None else None
@@ -152,7 +169,7 @@ class L4Dispatcher:
             current_request_iri=request_iri,
             current_pattern_iri=pattern_iri,
             version_snapshot=dict(self._version_snapshot),
-            kl=self._kl,
+            kl=reads,
             cl=self._cl,
             # Plan R7 (OWNER 2026-09-18) — the write capability is injected
             # only for a declaration that asks, the same discipline as
@@ -196,6 +213,7 @@ class L4Dispatcher:
             reads_mm=bool(getattr(declaration, "reads_mm", False)),
             consults_llm=consults_llm,
             writes=bool(getattr(declaration, "writes", False)),
+            reads_roles=tuple(getattr(declaration, "reads_roles", ()) or ()),
         )
         return _runtime_invoke(
             declaration,

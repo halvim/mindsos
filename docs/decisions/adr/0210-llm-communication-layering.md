@@ -844,6 +844,14 @@ seeded starts came from (`start_origins`) and snapshots each composed capacity's
 *"run's own declaration snapshot"* is that map. Clause 3's *"the run records the
 declaration"* adds a field to the same entries (owner, 2026-10-23). Clauses 1–6
 are otherwise unbuilt: I-20 (clause 3), I-21 (clauses 2, 4, 5, 6).
+**Build state (I-20 gate 1, 2026-10-24).** Clause 3's channels are built:
+`reads_roles` on the declaration, and both invoke paths hand a declared body a
+read handle limited to those roles, or `None` (ADR-0180 §amendment-5). The run
+does not yet record the declaration — I-20 gate 2. ⚠ Clause 3 as written names
+two channels; measured, a write body also reads through its write handle — the
+role it writes, through `graph()`, which is not declared (owner, 2026-10-24) —
+and the mental-model handle (`reads_mm`) reads L2 by IRI, not by role. Both are
+stated as not claimed in ADR-0180 §amendment-5.
 
 **WHAT CHANGES.**
 
