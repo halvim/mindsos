@@ -54,7 +54,10 @@ CAP_CLEAN = capacity_iri(CATEGORY_DERIVATION, "smd_clean")
 CAP_ASK = capacity_iri(CATEGORY_DERIVATION, "smd_ask")
 CAP_READ = capacity_iri(CATEGORY_DERIVATION, "smd_read_answer")
 
-PLAIN = {"consults_llm": False, "model_answer_inputs": []}
+#: Gate 3's two fields plus I-20 gate 2's two read fields (R48, R53); the
+#: read fields are pinned in ``test_a_run_records_declared_reads.py``.
+NO_READS = {"reads_roles": [], "reads_mm": False}
+PLAIN = {"consults_llm": False, "model_answer_inputs": [], **NO_READS}
 
 
 class FakeSession:
@@ -133,7 +136,7 @@ def _run(harness, ref="pipelinerun:smd"):
     return _manifest(result.capacity_graph).get(KEY)
 
 
-def test_every_composed_capacity_has_an_entry_with_both_fields():
+def test_every_composed_capacity_has_an_entry_with_every_field():
     snapshot = _run(_harness())
     assert snapshot is not None, "no capacity_declarations in the manifest"
     assert set(snapshot) == {CAP_CLEAN, CAP_ASK, CAP_READ}
@@ -143,14 +146,16 @@ def test_every_composed_capacity_has_an_entry_with_both_fields():
 def test_a_capacity_that_consults_the_model_is_recorded_so():
     snapshot = _run(_harness())
     assert snapshot is not None, "no capacity_declarations in the manifest"
-    assert snapshot[CAP_ASK] == {"consults_llm": True, "model_answer_inputs": []}
+    assert snapshot[CAP_ASK] == {
+        "consults_llm": True, "model_answer_inputs": [], **NO_READS,
+    }
 
 
 def test_an_answer_fed_reader_records_which_inputs_carry_the_answer():
     snapshot = _run(_harness())
     assert snapshot is not None, "no capacity_declarations in the manifest"
     assert snapshot[CAP_READ] == {
-        "consults_llm": False, "model_answer_inputs": [DS_ANSWER],
+        "consults_llm": False, "model_answer_inputs": [DS_ANSWER], **NO_READS,
     }
 
 

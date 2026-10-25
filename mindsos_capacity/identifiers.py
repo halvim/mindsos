@@ -463,7 +463,9 @@ MANIFEST_MEMBER_GRAPH_IDS = "member_graph_ids"
 MANIFEST_START_ORIGINS = "start_origins"
 #: ADR-0201 amendment 8, gate 3 (plan R52) — for every capacity the run
 #: composed, its model declarations as resolved when the run started:
-#: ``{capacity_iri: {"consults_llm": bool, "model_answer_inputs": [ds, ...]}}``.
+#: ``{capacity_iri: {"consults_llm": bool, "model_answer_inputs": [ds, ...],
+#: "reads_roles": [role, ...], "reads_mm": bool}}`` - the last two since
+#: ``mindsos_llm`` plan I-20 gate 2 (R48: the run records the reads declared).
 #: A snapshot because the registry is mutable (an upsert re-binds a
 #: declaration; a Local one shadows the Global) and R52 reads what was
 #: declared WHEN IT RAN. A capacity MISSING from the map is NOT RECORDED,
@@ -473,6 +475,8 @@ MANIFEST_START_ORIGINS = "start_origins"
 MANIFEST_CAPACITY_DECLARATIONS = "capacity_declarations"
 DECLARED_CONSULTS_LLM = "consults_llm"
 DECLARED_MODEL_ANSWER_INPUTS = "model_answer_inputs"
+DECLARED_READS_ROLES = "reads_roles"
+DECLARED_READS_MM = "reads_mm"
 #: An origin's ``kind``. ``given``: handed to ``execution.run`` by its caller.
 #: ``produced``: made by the instances listed under ``by``, each
 #: ``{"graph_id", "instance_id"}`` (a collection assembled from map members
