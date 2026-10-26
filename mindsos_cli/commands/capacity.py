@@ -270,7 +270,7 @@ def _construct_invoke_layer() -> CapacityLayer:
     Phase 34 (R4 §am-impl-4 + carry-forward #6): the CLI helper now
     constructs a fresh :class:`KnowledgeLayer` and passes it to
     :class:`CapacityLayer` so the Phase 33 write capacities
-    (``consolidate`` + ``trace``) can read ``context["kl"]`` at
+    (``consolidate`` + ``trace``) are handed ``context.writeable`` at
     invocation time. Without the KL, write-capacity bodies raise
     ``RuntimeError`` per R3 PB-F.
 

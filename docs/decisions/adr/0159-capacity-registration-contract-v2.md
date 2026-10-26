@@ -48,6 +48,11 @@ class _CapacityBase:
 
 **New module `mindsos_capacity/context.py`** ships:
 
+⚠ **SUPERSEDED 2026-10-24 (ADR-0180 §amendment-5, `mindsos_llm` plan I-20):** `learned_parameters_snapshot` is now `Optional`, default
+`None` — handed only to a body declaring the `learned-parameters` role — and
+`kl` is a read handle limited to the body's declared `reads_roles`, never the
+`KnowledgeLayer`.
+
 ```python
 @dataclass(frozen=True)
 class CapacityContext:

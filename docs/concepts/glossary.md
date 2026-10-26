@@ -48,7 +48,10 @@ content.
 **CapacityLayer.** The Python class that owns the L3 dual metagraph
 (`ds_graph` + `_capacity_index`). Constructor takes an optional
 `KnowledgeLayer` for write-capacity bodies to consume via
-`context["kl"]`.
+`context["kl"]`. ⚠ **SUPERSEDED 2026-10-24 (ADR-0180 §amendment-5, `mindsos_llm` plan I-20):** no body is handed the `KnowledgeLayer`. A write
+body writes through `context.writeable` (declared `writes=True`); a body that
+reads stored knowledge declares `reads_roles` and gets `context.kl`, a read
+handle limited to those roles; any other body gets `kl=None`.
 
 **Category.** One of 13 L3 functional categories
 (perception, comprehension, derivation, decomposition, combination,

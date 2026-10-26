@@ -131,6 +131,12 @@ kwarg; `invoke()` injects it conditionally
 routing). Bodies missing `kl` raise `RuntimeError` (R3 PB-F; programmer
 error per ADR-0146 §Decision).
 
+⚠ **SUPERSEDED 2026-10-24 (ADR-0180 §amendment-5, `mindsos_llm` plan I-20):** `invoke()` no longer puts `kl` into any context. Write
+bodies write through `context.writeable` (plan R7); a body that declares
+`reads_roles` gets a typed context whose `kl` is a read handle limited to those
+roles (`mindsos_knowledge/declared_reads.py`), and the learned-parameters
+snapshot only when it declares `learned-parameters`.
+
 ### CLI rendering — `InvocationResult.write_outcome` (R1 PB-E)
 
 `mindsos capacity invoke --json` adds a `write_outcome` field to the
