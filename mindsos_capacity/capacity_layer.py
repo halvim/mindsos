@@ -152,13 +152,12 @@ class CapacityLayer:
             categories: Functional categories to bootstrap when
                 constructing a fresh Global. Ignored when
                 ``global_metagraph`` is supplied.
-            kl: Phase 34 (R0 PB-5 + R1 PB-C) — :class:`KnowledgeLayer`
-                reference for write-capacity bodies. When provided,
-                :meth:`invoke` injects the KL
-                into capacity context under key ``"kl"``. ``None``
-                (legacy default) — write-capacity invocations will
-                raise :class:`RuntimeError` from the body when they
-                try ``context["kl"]``. Read capacities ignore.
+            kl: :class:`KnowledgeLayer` the layer builds capabilities
+                from — never handed to a body itself. A body declaring
+                ``writes=True`` gets ``context.writeable`` (plan R7); a
+                body declaring ``reads_roles`` gets ``context.kl``, a
+                read handle limited to those roles (plan R48, I-20).
+                ``None`` (legacy default): neither can be built.
         """
         if global_metagraph is None:
             kwargs: Dict[str, Any] = {"strict": strict}

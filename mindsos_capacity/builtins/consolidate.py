@@ -39,9 +39,9 @@ Failure modes:
    risk). The ADR-0080 carve-out applies to scope='local' only via
    :meth:`KnowledgeLayer.writeable` raising ``ValueError`` when
    ``session is None``.
-2. **Missing-KL** — ``context.get("kl")`` returns ``None`` →
-   :class:`RuntimeError` (CapacityLayer constructed without ``kl=``;
-   programmer error per R3 PB-F).
+2. **Missing write capability** — ``context.writeable`` is ``None``
+   (CapacityLayer constructed without ``kl=``) → :class:`RuntimeError`
+   (programmer error per R3 PB-F).
 3. **Semantic-validation reject** (Phase 36 NEW) — ``validate_node``
    returns ``ok=False``; body raises
    :class:`SemanticValidationError`. ADR-0146 §amendment-1 clause 1

@@ -414,6 +414,8 @@ of hand-rolling KL writes (nilm's `persistence.py`).
 - **Read = L4 plumbing.** `read_learned_parameter_snapshot(kl, user)` fills
   `CapacityContext.learned_parameters_snapshot`, **Local overriding Global per
   knob**. It is NOT a capacity (it builds the context capacities run inside).
+  ⚠ **SUPERSEDED 2026-10-24 (ADR-0180 §amendment-5, `mindsos_llm` plan I-20):** the snapshot reaches only a body that declares
+  `learned-parameters` in `reads_roles`; every other body gets `None`.
 - **Provenance.** Every write stamps `learned_by` / `recorded_at` / `reason`
   (added to `LEARNED_PARAMETER_PROPS`, advisory, `strict=False`).
   `applied_from_promotion_iri` remains absent for direct learns.

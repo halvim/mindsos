@@ -91,6 +91,11 @@ The CapacityLayer constructor (`CapacityLayer(kl=...)`) is the
 single-source-of-truth wiring; `invoke()` injects into context
 conditionally; bodies extract via `context.get("kl")` and raise
 `RuntimeError` if missing (programmer error per ADR-0146 §Decision).
+⚠ **SUPERSEDED 2026-10-24 (ADR-0180 §amendment-5, `mindsos_llm` plan I-20):** check instead that a body writing L2 declares `writes=True`
+and uses `context.writeable`, and that a body reading L2 declares the roles in
+`reads_roles` and uses `context.kl` — both reconciled by AST census
+(`tests/architecture/test_write_is_declared.py`,
+`tests/llm_seam/test_reads_of_stored_knowledge_are_declared.py`).
 
 ## 4. Capacity preconditions call semantic validators (ADR-0139)
 

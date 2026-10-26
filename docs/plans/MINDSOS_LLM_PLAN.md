@@ -1255,3 +1255,10 @@ amendment.)*
   (R48). Nothing reads the recorded reads yet — the proven re-run that names them
   is I-21, now the only open item. ADR-0210 amendment 9 stays Proposed until
   I-21 is DONE. **No call to a model provider was made.**
+  **Consistency pass, same day:** the statements I-20 made untrue are marked
+  SUPERSEDED where they stand — `docs/concepts/glossary.md` (CapacityLayer),
+  `docs/dev/internals/capacity.md`, `docs/dev/review-checklist.md`, ADR-0159's
+  `CapacityContext` block, ADR-0152's learned-parameters read bullet — and four
+  stale docstrings that still said bodies read `context["kl"]` are corrected
+  (`capacity_layer.py`, `builtins/consolidate.py`, `builtins/trace.py`,
+  `mindsos_cli/commands/capacity.py`).
