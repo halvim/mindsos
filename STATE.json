@@ -630,13 +630,22 @@
     },
     {
       "name": "core-llm-rerun-proven-model-free",
-      "status": "OPENED 2026-10-09 as plan items I-19 (start origins + declaration snapshot), I-20 (declared reads of stored knowledge), I-21 (proven re-run) - rulings R46-R53, all on the DONE WHEN line. I-19 DONE(659e46f) 2026-10-24 (PRs #269, #270, #271). NEXT: I-20. The plan (section 2 R46-R53, section 6 entries 2026-10-09 to 2026-10-24) is the authority.",
+      "status": "OPENED 2026-10-09 as plan items I-19 (start origins + declaration snapshot), I-20 (declared reads of stored knowledge), I-21 (proven re-run) - rulings R46-R53, all on the DONE WHEN line. I-19 DONE(659e46f) 2026-10-24 (PRs #269, #270, #271). I-20 DONE(8255725) 2026-10-25 (PRs #274, #275). NEXT: I-21. The plan (section 2 R46-R53, section 6 entries 2026-10-09 to 2026-10-25) is the authority.",
       "branch_to_open": "feat/rerun-model-free",
       "spec": "docs/plans/MINDSOS_LLM_PLAN.md section 2 R46-R53, section 6 entry 2026-10-09; ADR-0201 amendment 8; ADR-0210 amendment 9",
       "consumer": "any consuming project whose reader takes an input produced by an earlier model step"
     }
   ],
   "recent": [
+    {
+      "kind": "core",
+      "name": "mindsos_llm plan item I-20 - reads of stored knowledge are declared by role, reach a body only as declared, and the run records them",
+      "sha": "8255725 (PR #275, gate 2); gate 1 b775bb9 (PR #274). RULES 12.2(a) by EQUAL TREES at both gates: 12da08c, 488d923.",
+      "tag": "llm-declared-reads-confirmed, llm-declared-reads-record-confirmed",
+      "gate": "LINUX box. Full suites: gate 1 at 529f528 5586/5/1/0, ids +27/-0 (predicted +25: two import-isolation cases missed); gate 2 at b8f39b9 5591/5/1/0, ids +6/-1 (one rename) - counts predicted exactly. Mutations 13 and 5, every red predicted by name. CI on PRs #274, #275: SUCCESS. Both guards born red.",
+      "what": "Capacity.reads_roles; KnowledgeLayer.declared_reads -> DeclaredReads / RoleLimitedView (mindsos_knowledge/declared_reads.py): both invoke paths hand a declared body a handle limited to its roles (Global + own Local), the learned-parameters snapshot only when that role is declared, an undeclared body None; the direct path's dict context no longer carries kl; the policy lookup declares policies; AST census both ways + write-handle metagraph() census. capacity_declarations entries gain reads_roles and reads_mm. NOT CLAIMED: a writer's own-role reads through graph() (owner ruling); role limits on the MM handle; nothing reads the recorded reads yet (I-21). No call to a model provider was made.",
+      "docs": "docs/plans/MINDSOS_LLM_PLAN.md; docs/decisions/adr/0180-write-capability-on-context-scope-aware-gate.md (am-5, Accepted); docs/decisions/adr/0201-amendment-8-start-origins.md (section 5a); docs/decisions/adr/0210-llm-communication-layering.md (am-9 build state, still Proposed); docs/decisions/adr/README.md; HANDOFF.md; STATE.json"
+    },
     {
       "kind": "core",
       "name": "mindsos_llm plan item I-19 - a run records where each of its starts came from, and the model declarations of what it composed",
