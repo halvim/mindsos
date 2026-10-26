@@ -550,12 +550,12 @@ list. Authority: R41, R43(b).
 | I-16 | I-9's writer gets its installer. Measured 2026-09-17: nothing in the tree calls `build_write_prompt_edition`, and `install_learn_parameter_capacities` is the precedent it skipped — so a `DONE` item is a declaration L4 cannot route to | core-llm-prompt-edition-has-no-installer | DONE(6e6514e) |
 | I-18 | an answer-fed reader can be paired and re-run: a capacity that is HANDED the model's answer and mints `read_by_model` conclusions from it declares which input carries the answer; a substitute takes the reader's inputs minus that answer, and re-run withholds it. **Specified by R44** (amends R37); two gates (§6, 2026-10-03) | core-llm-answer-fed-readers | DONE(f1603af) |
 | I-19 | a run records where each of its starts came from — `given`, `produced` by named instances in named run graphs, or `unrecorded` — and snapshots the model declarations of the capacities it composed, as they were when it ran. **Specified by R50–R52**; ADR-0201 amendment 8; three gates (§6, 2026-10-09) | core-llm-rerun-proven-model-free | DONE(659e46f) |
-| I-20 | reads of stored knowledge are declared by role: the read channels reach a body only when declared, on both invoke paths, limited to the declared roles, held by an AST census; the run records the declaration. **Specified by R48**; two gates | core-llm-rerun-proven-model-free | TODO |
+| I-20 | reads of stored knowledge are declared by role: the read channels reach a body only when declared, on both invoke paths, limited to the declared roles, held by an AST census; the run records the declaration. **Specified by R48**; two gates (§6, 2026-10-24: PRs #274, #275) | core-llm-rerun-proven-model-free | DONE(8255725) |
 | I-21 | a proven re-run: the walk lists every value that leaned on the model (R49), and a re-run is proven only when every model-produced ancestor re-derives with exact agreement (R47); the report names what it relied on. **Specified by R47, R49, R52, R53**; two gates | core-llm-rerun-proven-model-free | TODO |
 
 **DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17, I-18, I-19, I-20, I-21.**
 
-**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅ → I-18 ✅ → I-19 ✅ → I-20 → I-21.**
+**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅ → I-18 ✅ → I-19 ✅ → I-20 ✅ → I-21.**
 
 ⚠ **I-19, I-20 and I-21 were OPENED 2026-10-09 (R46–R53)** from the 2026-10-07
 proposal, re-measured and amended (§6, 2026-10-09). The order is the dependency:
@@ -1236,3 +1236,22 @@ amendment.)*
   a proven re-run naming its roles is I-21; an entry minted before this gate
   says *not recorded*; interpretation's own dispatches are still not
   snapshotted. **No call to a model provider was made.**
+
+- **2026-10-25 (I-20 DONE)** — **Gate 2 merged as PR #275** (squash `8255725`,
+  tag `llm-declared-reads-record-confirmed`); gate 1 is PR #274 (`b775bb9`, tag
+  `llm-declared-reads-confirmed`). `main` had not moved at either merge: RULES
+  12.2(a) discharged by equal trees, `b775bb9^{tree}` == `12da08c^{tree}` and
+  `8255725^{tree}` == `488d923^{tree}`; after each docs-only §6 commit,
+  `tests/architecture`, `tests/llm_seam` and the ADR status check re-ran green
+  (748 and 753 passed). CI on both PRs: SUCCESS. **What I-20 now holds, and
+  nothing more:** a capacity declares the L2 roles it reads (`reads_roles`);
+  both invoke paths hand it a read handle limited to those roles — Global and the
+  caller's own Local — and the learned-parameters snapshot only when that role
+  is declared; an undeclared body gets neither; an AST census reconciles both
+  ways; every run manifest records `reads_roles` and `reads_mm` per composed
+  capacity, as declared when it ran. ⚠ **NOT CLAIMED.** A write body's reads of
+  the role it writes (owner, 2026-10-24); role limits on the mental-model handle;
+  that a body uses only what it is handed (R53); where stored content came from
+  (R48). Nothing reads the recorded reads yet — the proven re-run that names them
+  is I-21, now the only open item. ADR-0210 amendment 9 stays Proposed until
+  I-21 is DONE. **No call to a model provider was made.**
