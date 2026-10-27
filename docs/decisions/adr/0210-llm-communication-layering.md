@@ -861,7 +861,15 @@ every `capacity_declarations` entry carries `reads_roles` and `reads_mm`
 OWNER): an `interpreted` start now carries the declaration of every capacity
 interpretation dispatched (ADR-0201 amendment 8 §5b), so the proof can name the
 roles interpretation declared it read. Gate 2 is the walk (clauses 4, 5), gate 3
-the proof (clauses 2, 6). Build rulings R55–R63 are in the plan.
+the proof (clauses 2, 6). Build rulings R55–R63 are in the plan. Gate 1
+merged as PR #278 (`92429ff`, tag `llm-interpreted-declarations-confirmed`).
+
+**Build state (I-21 gate 2, 2026-10-27).** Clauses 4 and 5's listing is built:
+`excision.walk` lists every value whose lineage holds a model value (R52's three
+ways, and an `interpreted` start that used the model), and every value whose
+lineage is not recorded (R62), following `start_origins` between run graphs; a
+mark found on a copy is the original's. Proof status — clauses 2 and 6 — is
+gate 3.
 
 **WHAT CHANGES.**
 
