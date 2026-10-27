@@ -36,6 +36,7 @@ from typing import Any, Optional
 from mindsos_capacity.builtins.orchestration_v0 import DS_SCORE, DS_SCORE_INPUT
 from mindsos_capacity.identifiers import (
     CATEGORY_SCORING,
+    MANIFEST_CAPACITY_DECLARATIONS,
     START_ORIGIN_INTERPRETED,
     capacity_iri,
 )
@@ -371,6 +372,11 @@ class Orchestrator:
                 solve_target["start_datastate"]: {
                     "kind": START_ORIGIN_INTERPRETED,
                     "model_capacities": list(p1.model_capacities),
+                    # Plan I-21 gate 1 (ADR-0201 amendment 8 §5b): what every
+                    # interpretation step declared when it ran.
+                    MANIFEST_CAPACITY_DECLARATIONS: {
+                        iri: dict(entry) for iri, entry in p1.capacity_declarations.items()
+                    },
                 }
             }
             if solve_target is not None else None

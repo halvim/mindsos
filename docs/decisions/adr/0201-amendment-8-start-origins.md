@@ -77,6 +77,16 @@ are always present in an entry minted from this gate on; in an entry minted
 before it they are absent — *not recorded*, never *read nothing* — as §5
 already provides. The map stays one key (owner, 2026-10-23, *"A for now"*).
 
+**5b. What interpretation declared (plan I-21 gate 1, R54, 2026-10-26).** An
+`interpreted` origin also carries `capacity_declarations`: for EVERY capacity
+interpretation dispatched (its four steps and the resolve pipeline's steps that
+ran), the same entry §5 and §5a define, built by the one function both use
+(`capacity_mm_writer.declaration_entry`). Interpretation runs ungrounded, so
+this is the only record of the roles its steps declared they read. An
+`interpreted` origin minted before this gate has no such key — *not recorded*.
+⚠ Not covered: `phase_1._map_target_resolves` reads `request-patterns` from L4
+directly; it decides whether interpretation goes on, and produces no value.
+
 ## Consequences
 
 - A renderer can tell a premise from a value computed by an earlier run, and
@@ -103,4 +113,5 @@ already provides. The map stays one key (owner, 2026-10-23, *"A for now"*).
   only, and a collection's origin is a list.
 - **Default every seeded start to `given`.** That is the defect.
 
-Guard: `tests/llm_seam/test_a_start_names_where_it_came_from.py`.
+Guard: `tests/llm_seam/test_a_start_names_where_it_came_from.py`; §5b:
+`tests/llm_seam/test_an_interpreted_start_records_its_declarations.py`.

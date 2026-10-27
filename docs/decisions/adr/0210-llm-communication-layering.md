@@ -857,6 +857,12 @@ stated as not claimed in ADR-0180 §amendment-5.
 every `capacity_declarations` entry carries `reads_roles` and `reads_mm`
 (ADR-0201 amendment 8 §5a). Clause 3 is built; clauses 2, 4, 5 and 6 are I-21.
 
+**Build state (I-21 gate 1, 2026-10-26).** I-21 takes three gates (plan R54,
+OWNER): an `interpreted` start now carries the declaration of every capacity
+interpretation dispatched (ADR-0201 amendment 8 §5b), so the proof can name the
+roles interpretation declared it read. Gate 2 is the walk (clauses 4, 5), gate 3
+the proof (clauses 2, 6). Build rulings R55–R63 are in the plan.
+
 **WHAT CHANGES.**
 
 1. *Re-run without the borrowed model* means no model anywhere in how the value was
