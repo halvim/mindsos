@@ -1323,3 +1323,45 @@ amendment.)*
   stale docstrings that still said bodies read `context["kl"]` are corrected
   (`capacity_layer.py`, `builtins/consolidate.py`, `builtins/trace.py`,
   `mindsos_cli/commands/capacity.py`).
+
+- **2026-10-26 (I-21 opened for build; R54–R63; gate 1 — an interpreted start
+  records what interpretation declared)** — Every I-21 premise was re-measured
+  at `29fc399` (static reads of a clean worktree). **Held:** a step's every input
+  has a CONSUMES edge (`pipeline_execution.py` passes only indexed inputs);
+  `produced.by` names a `DataStateInstance` node id; no shipped capacity declares
+  `reads_mm`; the two write bodies that read through `graph()` (`consolidate`,
+  `learn_parameter`) declare `outputs=()`, so neither can be an ancestor of a
+  value. **Missing:** the roles interpretation's steps declared are recorded
+  nowhere — put to the owner, who took option C (R54): a third gate, first.
+  **Contradicted:** R45 re-checks the pairing against today's reader while R52
+  reads the run's snapshot (R55 checks both); R47's *"every model-produced value
+  it descends from"* is read by its own reason (R56). Five passes; the second
+  and third each reversed one call, the last two reversed nothing. The rulings
+  R55–R63 are delegated (§2).
+  **Gate 1 builds R54 (ADR-0201 amendment 8 §5b).** `interpret` snapshots the
+  declaration of every capacity it dispatched — its four steps and the resolve
+  pipeline's steps that ran — through `capacity_mm_writer.declaration_entry`, the
+  one builder the manifest's `capacity_declarations` now also uses;
+  `InterpretationResult` and `Phase1Result` carry it; the orchestrator's
+  `interpreted` origin carries it under `capacity_declarations`. Guard first,
+  born red at `6e990bd`
+  (`tests/llm_seam/test_an_interpreted_start_records_its_declarations.py`): 7
+  failed / 0 passed, predicted by name, every red an `AssertionError` on the
+  missing field or key. The two exact-origin tests of I-19 gate 2 now compare
+  `kind` and `model_capacities` only; the new file pins the whole origin.
+  **Evidence, Linux box, at `e498017` on `29fc399` (`main` had not moved):** full
+  suite 5598 passed / 5 skipped / 1 xpassed / 0 failed, predicted exactly
+  (+7, all in the guard file; no new module); `tests/llm_seam`,
+  `tests/run_records`, `tests/phase_48`, `tests/phase1_seam`, `tests/architecture`
+  and the ADR status check, 1078 passed / 0 failed. Six one-line mutations, each
+  red as predicted by name: the entry never recorded → 7; the resolve steps not
+  recorded → 1; `Phase1Result` drops it → 2; the orchestrator drops it → 2; the
+  entry records no roles → 3 (one here, two of I-20 gate 2's); only model-using
+  steps recorded → 7. ⚠ The first mutation run applied nothing: run detached,
+  `gate.sh`'s own fetch had no ssh agent (`Permission denied (publickey)`) and
+  every row stopped before pytest. Re-run with `MINDSOS_MAIN` pointed at a local
+  clone of the box's repository, whose fetch needs no network; all six applied.
+  **Not claimed:** `phase_1._map_target_resolves` reads `request-patterns` from L4
+  directly (it decides whether interpretation goes on and produces no value); an
+  `interpreted` origin minted before this gate has no snapshot — *not recorded*.
+  **No call to a model provider was made.**
