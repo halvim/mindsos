@@ -229,14 +229,22 @@ def _lifecycle(*, model_process: bool):
     return manifest[0].value.get(KEY)
 
 
+def _kind_and_models(origins):
+    """The I-19 gate 2 fields only; I-21 gate 1 added the declaration snapshot,
+    pinned exactly by ``test_an_interpreted_start_records_its_declarations``."""
+    return {
+        ds: {k: o[k] for k in ("kind", "model_capacities")} for ds, o in origins.items()
+    }
+
+
 def test_the_request_seed_is_recorded_as_interpreted():
-    assert _lifecycle(model_process=False) == {
+    assert _kind_and_models(_lifecycle(model_process=False)) == {
         DS_TASK: {"kind": "interpreted", "model_capacities": []},
     }
 
 
 def test_a_seed_interpreted_with_the_model_names_the_capacity():
-    assert _lifecycle(model_process=True) == {
+    assert _kind_and_models(_lifecycle(model_process=True)) == {
         DS_TASK: {"kind": "interpreted", "model_capacities": [MODEL_PROCESS_IRI]},
     }
 

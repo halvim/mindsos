@@ -34,8 +34,8 @@ reports an indirect ``reference_kind`` and the profile names a
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, List, Mapping, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from mindsos_capacity.identifiers import (
     CATEGORY_DECISION,
@@ -47,6 +47,7 @@ from mindsos_capacity.needs_input import NeedsInput
 from mindsos_capacity.pipeline import find_pipeline
 from mindsos_knowledge import ROLE_REQUEST_PATTERNS
 
+from .capacity_mm_writer import declaration_entry
 from .ingress import InputEnvelope
 from .phase1_profile import Phase1Profile
 from .pipeline_execution import execute_pipeline
@@ -90,6 +91,12 @@ class InterpretationResult:
     #: consults the model or declares answer inputs, in dispatch order. Empty
     #: when none did. Interpretation is ungrounded, so this is the only record.
     model_capacities: Tuple[str, ...] = ()
+    #: ``mindsos_llm`` plan I-21 gate 1 (R46, R48) — the declaration of EVERY
+    #: capacity interpretation dispatched, as it was when it ran: the entry
+    #: shape of the run manifest's ``capacity_declarations``
+    #: (``capacity_mm_writer.declaration_entry``). It is what lets a proven
+    #: re-run name the roles interpretation declared it read.
+    capacity_declarations: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
 
 
 @dataclass
@@ -110,6 +117,8 @@ class Phase1Result:
     resolved_reference: Any = None
     #: Carried from :class:`InterpretationResult` (plan R51).
     model_capacities: Tuple[str, ...] = ()
+    #: Carried from :class:`InterpretationResult` (plan I-21 gate 1).
+    capacity_declarations: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
 
 
 def _leans_on_model(declaration) -> bool:
@@ -120,9 +129,16 @@ def _leans_on_model(declaration) -> bool:
     )
 
 
-def _note_model(used: Optional[List[str]], declaration, capacity_iri: str) -> None:
+def _note_model(
+    used: Optional[List[str]], declaration, capacity_iri: str,
+    declared: Optional[Dict[str, Any]] = None,
+) -> None:
     if used is not None and _leans_on_model(declaration) and capacity_iri not in used:
         used.append(capacity_iri)
+    # Plan I-21 gate 1 — every dispatched step's declaration, model-using or
+    # not: the roles it declared it read are premises of a proven re-run.
+    if declared is not None and capacity_iri not in declared:
+        declared[capacity_iri] = declaration_entry(declaration)
 
 
 def _slot(profile: Optional[Phase1Profile], attr: str, default: str) -> str:
@@ -132,7 +148,10 @@ def _slot(profile: Optional[Phase1Profile], attr: str, default: str) -> str:
     return getattr(profile, attr) or default
 
 
-def _run_step(dispatcher, capacity_iri: str, env: dict, used: Optional[List[str]] = None) -> Any:
+def _run_step(
+    dispatcher, capacity_iri: str, env: dict, used: Optional[List[str]] = None,
+    declared: Optional[Dict[str, Any]] = None,
+) -> Any:
     """Run one interpretation step, wiring its inputs from ``env`` by the
     selected capacity's declared ``CONSUMES`` and merging its outputs back
     (ADR-0197 §Build-decision-2 — environment-threaded spine).
@@ -149,7 +168,7 @@ def _run_step(dispatcher, capacity_iri: str, env: dict, used: Optional[List[str]
             f"phase-1 step {capacity_iri!r} needs {missing!r} not produced "
             f"upstream (mis-wired profile; env has {sorted(env)})"
         )
-    _note_model(used, decl, capacity_iri)
+    _note_model(used, decl, capacity_iri, declared)
     result = dispatcher.dispatch(capacity_iri, {ds: env[ds] for ds in decl.inputs})
     env.update(result.outputs)
     return result.outputs[decl.outputs[0]]
@@ -173,7 +192,7 @@ def _map_target_resolves(dispatcher, request_pattern_iri: str) -> bool:
 
 def _resolve_reference(
     dispatcher, profile: Phase1Profile, hints: Mapping[str, Any], request_id: str,
-    used: Optional[List[str]] = None,
+    used: Optional[List[str]] = None, declared: Optional[Dict[str, Any]] = None,
 ) -> Any:
     """Compose + run the reference-resolve chain by DataState type
     (ADR-0195 §Decision.3). Returns the canonical reference, ``None`` (no
@@ -215,6 +234,7 @@ def _resolve_reference(
                 step.capacity_iri, session=dispatcher.session
             ),
             step.capacity_iri,
+            declared,
         )
     if exec_result.needs_input is not None:
         return exec_result.needs_input
@@ -296,10 +316,11 @@ def interpret(
     env: dict = {ingress_ds: value}
 
     used: List[str] = []
-    structured = _run_step(dispatcher, process_iri, env, used)
-    hints = _run_step(dispatcher, _slot(profile, "hint", HINT_IRI), env, used)
-    goal = _run_step(dispatcher, _slot(profile, "derive_goal", DERIVE_GOAL_IRI), env, used)
-    mapping = _run_step(dispatcher, _slot(profile, "map", MAP_IRI), env, used)
+    declared: Dict[str, Any] = {}
+    structured = _run_step(dispatcher, process_iri, env, used, declared)
+    hints = _run_step(dispatcher, _slot(profile, "hint", HINT_IRI), env, used, declared)
+    goal = _run_step(dispatcher, _slot(profile, "derive_goal", DERIVE_GOAL_IRI), env, used, declared)
+    mapping = _run_step(dispatcher, _slot(profile, "map", MAP_IRI), env, used, declared)
 
     request_pattern_iri = mapping["request_pattern_iri"]
     mapping_confidence = mapping["mapping_confidence"]
@@ -318,7 +339,9 @@ def interpret(
                 f"map target {request_pattern_iri!r} does not resolve in "
                 f"{ROLE_REQUEST_PATTERNS!r}"
             )
-        resolved_reference = _resolve_reference(dispatcher, profile, hints, request_id, used)
+        resolved_reference = _resolve_reference(
+            dispatcher, profile, hints, request_id, used, declared
+        )
         # ADR-0196 — the resolve body asked the user; surface it directly.
         if isinstance(resolved_reference, NeedsInput):
             return resolved_reference
@@ -331,6 +354,7 @@ def interpret(
         mapping_confidence=mapping_confidence,
         resolved_reference=resolved_reference,
         model_capacities=tuple(used),
+        capacity_declarations=declared,
     )
 
 
@@ -358,6 +382,7 @@ def run(dispatcher, writer, request_input) -> "Phase1Result | NeedsInput":
         mapping_result_ref=mr.iri,
         resolved_reference=r.resolved_reference,
         model_capacities=r.model_capacities,
+        capacity_declarations=r.capacity_declarations,
     )
 
 

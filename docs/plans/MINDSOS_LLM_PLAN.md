@@ -526,6 +526,67 @@ outside a body; it is stated as such in contract row 12 and ADR-0210 amendment 9
 not in `mindsos_llm`'s `UNVERIFIABLE_PROPERTIES`, which is the transport harness's
 list. Authority: R41, R43(b).
 
+**R54–R63 are I-21's build rulings, 2026-10-26.** R54 is **OWNER** (option C, put
+with options and the code it concerns); R55–R63 were ruled by the I-21 chat after
+five passes (the last two reversed nothing), each citing its authority.
+
+**R54 — an interpreted start records what interpretation declared.** Measured at
+`29fc399`: interpretation runs ungrounded, and its origin names only the capacities
+that leaned on the model (R51); the roles its steps declared they read are recorded
+nowhere, so R46's *"the stored roles the derivation declared it read"* cannot be
+named for the start every orchestrated request begins from, and absence means *not
+recorded* (ADR-0201 amendment 8 §5a). **Ruled:** the `interpreted` origin carries
+`capacity_declarations` — the declaration of EVERY capacity interpretation
+dispatched, the same entry the run manifest carries — and I-21 takes three gates,
+not two. **Rejected:** reporting an interpreted start *not proven: reads not
+recorded* with no record added (no orchestrated request could ever be proven, the
+outcome R48 rejected). **OWNER 2026-10-26** (*"agreed with C"*).
+
+**R55 — the pairing at proof is checked against BOTH declarations.** R45 re-checks
+against the reader as declared today; R52 reads what was declared when it ran. A
+substitute that consumes an input the run's snapshot names as answer-carrying is
+named and not run, as is one that fails R45's check. Authority: R44(d), R45, R52.
+
+**R56 — the proof recurses through a substitute's INPUTS only.** A model value
+re-derives from its substitute's inputs, each proven in turn; a value reached only
+through an input the substitute does not take (a withheld answer) does not bear on
+it. R47's *"every model-produced value it descends from"* is read by its own reason
+(*"the model's value is reproduced exactly"*). Authority: R44(c), R47.
+
+**R57 — with several substitutes, a value is proven when at least one agrees and
+none disagrees.** One that did not run is named, never a disagreement. Authority:
+R41, R47.
+
+**R58 — what makes a value *not proven* without anything being run.** Each is
+named: a start whose origin is `unrecorded`, or a run with no `start_origins` key
+(R50); a `produced` reference to a run graph or instance not in the Episode
+(§6 2026-10-09 (3)); an `interpreted` start with model capacities (R51) or with no
+declaration snapshot (R54); a composed capacity with no declaration entry, or an
+entry without the read fields (ADR-0201 amendment 8 §5, §5a); a plain step that
+declared `reads_mm` — its reads are by IRI, not by role (R46, R53); a plain step
+that consumed a reading's ORIGIN RECORD (§6 2026-10-09). Authority: as cited.
+
+**R59 — a value from a producer that declared `consults_llm`, with no origin
+record, re-derives through that producer's substitute** like a reading (R52).
+Authority: R47, R52.
+
+**R60 — a model answer with no model-produced value in its lineage** (one the
+caller handed in, or computed by plain steps from premises) is *not proven: not
+yet excisable*, naming it; one with such a value inherits that value's proof.
+Authority: R47, R52.
+
+**R61 — the report names what it relied on:** the `given` starts, the
+`interpreted` starts and the roles interpretation declared, the roles every plain
+step in the lineage declared (from the run's snapshot), and each substitute that
+ran with the roles it declares now (it runs now). Authority: R46, R48.
+
+**R62 — the walk lists value instances, not origin records, and lists a value
+whose lineage is not recorded as *not proven*, never omits it.** An unlisted value
+must mean *no model in its lineage*. Authority: R49, R50.
+
+**R63 — `rerun` stays the one-reading primitive the proof calls**, and its report
+is not a proof (contract row 12). Authority: R41, R47.
+
 ## 3. THE ITEM LIST
 
 | id | item | filed as | state |
@@ -551,7 +612,7 @@ list. Authority: R41, R43(b).
 | I-18 | an answer-fed reader can be paired and re-run: a capacity that is HANDED the model's answer and mints `read_by_model` conclusions from it declares which input carries the answer; a substitute takes the reader's inputs minus that answer, and re-run withholds it. **Specified by R44** (amends R37); two gates (§6, 2026-10-03) | core-llm-answer-fed-readers | DONE(f1603af) |
 | I-19 | a run records where each of its starts came from — `given`, `produced` by named instances in named run graphs, or `unrecorded` — and snapshots the model declarations of the capacities it composed, as they were when it ran. **Specified by R50–R52**; ADR-0201 amendment 8; three gates (§6, 2026-10-09) | core-llm-rerun-proven-model-free | DONE(659e46f) |
 | I-20 | reads of stored knowledge are declared by role: the read channels reach a body only when declared, on both invoke paths, limited to the declared roles, held by an AST census; the run records the declaration. **Specified by R48**; two gates (§6, 2026-10-24: PRs #274, #275) | core-llm-rerun-proven-model-free | DONE(8255725) |
-| I-21 | a proven re-run: the walk lists every value that leaned on the model (R49), and a re-run is proven only when every model-produced ancestor re-derives with exact agreement (R47); the report names what it relied on. **Specified by R47, R49, R52, R53**; two gates | core-llm-rerun-proven-model-free | TODO |
+| I-21 | a proven re-run: the walk lists every value that leaned on the model (R49), and a re-run is proven only when every model-produced ancestor re-derives with exact agreement (R47); the report names what it relied on. **Specified by R47, R49, R52, R53, R54–R63**; three gates (R54; §6, 2026-10-26) | core-llm-rerun-proven-model-free | TODO |
 
 **DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17, I-18, I-19, I-20, I-21.**
 

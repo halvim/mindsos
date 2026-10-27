@@ -660,18 +660,31 @@ def capacity_declarations(dispatcher: Any, pipeline: Any) -> Dict[str, Dict[str,
             continue
         if declaration is None:
             continue
-        snapshot[iri] = {
-            DECLARED_CONSULTS_LLM: bool(getattr(declaration, "consults_llm", False)),
-            DECLARED_MODEL_ANSWER_INPUTS: list(
-                getattr(declaration, "model_answer_inputs", ()) or ()
-            ),
-            # Plan R48 (I-20 gate 2) — the reads it declared, so a stored run
-            # names the roles a re-run relies on (R48) and whether the
-            # capacity read the mental model (R53), as declared WHEN IT RAN.
-            DECLARED_READS_ROLES: list(getattr(declaration, "reads_roles", ()) or ()),
-            DECLARED_READS_MM: bool(getattr(declaration, "reads_mm", False)),
-        }
+        snapshot[iri] = declaration_entry(declaration)
     return snapshot
+
+
+def declaration_entry(declaration: Any) -> Dict[str, Any]:
+    """One capacity's model and read declarations, as one snapshot entry.
+
+    The ONE builder of the entry shape — the run manifest's
+    ``capacity_declarations`` (:func:`capacity_declarations`) and an
+    ``interpreted`` start's origin (``phase_1.interpret``, ``mindsos_llm`` plan
+    I-21 gate 1, ADR-0201 amendment 8 §5b) both use it, so a reader of either
+    reads the same fields. Every field is always present, ``False`` and ``[]``
+    included.
+    """
+    return {
+        DECLARED_CONSULTS_LLM: bool(getattr(declaration, "consults_llm", False)),
+        DECLARED_MODEL_ANSWER_INPUTS: list(
+            getattr(declaration, "model_answer_inputs", ()) or ()
+        ),
+        # Plan R48 (I-20 gate 2) — the reads it declared, so a stored run
+        # names the roles a re-run relies on (R48) and whether the
+        # capacity read the mental model (R53), as declared WHEN IT RAN.
+        DECLARED_READS_ROLES: list(getattr(declaration, "reads_roles", ()) or ()),
+        DECLARED_READS_MM: bool(getattr(declaration, "reads_mm", False)),
+    }
 
 
 def start_phrases(dispatcher: Any, start_iris: Iterable[str]) -> Dict[str, Optional[str]]:
