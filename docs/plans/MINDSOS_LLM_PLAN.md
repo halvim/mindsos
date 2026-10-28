@@ -1365,3 +1365,39 @@ amendment.)*
   directly (it decides whether interpretation goes on and produces no value); an
   `interpreted` origin minted before this gate has no snapshot — *not recorded*.
   **No call to a model provider was made.**
+
+- **2026-10-27 (I-21 gate 1 merged; gate 2 — the walk lists what leaned on the
+  model)** — **Gate 1 merged as PR #278** (squash `92429ff`, tag
+  `llm-interpreted-declarations-confirmed`); `main` had not moved, and the squash
+  tree equals the gated tree (`b83672d^{tree}`); after the docs-only §6 commit,
+  `tests/architecture`, `tests/llm_seam` and the ADR status check re-ran green at
+  `b83672d` (760 passed). **Gate 2 builds R49's listing with R50, R52 and R62.**
+  `excision.walk(graphs)` returns a `Leaned` per value of an Episode whose
+  lineage holds a model value (`ModelValue`, with how: `read_by_model`,
+  `consults_llm`, `answer_input`, `interpreted`) or a gap (`LineageGap`:
+  `origins_not_recorded`, `origin_unrecorded`, `origin_not_in_the_episode`,
+  `declarations_not_recorded`). The lineage is CONSUMES/PRODUCES inside a run
+  graph and `start_origins` between run graphs; declarations come from each run's
+  own snapshot. **Ruled by this chat (R52's *"a reader consumed IT"*):** a copy
+  carried into the next run — one producing instance, the same DataState — is the
+  same value, so an answer-input mark found on the copy is the original's; an
+  element of a collection (another DataState) is not. Origin records are not
+  listed (they are `identify`'s). Guard first, born red at `75fb1ce` (replayed
+  unchanged as `512b0c9` onto `92429ff`)
+  (`tests/llm_seam/test_the_walk_lists_what_leaned_on_the_model.py`): 13 failed
+  / 1 skipped (the FalkorDB round trip, which runs only in docker), every red
+  `AttributeError: … no attribute 'walk'` — predicted 12, a miscount of the
+  file's 14 tests, not a wrong red. **Evidence, Linux box, at `8f965bf` on
+  `92429ff` (`main` had not moved):** full suite 5612 passed / 5 skipped / 1
+  xpassed / 0 failed, predicted exactly (+14, all in the guard file; no new
+  module); `tests/llm_seam`, `tests/run_records`, `tests/phase_48`,
+  `tests/phase1_seam`, `tests/architecture` and the ADR status check, 1091
+  passed / 0 failed. Thirteen one-line mutations, each red as predicted by name:
+  no `consults_llm` mark → 3; no `read_by_model` mark → 2; no answer-input mark
+  → 2; no `interpreted` mark → 1; `produced` origins not followed → 2; a copy
+  aliased whatever its DataState → 1; no copy aliased → 1; `given` read as a gap
+  → 8; a missing `start_origins` key read as given → 1; a dangling reference not
+  a gap → 1; a producer with no recorded declaration not a gap → 1; a consumer
+  with no recorded declaration not a gap → 2; origin records listed → 2. The
+  FalkorDB round trip is held by the full suite only. **Not claimed:** whether a
+  listed value is proven (gate 3). **No call to a model provider was made.**
