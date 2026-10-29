@@ -1401,3 +1401,52 @@ amendment.)*
   with no recorded declaration not a gap → 2; origin records listed → 2. The
   FalkorDB round trip is held by the full suite only. **Not claimed:** whether a
   listed value is proven (gate 3). **No call to a model provider was made.**
+
+- **2026-10-28 (I-21 gate 2 merged; gate 3 — a re-run is proven model-free, or
+  says why not)** — **Gate 2 merged as PR #279** (squash `1721b61`, tag
+  `llm-proven-walk-confirmed`); `main` had not moved, and the squash tree equals
+  the gated tree (`9bcbc3c^{tree}`); after the docs-only §6 commit,
+  `tests/architecture`, `tests/llm_seam` and the ADR status check re-ran green at
+  `9bcbc3c` (773 passed). **Gate 3 builds R47, R53 and R55–R61.**
+  `excision.prove(value, graphs, dispatcher=)` returns a `ProofReport`
+  (`proven`, `not_proven`, `rederived`, `premises`, `roles`): a model value — a
+  reading, or a value a producer declaring `consults_llm` made (R59) —
+  re-derives through every substitute paired with its producer, each fed the
+  producer's consumed instances once those are proven in turn (R56); proven when
+  one agrees and none disagrees (R57). A substitute that declares `reads_mm`
+  (R53), no longer pairs (R45), takes an input the run's snapshot withheld (R55)
+  or has unproven inputs is named and not run. Every other reason is read from
+  the record (R58, R60). `proven_walk` is the walk with each value's proof (R49).
+  `rerun` is unchanged (R63). **Reversed while building:** the planned census
+  that a body reading through `graph()` declares `outputs=()` was dropped — an AST
+  check cannot tie a call to a declaration reliably, and a weak guard is worse
+  than the measured fact, now under *Not claimed*. Guard first
+  (`tests/llm_seam/test_a_rerun_is_proven_model_free.py`, 23 tests): its first
+  commit `550c1f6` was red for the WRONG reason in 15 tests — the harness reader
+  did not declare `consults_llm`, so registration refused its substitute (R37);
+  fixed at `ffe44ba`, where all 23 were red for the right cause
+  (`AttributeError: … no attribute 'prove'` ×22, `'proven_walk'` ×1). Planning
+  the mutations found two lines no test held — that an unproven-input
+  substitute is not dispatched, and `proven_walk`'s refusal of a bound model —
+  and an assertion was added for each (green at birth, held by P7 and P20).
+  **Evidence, Linux box, at `4b0e458` on `1721b61` (`main` had not moved):** full
+  suite 5635 passed / 5 skipped / 1 xpassed / 0 failed, predicted exactly (+23,
+  all in the guard file); `tests/llm_seam`, `tests/run_records`,
+  `tests/phase_48`, `tests/phase1_seam`, `tests/architecture` and the ADR status
+  check, 1114 passed / 0 failed. Twenty one-line mutations, each red as predicted
+  by name: no `not_yet_excisable` → 1; a disagreement not stopped → 3; a
+  disagreement not noticed → 3; nothing agreeing not stopped → 3; a `reads_mm`
+  substitute run → 1; a withheld input taken → 1; unproven inputs dispatched →
+  1; R60 off → 1; a plain step's `reads_mm` ignored → 1; unrecorded reads not
+  stopped → 1; a consumed origin record not stopped → 1; an interpretation that
+  used the model not stopped → 1; a missing interpretation snapshot not stopped
+  → 1; the walk's gaps ignored → 1; a step's roles not named → 2; a substitute's
+  roles not named → 1; a `given` start not a premise → 3; a plain step's parents
+  not followed → 12; `prove`'s model check off → 1; `proven_walk`'s → 1.
+  **Not claimed:** that a capacity body does only what it declares; where stored
+  content came from (R48); a write body's reads of the role it writes — measured,
+  the only two that read through `graph()` (`consolidate`, `learn_parameter`)
+  declare `outputs=()`, so neither is in any value's lineage today, and nothing
+  checks that stays so; interpretation's own L4 read of `request-patterns`
+  (`_map_target_resolves`), which decides whether interpretation goes on and
+  produces no value. **No call to a model provider was made.**
