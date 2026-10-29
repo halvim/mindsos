@@ -244,7 +244,7 @@ def test_the_ceiling_is_enforced_BEFORE_the_transport_is_called():
     client = _client(lambda **k: calls.append(k) or ANSWER, max_calls=1)
     _read(client)
     with pytest.raises(LLMCallBudgetExceeded):
-        _read(client)
+        client.read(prompt_iri="prompt:p", prompt_version=1, source_text="another doc")
     assert len(calls) == 1, "a refused call must not reach the provider"
 
 
