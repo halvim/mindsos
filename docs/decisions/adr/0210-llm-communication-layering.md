@@ -825,14 +825,15 @@ the dispatcher's scope and names a substitute that no longer pairs
 Whether a substitute's other inputs descend from a model reading is not checked
 (plan §6, 2026-10-05). A proposal to close it is recorded in plan §6, 2026-10-07 —
 not approved, not an item. ⚠ **SUPERSEDED 2026-10-09:** decided by amendment 9
-below (plan R46–R53; items I-19, I-20, I-21). Still not checked at re-run until
-I-21 is DONE.
+below (plan R46–R53; items I-19, I-20, I-21). ⚠ **SUPERSEDED 2026-10-29:** I-21 is
+DONE(`57460ad`) — `rerun` alone still does not check it, and `prove` does
+(amendment 9).
 
 
 ## Amendment 9 — a re-run is proven model-free, or says why not (2026-10-09)
 
-**Amendment status:** Proposed (2026-10-09) — plan items I-20 and I-21 of
-`docs/plans/MINDSOS_LLM_PLAN.md`, not built; flips to Accepted when both are DONE.
+**Amendment status:** Accepted (2026-10-29) — plan items I-20 DONE(`8255725`) and
+I-21 DONE(`57460ad`) of `docs/plans/MINDSOS_LLM_PLAN.md`. Proposed 2026-10-09.
 The decision above stands. This transcribes plan rulings **R46–R49** (OWNER
 2026-10-09) and **R52–R53** (delegated). Where a run's starts came from is ADR-0201
 amendment 8 (I-19).
@@ -905,4 +906,7 @@ model bound is refused.
 
 **Not claimed.** That a capacity body does only what it declares — no check outside
 a body can see that; where stored content came from (R48); a conclusion derived from
-a reading's origin record rather than its value is never provable.
+a reading's origin record rather than its value is never provable (built as *not
+proven*, R58); a write body's reads of the role it writes (measured 2026-10-28: no
+such body has outputs; nothing checks that stays so); interpretation's own L4 read
+of `request-patterns`, which produces no value.
