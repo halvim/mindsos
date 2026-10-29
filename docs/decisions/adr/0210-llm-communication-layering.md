@@ -869,7 +869,18 @@ merged as PR #278 (`92429ff`, tag `llm-interpreted-declarations-confirmed`).
 ways, and an `interpreted` start that used the model), and every value whose
 lineage is not recorded (R62), following `start_origins` between run graphs; a
 mark found on a copy is the original's. Proof status — clauses 2 and 6 — is
-gate 3.
+gate 3. Gate 2 merged as PR #279 (`1721b61`, tag `llm-proven-walk-confirmed`).
+
+**Build state (I-21 gate 3, 2026-10-28).** Clauses 2 and 6 are built:
+`excision.prove(value, graphs, dispatcher=)` returns a `ProofReport` — proven
+only when every model value the value descends from, through a substitute's
+inputs (R56), re-derives through its own substitute from proven inputs with
+exact agreement (R47, R57, R59); a substitute that declares `reads_mm` (R53),
+that no longer pairs (R45) or that takes an input the run withheld (R55) is
+named and not run; every other reason is read from the record (R58, R60); the
+report names its premises and the roles read (R61). `proven_walk` is the walk
+with each value's proof (clause 4). Nothing is written, and a dispatcher with a
+model bound is refused.
 
 **WHAT CHANGES.**
 

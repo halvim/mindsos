@@ -37,8 +37,9 @@ answer, which a substitute never declares (R44) — through a dispatcher with
 NO model bound: one with a client bound is refused, so "without the model" is
 mechanical. The pairing is checked again here, against the reader as declared
 in the dispatcher's scope, and a substitute that no longer pairs is named and
-not run (R45). ⚠ Not checked: where a substitute's OTHER inputs came from —
-one that is itself a model-read value is handed over as it stands. L3's
+not run (R45). ⚠ ``rerun`` alone does not check where a substitute's OTHER
+inputs came from — one that is itself a model-read value is handed over as it
+stands; :func:`prove` does (plan I-21). L3's
 ``predicate.rederived_agrees``
 judges each value against the model's. No substitute → not yet excisable.
 Nothing is written: the calls bypass the grounding executor, a substitute that
@@ -49,12 +50,19 @@ value of an Episode whose lineage holds a model value — a reading, a value a
 producer declaring ``consults_llm`` made, a value a reader took as its declared
 answer, an ``interpreted`` start whose interpretation used the model — and
 every value whose lineage is not recorded, across run graphs by the
-manifest's ``start_origins``. Whether a listed value is proven is gate 3's.
+manifest's ``start_origins``.
+
+**The proof** (plan I-21 gate 3; R47, R53, R55–R61): :func:`prove` reports a
+value proven model-free only when every model value it descends from, through
+a substitute's inputs, re-derives through its own substitute from proven
+inputs with exact agreement; it names every reason it is not, and what it
+relied on — the starts taken as premises and the stored roles read.
+:func:`proven_walk` is the walk with each value's proof (R49).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 from mindsos_capacity.admission import substitute_problems
@@ -76,6 +84,8 @@ from mindsos_capacity.builtins.origin_v0 import (
 from mindsos_capacity.identifiers import (
     DECLARED_CONSULTS_LLM,
     DECLARED_MODEL_ANSWER_INPUTS,
+    DECLARED_READS_MM,
+    DECLARED_READS_ROLES,
     EDGE_CONSUMES,
     EDGE_PRODUCES,
     MANIFEST_CAPACITY_DECLARATIONS,
@@ -540,6 +550,73 @@ def _own(runs: Mapping[str, _RunIndex], run: _RunIndex, node: Any):
     return tuple(sorted(set(hows))), tuple(sorted(set(gaps))), tuple(parents), copy_of
 
 
+class _Lineage:
+    """The lineage facts of one Episode, computed once: each value's own marks,
+    gaps and parents (:func:`_own`), and which values are copies of one another."""
+
+    def __init__(self, graphs: Iterable[Any]) -> None:
+        self.runs = {g.graph_id: _RunIndex(g) for g in graphs}
+        self.own: Dict[ValueRef, Tuple[str, Tuple[str, ...], Tuple[str, ...], Tuple[ValueRef, ...]]] = {}
+        self._alias: Dict[ValueRef, ValueRef] = {}
+        for run in self.runs.values():
+            for node in run.nodes.values():
+                if not _is_value(node):
+                    continue
+                ref = ValueRef(run.graph_id, node.node_id)
+                hows, gaps, parents, copy_of = _own(self.runs, run, node)
+                self.own[ref] = (_datastate_of(node), hows, gaps, parents)
+                if copy_of is not None:
+                    a, b = self.root(ref), self.root(copy_of)
+                    if a != b:
+                        self._alias[a] = b
+        # A mark found on any copy of a value is the value's (R52: "a reader
+        # consumed IT as a declared answer input").
+        self.marks: Dict[ValueRef, List[ModelValue]] = {}
+        for ref, (ds, hows, _gaps, _parents) in self.own.items():
+            if hows:
+                self.marks.setdefault(self.root(ref), []).append(ModelValue(ref, ds, hows))
+
+    def root(self, ref: ValueRef) -> ValueRef:
+        while self._alias.get(ref, ref) != ref:
+            ref = self._alias[ref]
+        return ref
+
+    def node(self, ref: ValueRef) -> Any:
+        return self.runs[ref.graph_id].nodes[ref.instance_id]
+
+    def leaned(self, ref: ValueRef) -> Optional[Leaned]:
+        ds = self.own[ref][0]
+        seen = {ref}
+        stack = [ref]
+        model: Dict[ValueRef, ModelValue] = {}
+        gaps: Dict[Tuple[ValueRef, str], LineageGap] = {}
+        while stack:
+            at = stack.pop()
+            if at not in self.own:
+                continue
+            at_ds, _h, at_gaps, at_parents = self.own[at]
+            for m in self.marks.get(self.root(at), ()):
+                model[m.value] = m
+            for kind in at_gaps:
+                gaps[(at, kind)] = LineageGap(at, at_ds, kind)
+            for parent in at_parents:
+                if parent not in seen:
+                    seen.add(parent)
+                    stack.append(parent)
+        if not (model or gaps):
+            return None
+        return Leaned(
+            value=ref,
+            datastate=ds,
+            model_values=tuple(sorted(model.values(), key=lambda m: (m.value.graph_id, m.value.instance_id))),
+            gaps=tuple(sorted(gaps.values(), key=lambda g: (g.value.graph_id, g.value.instance_id, g.kind))),
+        )
+
+    def walk(self) -> Tuple[Leaned, ...]:
+        listed = [e for e in (self.leaned(ref) for ref in self.own) if e is not None]
+        return tuple(sorted(listed, key=lambda e: (e.value.graph_id, e.value.instance_id)))
+
+
 def walk(graphs: Iterable[Any]) -> Tuple[Leaned, ...]:
     """Every value in ``graphs`` that leaned on the model, or whose lineage is
     not recorded, in a stable order (plan R49, R50, R52, R62).
@@ -548,64 +625,316 @@ def walk(graphs: Iterable[Any]) -> Tuple[Leaned, ...]:
     ``capacity_run_graphs``, R27). Origin records are not listed — they are
     the readings ``identify`` lists.
     """
-    runs = {g.graph_id: _RunIndex(g) for g in graphs}
-    own: Dict[ValueRef, Tuple[str, Tuple[str, ...], Tuple[str, ...], Tuple[ValueRef, ...]]] = {}
-    alias: Dict[ValueRef, ValueRef] = {}
+    return _Lineage(graphs).walk()
 
-    def root(ref: ValueRef) -> ValueRef:
-        while alias.get(ref, ref) != ref:
-            ref = alias[ref]
-        return ref
 
-    for run in runs.values():
-        for node in run.nodes.values():
-            if not _is_value(node):
+# ── the proof — a re-run proven model-free, or why not (plan I-21 gate 3) ──
+#
+# R47: a value is proven model-free when every model value it descends from —
+# through a substitute's INPUTS only (R56) — re-derives, through its own
+# substitute and from its own proven inputs, with exact agreement (R41), and
+# what is computed from those values stands as recorded. Only substitutes run.
+# Everything else that could leave it *not proven* is read from the record
+# (R58). The report names what it relied on (R61) and is returned, never
+# stored (R42).
+
+#: Why a value is not proven (beside the walk's gap kinds, which are reasons
+#: too, and the re-run failures a substitute's run can name).
+PROOF_NOT_YET_EXCISABLE = "not_yet_excisable"
+PROOF_SUBSTITUTE_DISAGREES = "substitute_disagrees"
+PROOF_NO_SUBSTITUTE_AGREED = "no_substitute_agreed"
+PROOF_INTERPRETED_WITH_THE_MODEL = "interpreted_with_the_model"
+PROOF_INTERPRETATION_NOT_RECORDED = "interpretation_declarations_not_recorded"
+PROOF_READS_THE_MENTAL_MODEL = "reads_the_mental_model"
+PROOF_READS_NOT_RECORDED = "reads_not_recorded"
+PROOF_CONSUMED_AN_ORIGIN_RECORD = "consumed_an_origin_record"
+PROOF_MODEL_ANSWER_NOT_EXCISABLE = "model_answer_not_excisable"
+PROOF_LINEAGE_LOOPS = "lineage_loops"
+#: A substitute named and not run at proof (R53, R55, R47).
+RERUN_SUBSTITUTE_READS_MM = "substitute_reads_the_mental_model"
+RERUN_SUBSTITUTE_TAKES_A_WITHHELD_ANSWER = "substitute_takes_an_answer_the_run_withheld"
+RERUN_INPUTS_NOT_PROVEN = "substitute_inputs_not_proven"
+
+_MODEL_MADE = frozenset({WALK_READ_BY_MODEL, WALK_CONSULTS_LLM})
+
+
+@dataclass(frozen=True)
+class NotProven:
+    """A value in the lineage that stops the proof, and why."""
+
+    value: ValueRef
+    datastate: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class Rederivation:
+    """One model value re-derived at proof: the reader that made it, each
+    substitute's run, and the roles each substitute declares now (R61)."""
+
+    value: ValueRef
+    datastate: str
+    reader_iri: Optional[str]
+    runs: Tuple[SubstituteRun, ...]
+    substitute_roles: Tuple[Tuple[str, Tuple[str, ...]], ...]
+
+
+@dataclass(frozen=True)
+class ProofReport:
+    """Whether a value is proven model-free (R47), and what it relied on (R61):
+    the starts taken as premises and the stored roles read on the way."""
+
+    value: ValueRef
+    datastate: str
+    proven: bool
+    not_proven: Tuple[NotProven, ...]
+    rederived: Tuple[Rederivation, ...]
+    premises: Tuple[ValueRef, ...]
+    roles: Tuple[str, ...]
+
+
+@dataclass
+class _Partial:
+    not_proven: Dict[Tuple[ValueRef, str], NotProven] = field(default_factory=dict)
+    rederived: Dict[ValueRef, Rederivation] = field(default_factory=dict)
+    premises: set = field(default_factory=set)
+    roles: set = field(default_factory=set)
+
+    def add(self, other: "_Partial") -> None:
+        self.not_proven.update(other.not_proven)
+        self.rederived.update(other.rederived)
+        self.premises |= other.premises
+        self.roles |= other.roles
+
+    def stop(self, ref: ValueRef, ds: str, reason: str) -> None:
+        self.not_proven[(ref, reason)] = NotProven(ref, ds, reason)
+
+
+def _reads(partial: _Partial, ref: ValueRef, ds: str, entry: Mapping[str, Any]) -> None:
+    """A step's declared reads, as recorded (R48, R58)."""
+    if DECLARED_READS_ROLES not in entry or DECLARED_READS_MM not in entry:
+        partial.stop(ref, ds, PROOF_READS_NOT_RECORDED)
+        return
+    if entry[DECLARED_READS_MM]:
+        partial.stop(ref, ds, PROOF_READS_THE_MENTAL_MODEL)
+    partial.roles |= set(entry[DECLARED_READS_ROLES] or ())
+
+
+class _Prover:
+    def __init__(self, lineage: _Lineage, dispatcher: Any) -> None:
+        self.lineage = lineage
+        self.dispatcher = dispatcher
+        self.done: Dict[ValueRef, _Partial] = {}
+        self.busy: set = set()
+
+    def prove(self, ref: ValueRef) -> _Partial:
+        if ref not in self.lineage.own:
+            # An origin record a step consumed: not a value, and the step that
+            # consumed it is already named for it (R58).
+            return _Partial()
+        if ref in self.done:
+            return self.done[ref]
+        ds = self.lineage.own[ref][0]
+        if ref in self.busy:
+            p = _Partial()
+            p.stop(ref, ds, PROOF_LINEAGE_LOOPS)
+            return p
+        self.busy.add(ref)
+        try:
+            result = self._prove(ref)
+        finally:
+            self.busy.discard(ref)
+        self.done[ref] = result
+        return result
+
+    def _prove(self, ref: ValueRef) -> _Partial:
+        lineage = self.lineage
+        ds, hows, gaps, parents = lineage.own[ref]
+        run = lineage.runs[ref.graph_id]
+        node = lineage.node(ref)
+        out = _Partial()
+        for kind in gaps:
+            out.stop(ref, ds, kind)
+        producer = run.producer.get(node.node_id)
+        if producer is not None and _MODEL_MADE & set(hows):
+            out.add(self._rederive(ref, ds, run, producer))
+            return out
+        marks = {h for m in lineage.marks.get(lineage.root(ref), ()) for h in m.hows}
+        if WALK_ANSWER_INPUT in marks:
+            leaned = lineage.leaned(ref)
+            made = [m for m in (leaned.model_values if leaned else ()) if _MODEL_MADE & set(m.hows)]
+            if not made:
+                out.stop(ref, ds, PROOF_MODEL_ANSWER_NOT_EXCISABLE)
+        if producer is not None:
+            entry = run.declaration(producer)
+            if entry is not None:
+                _reads(out, ref, ds, entry)
+            for consumed in run.consumed.get(producer.node_id, ()):
+                if (_datastate_of(consumed) or "").endswith(_ORIGIN_SUFFIX):
+                    out.stop(ref, ds, PROOF_CONSUMED_AN_ORIGIN_RECORD)
+            for parent in parents:
+                out.add(self.prove(parent))
+            return out
+        origins = None if run.manifest is None else run.manifest.get(MANIFEST_START_ORIGINS)
+        origin = origins.get(ds) if isinstance(origins, Mapping) else None
+        kind = origin.get("kind") if isinstance(origin, Mapping) else None
+        if kind == START_ORIGIN_GIVEN:
+            out.premises.add(ref)
+        elif kind == START_ORIGIN_INTERPRETED:
+            if origin.get("model_capacities"):
+                out.stop(ref, ds, PROOF_INTERPRETED_WITH_THE_MODEL)
+            snapshot = origin.get(MANIFEST_CAPACITY_DECLARATIONS)
+            if not isinstance(snapshot, Mapping):
+                out.stop(ref, ds, PROOF_INTERPRETATION_NOT_RECORDED)
+            else:
+                for entry in snapshot.values():
+                    _reads(out, ref, ds, entry)
+                out.premises.add(ref)
+        for parent in parents:
+            out.add(self.prove(parent))
+        return out
+
+    def _rederive(self, ref: ValueRef, ds: str, run: "_RunIndex", producer: Any) -> _Partial:
+        """R47, R53, R55, R57, R59 — the model value re-derives through its
+        producer's substitute, from proven inputs, with exact agreement."""
+        dispatcher = self.dispatcher
+        out = _Partial()
+        reader_iri = (producer.properties or {}).get(PROP_CAPACITY_INSTANCE_TYPE)
+        substitutes = dispatcher.capacity_layer.substitutes_for(reader_iri, session=dispatcher.session)
+        if not substitutes:
+            out.stop(ref, ds, PROOF_NOT_YET_EXCISABLE)
+            out.rederived[ref] = Rederivation(ref, ds, reader_iri, (), ())
+            return out
+        reader = dispatcher.capacity_layer.resolve_declaration(reader_iri, session=dispatcher.session)
+        entry = run.declaration(producer) or {}
+        withheld = set(entry.get(DECLARED_MODEL_ANSWER_INPUTS) or ())
+        node = self.lineage.node(ref)
+        consumed_by_ds: Dict[str, List[Any]] = {}
+        for c in run.consumed.get(producer.node_id, ()):
+            consumed_by_ds.setdefault(_datastate_of(c), []).append(c)
+        runs: List[SubstituteRun] = []
+        roles: List[Tuple[str, Tuple[str, ...]]] = []
+        agreed: List[_Partial] = []
+        disagreed = False
+        blocked: List[_Partial] = []
+        for substitute in substitutes:
+            def named(reason: str) -> None:
+                runs.append(SubstituteRun(substitute.iri, None, None, reason))
+
+            if getattr(substitute, "reads_mm", False):
+                named(RERUN_SUBSTITUTE_READS_MM)
                 continue
-            ref = ValueRef(run.graph_id, node.node_id)
-            hows, gaps, parents, copy_of = _own(runs, run, node)
-            own[ref] = (_datastate_of(node), hows, gaps, parents)
-            if copy_of is not None:
-                a, b = root(ref), root(copy_of)
-                if a != b:
-                    alias[a] = b
-
-    # A mark found on any copy of a value is the value's (R52: "a reader
-    # consumed IT as a declared answer input").
-    marks: Dict[ValueRef, List[ModelValue]] = {}
-    for ref, (ds, hows, _gaps, _parents) in own.items():
-        if hows:
-            marks.setdefault(root(ref), []).append(ModelValue(ref, ds, hows))
-
-    listed: List[Leaned] = []
-    for ref, (ds, _hows, _gaps, _parents) in own.items():
-        seen = {ref}
-        stack = [ref]
-        model: Dict[ValueRef, ModelValue] = {}
-        gaps: Dict[Tuple[ValueRef, str], LineageGap] = {}
-        while stack:
-            at = stack.pop()
-            if at not in own:
+            if substitute_problems(substitute, reader):
+                named(RERUN_SUBSTITUTE_NO_LONGER_PAIRS)
                 continue
-            at_ds, _h, at_gaps, at_parents = own[at]
-            for m in marks.get(root(at), ()):
-                model[m.value] = m
-            for kind in at_gaps:
-                gaps[(at, kind)] = LineageGap(at, at_ds, kind)
-            for parent in at_parents:
-                if parent not in seen:
-                    seen.add(parent)
-                    stack.append(parent)
-        if model or gaps:
-            listed.append(Leaned(
-                value=ref,
-                datastate=ds,
-                model_values=tuple(sorted(model.values(), key=lambda m: (m.value.graph_id, m.value.instance_id))),
-                gaps=tuple(sorted(gaps.values(), key=lambda g: (g.value.graph_id, g.value.instance_id, g.kind))),
-            ))
-    return tuple(sorted(listed, key=lambda e: (e.value.graph_id, e.value.instance_id)))
+            if withheld & set(substitute.inputs):
+                named(RERUN_SUBSTITUTE_TAKES_A_WITHHELD_ANSWER)
+                continue
+            found = {d: consumed_by_ds.get(d, []) for d in substitute.inputs}
+            if any(len(v) != 1 for v in found.values()):
+                out.stop(ref, ds, RERUN_NOT_IN_THE_GROUNDING_GRAPH)
+                named(RERUN_NOT_IN_THE_GROUNDING_GRAPH)
+                continue
+            inputs = _Partial()
+            for d, (c,) in found.items():
+                inputs.add(self.prove(ValueRef(run.graph_id, c.node_id)))
+            if inputs.not_proven:
+                blocked.append(inputs)
+                named(RERUN_INPUTS_NOT_PROVEN)
+                continue
+            result = _run_substitute(
+                substitute, {d: c.value for d, (c,) in found.items()}, node.value, ds, dispatcher
+            )
+            runs.append(result)
+            if result.agrees is True:
+                inputs.roles |= set(getattr(substitute, "reads_roles", ()) or ())
+                roles.append((substitute.iri, tuple(sorted(getattr(substitute, "reads_roles", ()) or ()))))
+                agreed.append(inputs)
+            elif result.agrees is False:
+                disagreed = True
+        if disagreed:
+            out.stop(ref, ds, PROOF_SUBSTITUTE_DISAGREES)
+        elif not agreed:
+            if blocked:
+                for b in blocked:
+                    out.add(b)
+            else:
+                out.stop(ref, ds, PROOF_NO_SUBSTITUTE_AGREED)
+        else:
+            for a in agreed:
+                out.add(a)
+        out.rederived[ref] = Rederivation(ref, ds, reader_iri, tuple(runs), tuple(roles))
+        return out
 
+
+def _report(ref: ValueRef, ds: str, partial: _Partial) -> ProofReport:
+    def by_ref(r: ValueRef) -> Tuple[str, str]:
+        return (r.graph_id, r.instance_id)
+
+    return ProofReport(
+        value=ref,
+        datastate=ds,
+        proven=not partial.not_proven,
+        not_proven=tuple(sorted(partial.not_proven.values(), key=lambda n: (by_ref(n.value), n.reason))),
+        rederived=tuple(partial.rederived[r] for r in sorted(partial.rederived, key=by_ref)),
+        premises=tuple(sorted(partial.premises, key=by_ref)),
+        roles=tuple(sorted(partial.roles)),
+    )
+
+
+def _check_no_model(dispatcher: Any) -> None:
+    if dispatcher.llm is not None:
+        raise ModelBoundError(
+            "a proof needs a dispatcher with no model client bound: a re-run "
+            "that could reach the model is not a re-run without it (plan R41)."
+        )
+
+
+def prove(value: ValueRef, graphs: Iterable[Any], *, dispatcher: Any) -> ProofReport:
+    """Whether ``value`` is proven model-free (plan R47, R53, R55–R61).
+
+    ``dispatcher`` must have NO model client bound and reach L3's
+    ``predicate.rederived_agrees`` (``install_excision_v0``); its capacity
+    layer and session say which substitutes are in scope. Nothing is written.
+    """
+    _check_no_model(dispatcher)
+    lineage = _Lineage(graphs)
+    if value not in lineage.own:
+        raise KeyError(f"{value!r} is not a value of these run graphs")
+    return _report(value, lineage.own[value][0], _Prover(lineage, dispatcher).prove(value))
+
+
+def proven_walk(graphs: Iterable[Any], *, dispatcher: Any) -> Tuple[Tuple[Leaned, ProofReport], ...]:
+    """The walk, each listed value with its proof (plan R49): what leaned on
+    the model, and whether it is proven by R47. One prover, so a substitute
+    shared by several values is judged once."""
+    _check_no_model(dispatcher)
+    lineage = _Lineage(graphs)
+    prover = _Prover(lineage, dispatcher)
+    return tuple(
+        (entry, _report(entry.value, entry.datastate, prover.prove(entry.value)))
+        for entry in lineage.walk()
+    )
 
 __all__ = [
+    "NotProven",
+    "PROOF_CONSUMED_AN_ORIGIN_RECORD",
+    "PROOF_INTERPRETATION_NOT_RECORDED",
+    "PROOF_INTERPRETED_WITH_THE_MODEL",
+    "PROOF_LINEAGE_LOOPS",
+    "PROOF_MODEL_ANSWER_NOT_EXCISABLE",
+    "PROOF_NO_SUBSTITUTE_AGREED",
+    "PROOF_NOT_YET_EXCISABLE",
+    "PROOF_READS_NOT_RECORDED",
+    "PROOF_READS_THE_MENTAL_MODEL",
+    "PROOF_SUBSTITUTE_DISAGREES",
+    "ProofReport",
+    "RERUN_INPUTS_NOT_PROVEN",
+    "RERUN_SUBSTITUTE_READS_MM",
+    "RERUN_SUBSTITUTE_TAKES_A_WITHHELD_ANSWER",
+    "Rederivation",
+    "prove",
+    "proven_walk",
     "GAP_DECLARATIONS_NOT_RECORDED",
     "GAP_NOT_IN_THE_EPISODE",
     "GAP_ORIGIN_UNRECORDED",
