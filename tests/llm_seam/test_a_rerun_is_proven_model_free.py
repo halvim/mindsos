@@ -83,6 +83,7 @@ def _layer(*capacities):
 
 
 def _reader(name="proof3_read", inputs=(SRC,), value=VAL, **kw):
+    kw.setdefault("consults_llm", "model_answer_inputs" not in kw)
     return Capacity(
         name=name, category=CATEGORY_COMPREHENSION, inputs=inputs,
         outputs=(value, origin_record_iri(value)), implementation=_never,
