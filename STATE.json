@@ -630,13 +630,22 @@
     },
     {
       "name": "core-llm-rerun-proven-model-free",
-      "status": "OPENED 2026-10-09 as plan items I-19 (start origins + declaration snapshot), I-20 (declared reads of stored knowledge), I-21 (proven re-run) - rulings R46-R53, all on the DONE WHEN line. I-19 DONE(659e46f) 2026-10-24 (PRs #269, #270, #271). I-20 DONE(8255725) 2026-10-25 (PRs #274, #275). NEXT: I-21. The plan (section 2 R46-R53, section 6 entries 2026-10-09 to 2026-10-25) is the authority.",
+      "status": "OPENED 2026-10-09 as plan items I-19, I-20, I-21 - rulings R46-R53 (and R54-R63 for I-21). I-19 DONE(659e46f) 2026-10-24 (PRs #269-#271). I-20 DONE(8255725) 2026-10-25 (PRs #274, #275). I-21 DONE(57460ad) 2026-10-29 (PRs #278, #279, #280). CLOSED - every item on the plan's DONE WHEN line is DONE. The plan (section 2 R46-R63, section 6 entries 2026-10-09 to 2026-10-29) is the authority.",
       "branch_to_open": "feat/rerun-model-free",
       "spec": "docs/plans/MINDSOS_LLM_PLAN.md section 2 R46-R53, section 6 entry 2026-10-09; ADR-0201 amendment 8; ADR-0210 amendment 9",
       "consumer": "any consuming project whose reader takes an input produced by an earlier model step"
     }
   ],
   "recent": [
+    {
+      "kind": "core",
+      "name": "mindsos_llm plan item I-21 - a proven re-run: the walk lists what leaned on the model, and a re-run is proven model-free or says why not",
+      "sha": "57460ad (PR #280, gate 3); gate 1 92429ff (PR #278), gate 2 1721b61 (PR #279). RULES 12.2(a) by EQUAL TREES at all three gates: b83672d, 9bcbc3c, bb22f02.",
+      "tag": "llm-interpreted-declarations-confirmed, llm-proven-walk-confirmed, llm-proven-rerun-confirmed",
+      "gate": "LINUX box. Full suites: gate 1 at e498017 5598/5/1/0 (+7), gate 2 at 8f965bf 5612/5/1/0 (+14), gate 3 at 4b0e458 5635/5/1/0 (+23) - each predicted exactly. Mutations 6, 13 and 20, every red predicted by name. CI on PRs #278-#280: SUCCESS. Guards born red (gate 3 first red for a wrong reason, fixed at ffe44ba).",
+      "what": "R54 (OWNER, option C): an interpreted origin carries capacity_declarations for every interpretation step (capacity_mm_writer.declaration_entry, ADR-0201 am-8 5b). excision.walk: every value whose lineage holds a model value (read_by_model, consults_llm, answer_input, interpreted) or a gap, across run graphs by start_origins; a copy's answer mark is the original's. excision.prove / proven_walk: proven only when every model value re-derives through its own substitute from proven inputs with exact agreement; R53 reads_mm, R55 snapshot-withheld inputs, R58 record-read reasons, R60 unexcisable answers; the report names premises and roles. ADR-0210 am-9 Accepted; contract row 12 reworded. NOT CLAIMED: a body does only what it declares; where stored content came from; a write body's own-role reads (no such body has outputs, unchecked); interpretation's L4 request-patterns read. No call to a model provider was made.",
+      "docs": "docs/plans/MINDSOS_LLM_PLAN.md (R54-R63, I-21 row DONE, section 6 2026-10-26 to 2026-10-29); docs/decisions/adr/0201-amendment-8-start-origins.md (5b); docs/decisions/adr/0210-llm-communication-layering.md (am-9 build state, Accepted; am-8 'not decided' marked SUPERSEDED); docs/usage/runtime/llm-capability-contract.md (row 12 + preamble); STATE.json"
+    },
     {
       "kind": "core",
       "name": "mindsos_llm plan item I-20 - reads of stored knowledge are declared by role, reach a body only as declared, and the run records them",

@@ -612,11 +612,13 @@ is not a proof (contract row 12). Authority: R41, R47.
 | I-18 | an answer-fed reader can be paired and re-run: a capacity that is HANDED the model's answer and mints `read_by_model` conclusions from it declares which input carries the answer; a substitute takes the reader's inputs minus that answer, and re-run withholds it. **Specified by R44** (amends R37); two gates (§6, 2026-10-03) | core-llm-answer-fed-readers | DONE(f1603af) |
 | I-19 | a run records where each of its starts came from — `given`, `produced` by named instances in named run graphs, or `unrecorded` — and snapshots the model declarations of the capacities it composed, as they were when it ran. **Specified by R50–R52**; ADR-0201 amendment 8; three gates (§6, 2026-10-09) | core-llm-rerun-proven-model-free | DONE(659e46f) |
 | I-20 | reads of stored knowledge are declared by role: the read channels reach a body only when declared, on both invoke paths, limited to the declared roles, held by an AST census; the run records the declaration. **Specified by R48**; two gates (§6, 2026-10-24: PRs #274, #275) | core-llm-rerun-proven-model-free | DONE(8255725) |
-| I-21 | a proven re-run: the walk lists every value that leaned on the model (R49), and a re-run is proven only when every model-produced ancestor re-derives with exact agreement (R47); the report names what it relied on. **Specified by R47, R49, R52, R53, R54–R63**; three gates (R54; §6, 2026-10-26) | core-llm-rerun-proven-model-free | TODO |
+| I-21 | a proven re-run: the walk lists every value that leaned on the model (R49), and a re-run is proven only when every model-produced ancestor re-derives with exact agreement (R47); the report names what it relied on. **Specified by R47, R49, R52, R53, R54–R63**; three gates (R54; §6, 2026-10-26 → 2026-10-29: PRs #278, #279, #280) | core-llm-rerun-proven-model-free | DONE(57460ad) |
 
 **DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17, I-18, I-19, I-20, I-21.**
 
-**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅ → I-18 ✅ → I-19 ✅ → I-20 ✅ → I-21.**
+**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅ → I-18 ✅ → I-19 ✅ → I-20 ✅ → I-21 ✅.**
+
+⚠ **2026-10-29: every item on the DONE WHEN line is DONE.** New work here needs a new item (§0.2).
 
 ⚠ **I-19, I-20 and I-21 were OPENED 2026-10-09 (R46–R53)** from the 2026-10-07
 proposal, re-measured and amended (§6, 2026-10-09). The order is the dependency:
@@ -1450,3 +1452,28 @@ amendment.)*
   checks that stays so; interpretation's own L4 read of `request-patterns`
   (`_map_target_resolves`), which decides whether interpretation goes on and
   produces no value. **No call to a model provider was made.**
+
+- **2026-10-29 (I-21 DONE)** — **Gate 3 merged as PR #280** (squash `57460ad`, tag
+  `llm-proven-rerun-confirmed`); gates 1 and 2 are PR #278 (`92429ff`, tag
+  `llm-interpreted-declarations-confirmed`) and PR #279 (`1721b61`, tag
+  `llm-proven-walk-confirmed`). `main` had not moved at any merge: RULES 12.2(a)
+  discharged by equal trees — `92429ff^{tree}` == `b83672d^{tree}`,
+  `1721b61^{tree}` == `9bcbc3c^{tree}`, `57460ad^{tree}` == `bb22f02^{tree}`;
+  after each docs-only §6 commit, `tests/architecture`, `tests/llm_seam` and the
+  ADR status check re-ran green (760, 773, 796 passed). CI on all three PRs:
+  SUCCESS. Full suites 5598, 5612, 5635 passed / 5 skipped / 1 xpassed / 0 failed,
+  each predicted exactly. **What I-21 now holds, and nothing more:** an
+  interpreted start records what interpretation declared (R54); `walk` lists every
+  value whose lineage holds a model value or a gap (R49, R50, R52, R62); `prove`
+  reports a value proven model-free only when every model value it descends from,
+  through a substitute's inputs, re-derives through its own substitute from proven
+  inputs with exact agreement, names every reason it is not, and names its
+  premises and the roles read (R47, R53, R55–R61). ADR-0210 amendment 9 is
+  Accepted; contract row 12's *"Not checked"* clause is replaced. **Every item on
+  the DONE WHEN line is DONE.** ⚠ **NOT CLAIMED:** that a capacity body does only
+  what it declares; where stored content came from (R48); a write body's reads of
+  the role it writes (owner, 2026-10-24; measured, no such body has outputs, and
+  nothing checks that stays so); role limits on the mental-model handle (a
+  `reads_mm` step makes a value *not proven*); interpretation's own L4 read of
+  `request-patterns`; Episodes stored before each I-19–I-21 gate say *not
+  recorded*, by design. **No call to a model provider was made.**
