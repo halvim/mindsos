@@ -236,6 +236,8 @@ def test_a_chain_whose_upstream_reading_disagrees_names_that_reading():
     assert {(n.value, n.reason) for n in report.not_proven} == {
         (first.ref(VAL), "substitute_disagrees")
     }
+    (downstream,) = [r for r in report.rederived if r.datastate == VAL2]
+    assert [r.failure for r in downstream.runs] == ["substitute_inputs_not_proven"]
 
 
 def _answer_fed(*, snapshot_answers=(ANS,), substitute_inputs=(SRC,), seen=None):
@@ -368,6 +370,8 @@ def test_a_dispatcher_with_a_model_bound_is_refused():
     run = _reading_run(MentalModel(session_id="s", user_id="u"), reader)
     with pytest.raises(ModelBoundError):
         _api().prove(run.ref(DEC), [run.graph], dispatcher=_dispatcher(layer, llm=object()))
+    with pytest.raises(ModelBoundError):
+        _api().proven_walk([run.graph], dispatcher=_dispatcher(layer, llm=object()))
 
 
 def test_nothing_is_written():
