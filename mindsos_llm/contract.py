@@ -76,6 +76,12 @@ UNVERIFIABLE_PROPERTIES: Tuple[Tuple[str, str], ...] = (
     ("transport_sends_exactly_what_it_was_handed",
      "what reaches the provider is composed inside the transport, after the "
      "client's hand-off; a harness that only calls it cannot see the wire"),
+    # Plan R64. Core's own adapter reads its provider's stop reason and is
+    # guarded on the default opener; a harness that only calls a consumer's
+    # transport cannot make the provider cut a reply.
+    ("refuses_an_answer_cut_at_the_ceiling",
+     "requires the provider to stop at the token ceiling; a harness that only "
+     "calls the transport cannot make it do so"),
 )
 
 

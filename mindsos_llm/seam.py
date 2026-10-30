@@ -165,6 +165,14 @@ NO_PROPERTIES = (
     "fault on our side and is never a finding about the case."
 )
 
+#: The provider stopped at the token ceiling the client handed it (plan R64).
+#: The ceiling is OUR configuration, so this is our stop and never a finding
+#: about the case.
+ANSWER_CUT = (
+    "the reading stopped at its length limit before the answer was complete. "
+    "This is a fault on our side and is never a finding about the case."
+)
+
 #: A finding about the ANSWER, not about us.
 UNASKED_KEYS = (
     "the reading came back carrying something that was not asked for, so it "
@@ -189,6 +197,18 @@ class TransportSchemaRequired(TransportCallFailed):
 
     A deployment bug rather than an outage. It is deterministic, so a guard
     prevents it from ever shipping.
+    """
+
+
+class TransportAnswerCut(TransportCallFailed):
+    """The provider reports it stopped at the token ceiling (plan R64).
+
+    **Refused even when the cut reply still decodes.** A reply cut at
+    ``max_tokens`` can be a well-formed object missing whatever came after the
+    cut, and nothing downstream could tell it from a complete one. Every
+    adapter reads its provider's stop reason and raises this; the client turns
+    it into :class:`~mindsos_llm.exceptions.AnswerCutAtCeiling`, which is not
+    retried, because a second attempt at the same ceiling is the same cut.
     """
 
 
@@ -350,10 +370,12 @@ __all__ = [
     "NO_ANSWER",
     "NO_PROPERTIES",
     "NO_SCHEMA",
+    "ANSWER_CUT",
     "UNASKED_KEYS",
     "UNREACHABLE",
     "TransportCallFailed",
     "TransportSchemaRequired",
+    "TransportAnswerCut",
     "TransportUnaskedKeys",
     "build_headers",
     "declared_properties",

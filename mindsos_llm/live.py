@@ -55,12 +55,14 @@ package refuses everywhere else. A caller must decide; it may decide
 
 from __future__ import annotations
 
+import copy
 import json
 from typing import Any, Callable, Mapping, Optional, Tuple, Union
 
 import inspect
 
 from .exceptions import (
+    AnswerCutAtCeiling,
     LLMCallBudgetExceeded,
     LLMCallFailed,
     MalformedResponse,
@@ -68,7 +70,7 @@ from .exceptions import (
     TransportSignatureError,
 )
 from .recording import RecordingStore, text_digest, what_was_asked
-from .seam import require_prompt_text
+from .seam import TransportAnswerCut, require_prompt_text
 
 #: The call a transport receives: **everything the model receives**, and
 #: nothing that only names it (plan R21, ADR-0210 am-7). The transport adds
@@ -197,6 +199,11 @@ class LiveLLM:
         self._timeout_s = float(timeout_s)
         self._max_calls = int(max_calls)
         self._calls = 0
+        # Plan R66: the first outcome of each question this client asked, by
+        # ``request_key`` — an answer, an undecodable answer, or a reply cut
+        # at the ceiling. An outage is not kept. Bounded by ``max_calls``:
+        # every entry cost one provider call.
+        self._kept: dict = {}
 
     @property
     def calls_made(self) -> int:
@@ -210,9 +217,6 @@ class LiveLLM:
         source_text: str,
         extraction_schema: Optional[Mapping[str, Any]] = None,
     ) -> Mapping[str, Any]:
-        if self._calls >= self._max_calls:
-            raise LLMCallBudgetExceeded(max_calls=self._max_calls)
-        self._calls += 1
         try:
             # Resolved HERE, inside the classified failure: a resolver that
             # raises is our configuration failing, exactly as it was when the
@@ -224,28 +228,10 @@ class LiveLLM:
             )
         except Exception as exc:
             raise LLMCallFailed() from exc
-        call = dict(
-            prompt_text=prompt_text,
-            source_text=source_text,
-            extraction_schema=extraction_schema,
-            tool_name=self._tool_name,
-            tool_description=self._tool_description,
-            model_id=self._model_id,
-            temperature=self._temperature,
-            max_tokens=self._max_tokens,
-            timeout_s=self._timeout_s,
-        )
-        _assert_binds(self._transport, call)
-        try:
-            response = self._transport(**call)
-        except Exception as exc:
-            # Fixed prose, provider exception on ``__cause__``. See
-            # ``exceptions``' module docstring — this message is printed
-            # on a customer's page.
-            raise LLMCallFailed() from exc
         # Provenance is stamped here, never taken from the response — and it
         # names the question BY CONTENT (plan R20-R22): the digest of the
-        # words just SENT, the schema's digest, the framing just handed over.
+        # words SENT, the schema's digest, the framing handed over. Computed
+        # before the call because it is also the question's identity (R66).
         stamps = what_was_asked(
             prompt_iri=prompt_iri,
             prompt_version=prompt_version,
@@ -262,6 +248,39 @@ class LiveLLM:
         stamps["recorded"] = False
         stamps["mode"] = self.MODE
         stamps["credential_level"] = self._credential_level
+        key = stamps["request_key"]
+        # ⚠ Plan R66: one question is asked once. A repeat is answered from
+        # the first outcome and costs no call, so it does not count toward the
+        # ceiling — the ceiling bounds SPEND (see the module docstring).
+        if key in self._kept:
+            return self._repeat(self._kept[key], stamps)
+        if self._calls >= self._max_calls:
+            raise LLMCallBudgetExceeded(max_calls=self._max_calls)
+        self._calls += 1
+        call = dict(
+            prompt_text=prompt_text,
+            source_text=source_text,
+            extraction_schema=extraction_schema,
+            tool_name=self._tool_name,
+            tool_description=self._tool_description,
+            model_id=self._model_id,
+            temperature=self._temperature,
+            max_tokens=self._max_tokens,
+            timeout_s=self._timeout_s,
+        )
+        _assert_binds(self._transport, call)
+        try:
+            response = self._transport(**call)
+        except TransportAnswerCut as exc:
+            # Plan R64: our ceiling, not the case; not retried, and kept, so a
+            # second reader of the same question does not pay for it again.
+            self._kept[key] = AnswerCutAtCeiling
+            raise AnswerCutAtCeiling() from exc
+        except Exception as exc:
+            # Fixed prose, provider exception on ``__cause__``. See
+            # ``exceptions``' module docstring — this message is printed
+            # on a customer's page.
+            raise LLMCallFailed() from exc
         try:
             payload = dict(decode_response(response))
         except MalformedResponse as exc:
@@ -271,9 +290,22 @@ class LiveLLM:
             # asked. The stamps ride on the exception; the message stays
             # fixed prose.
             exc.asked = dict(stamps)
+            self._kept[key] = exc
             raise
         payload.update(stamps)
+        self._kept[key] = copy.deepcopy(payload)
         return payload
+
+    @staticmethod
+    def _repeat(kept: Any, stamps: Mapping[str, Any]) -> Mapping[str, Any]:
+        """Answer a repeated question from its first outcome (plan R66)."""
+        if kept is AnswerCutAtCeiling:
+            raise AnswerCutAtCeiling()
+        if isinstance(kept, MalformedResponse):
+            again = MalformedResponse(raw=kept.raw)
+            again.asked = dict(stamps)
+            raise again
+        return copy.deepcopy(kept)
 
 
 class CapturingLLM:

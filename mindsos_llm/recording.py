@@ -29,7 +29,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
 
-from .exceptions import RecordedResponseMiss
+from .exceptions import RecordedAnswerConflict, RecordedResponseMiss
 
 #: Bumped when the key's input tuple changes, so an old recording set
 #: misses loudly instead of matching a key that now means something else.
@@ -172,7 +172,18 @@ class RecordingStore:
         return json.dumps(self._responses, sort_keys=True, indent=2, ensure_ascii=False)
 
     def put(self, key: str, response: Mapping[str, Any]) -> None:
-        self._responses[key] = dict(response)
+        """Hold ``response`` as THE answer to ``key`` (plan R65).
+
+        A different answer under a key already held is refused and the first
+        is kept: a conclusion minted from the first replays to it, and a
+        silent replacement would make it replay to an answer it was not made
+        from. The same answer again changes nothing.
+        """
+        answer = dict(response)
+        held = self._responses.get(key)
+        if held is not None and dict(held) != answer:
+            raise RecordedAnswerConflict(request_key=key)
+        self._responses[key] = answer
 
     def get(self, key: str) -> Mapping[str, Any]:
         try:

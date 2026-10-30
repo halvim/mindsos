@@ -92,10 +92,12 @@ from .credentials import (
     static_resolver,
 )
 from .exceptions import (
+    AnswerCutAtCeiling,
     LLMCallBudgetExceeded,
     LLMCallFailed,
     LLMError,
     MalformedResponse,
+    RecordedAnswerConflict,
     RecordedResponseMiss,
     TransportContractError,
     TransportSignatureError,
@@ -112,6 +114,7 @@ from .recording import RecordingStore, request_key
 from .replay import RecordedLLM
 
 __all__ = [
+    "AnswerCutAtCeiling",
     "BROKER_PROTOCOL_VERSION",
     "BrokerContractViolated",
     "LEVELS",
@@ -127,6 +130,7 @@ __all__ = [
     "LLMError",
     "LiveLLM",
     "MalformedResponse",
+    "RecordedAnswerConflict",
     "RecordedLLM",
     "RecordedResponseMiss",
     "RecordedSetRefused",

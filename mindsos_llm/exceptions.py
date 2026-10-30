@@ -117,6 +117,39 @@ class LLMCallFailed(LLMError):
     MESSAGE = "the reading service could not be reached"
 
 
+class AnswerCutAtCeiling(LLMError):
+    """The provider stopped at the token ceiling before the answer was complete.
+
+    Plan R64. **Ours, not the case's**: the ceiling is configuration this
+    deployment chose, so this is a stop and never a refusal on a record — the
+    rule this module was built on (an outage must not read as *"your document
+    could not be read"*). **Not retryable**, unlike :class:`LLMCallFailed`: a
+    second attempt at the same ceiling is the same cut, paid twice. Like
+    :class:`LLMCallBudgetExceeded` it carries no refusal token. The transport's
+    :class:`~mindsos_llm.seam.TransportAnswerCut` is on ``__cause__``.
+    """
+
+    MESSAGE = "the reading stopped at its length limit before the answer was complete"
+
+
+class RecordedAnswerConflict(LLMError):
+    """A recording was asked to hold a second, different answer to one question.
+
+    Plan R65. A recorded set maps each ``request_key`` to ONE answer, and a
+    conclusion minted from that answer replays to it. Replacing it would make
+    the conclusion replay to an answer it was not made from, so the store
+    refuses instead, and keeps the first. The same answer again is not a
+    conflict. Fatal and not retryable: the same two answers conflict next time.
+    """
+
+    MESSAGE = "this recorded set already holds a different answer to the same question"
+
+    def __init__(self, request_key: str = "") -> None:
+        super().__init__()
+        #: The key both answers were stored under. Operator-facing; never rendered.
+        self.request_key = request_key
+
+
 class MalformedResponse(LLMError):
     """The model answered, and its answer could not be decoded.
 
@@ -192,10 +225,12 @@ class TransportSignatureError(TransportContractError):
 
 
 __all__ = [
+    "AnswerCutAtCeiling",
     "LLMCallBudgetExceeded",
     "LLMCallFailed",
     "LLMError",
     "MalformedResponse",
+    "RecordedAnswerConflict",
     "RecordedResponseMiss",
     "TransportContractError",
 ]
