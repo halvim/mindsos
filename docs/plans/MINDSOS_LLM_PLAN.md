@@ -1538,5 +1538,12 @@ amendment.)*
   file, born red, and its own mutation rows. All four rows take the gate's
   squash sha. Born red at `e101f59`: the three code guards failed to import the
   missing names (`AnswerCutAtCeiling` ×2, `RecordedAnswerConflict` ×1); the guide
-  guard failed `FileNotFoundError` at `0339e0e`. **No call to a model provider
-  was made.**
+  guard failed `FileNotFoundError` at `0339e0e`. **Gate at `ca4034d`:**
+  `tests/llm_seam`, `tests/architecture`, `tests/recorded_sets_role` and
+  `tests/origin_records` 866 passed; eight mutation rows (the adapter's stop
+  check, the client's mapping of a cut, the cut's `retryable`, the contract's
+  name, the store's conflict check, the client's kept outcomes, the copy of a
+  kept answer, a name in the guide) each reddened exactly its predicted tests,
+  by name (3, 3, 1, 1, 2, 6, 1, 1); full suite 5658 passed / 5 skipped /
+  1 xpassed / 0 failed, predicted exactly (5635 + 23 new tests). The interpreter
+  resolved `/app/mindsos_llm`. **No call to a model provider was made.**
