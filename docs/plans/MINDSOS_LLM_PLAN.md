@@ -652,16 +652,16 @@ deployment needs one — not a gap. **OWNER 2026-10-29.**
 | I-19 | a run records where each of its starts came from — `given`, `produced` by named instances in named run graphs, or `unrecorded` — and snapshots the model declarations of the capacities it composed, as they were when it ran. **Specified by R50–R52**; ADR-0201 amendment 8; three gates (§6, 2026-10-09) | core-llm-rerun-proven-model-free | DONE(659e46f) |
 | I-20 | reads of stored knowledge are declared by role: the read channels reach a body only when declared, on both invoke paths, limited to the declared roles, held by an AST census; the run records the declaration. **Specified by R48**; two gates (§6, 2026-10-24: PRs #274, #275) | core-llm-rerun-proven-model-free | DONE(8255725) |
 | I-21 | a proven re-run: the walk lists every value that leaned on the model (R49), and a re-run is proven only when every model-produced ancestor re-derives with exact agreement (R47); the report names what it relied on. **Specified by R47, R49, R52, R53, R54–R63**; three gates (R54; §6, 2026-10-26 → 2026-10-29: PRs #278, #279, #280) | core-llm-rerun-proven-model-free | DONE(57460ad) |
-| I-22 | a reply the provider cut at the token ceiling is refused, as our stop, not retried (R64) | plan §6, 2026-10-29 | TODO |
-| I-23 | a recording never replaces an answer it already holds (R65) | plan §6, 2026-10-29 | TODO |
-| I-24 | a client asks one question once (R66) | plan §6, 2026-10-29 | TODO |
-| I-25 | the package's entry document, `docs/usage/runtime/mindsos-llm-guide.md` (R67) | plan §6, 2026-10-29 | TODO |
+| I-22 | a reply the provider cut at the token ceiling is refused, as our stop, not retried (R64) | plan §6, 2026-10-29 | DONE(7d7b3e4) |
+| I-23 | a recording never replaces an answer it already holds (R65) | plan §6, 2026-10-29 | DONE(7d7b3e4) |
+| I-24 | a client asks one question once (R66) | plan §6, 2026-10-29 | DONE(7d7b3e4) |
+| I-25 | the package's entry document, `docs/usage/runtime/mindsos-llm-guide.md` (R67) | plan §6, 2026-10-29 | DONE(7d7b3e4) |
 
 **DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17, I-18, I-19, I-20, I-21, I-22, I-23, I-24, I-25.**
 
-**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅ → I-18 ✅ → I-19 ✅ → I-20 ✅ → I-21 ✅ → I-22, I-23, I-24, I-25 (one gate).**
+**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅ → I-18 ✅ → I-19 ✅ → I-20 ✅ → I-21 ✅ → I-22 ✅, I-23 ✅, I-24 ✅, I-25 ✅ (one gate).**
 
-⚠ *Superseded the same day:* ~~2026-10-29: every item on the DONE WHEN line is DONE.~~ **2026-10-29 (later): I-22–I-25 are OPEN** (R64–R67), one gate by owner ruling (§6). New work here still needs a new item (§0.2).
+⚠ *Superseded the same day:* ~~2026-10-29: every item on the DONE WHEN line is DONE.~~ ~~2026-10-29 (later): I-22–I-25 are OPEN.~~ **2026-10-29: I-22–I-25 are DONE(7d7b3e4); every item on the DONE WHEN line is DONE.** New work here needs a new item (§0.2).
 
 ⚠ **I-19, I-20 and I-21 were OPENED 2026-10-09 (R46–R53)** from the 2026-10-07
 proposal, re-measured and amended (§6, 2026-10-09). The order is the dependency:
@@ -1547,3 +1547,13 @@ amendment.)*
   by name (3, 3, 1, 1, 2, 6, 1, 1); full suite 5658 passed / 5 skipped /
   1 xpassed / 0 failed, predicted exactly (5635 + 23 new tests). The interpreter
   resolved `/app/mindsos_llm`. **No call to a model provider was made.**
+
+- **2026-10-29 (I-22–I-25 DONE)** — **Merged as PR #282** (squash `7d7b3e4`, tag
+  `llm-hardening-confirmed`). `main` had not moved since `e935cf8`: RULES 12.2(a)
+  discharged by equal trees, `7d7b3e4^{tree}` == `2de58a1^{tree}`; the only
+  commit after the gated `ca4034d` is the docs-only §6 evidence. CI on PR #282:
+  SUCCESS. ADR-0210 amendment 10 is Accepted. **Every item on the DONE WHEN line
+  is DONE.** ⚠ **NOT CLAIMED:** that a provider other than Anthropic reports a
+  cut the same way (each adapter maps its own); that a consumer's transport
+  refuses a cut reply (named unverifiable). **No call to a model provider was
+  made.**

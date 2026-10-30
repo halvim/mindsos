@@ -639,6 +639,15 @@
   "recent": [
     {
       "kind": "core",
+      "name": "mindsos_llm plan items I-22..I-25 - a cut reply is refused, a recording never replaces an answer, a client asks one question once, and the mindsos_llm guide",
+      "sha": "7d7b3e4 (PR #282). RULES 12.2(a) by EQUAL TREES: 2de58a1.",
+      "tag": "llm-hardening-confirmed",
+      "gate": "LINUX box at ca4034d: targeted (llm_seam, architecture, recorded_sets_role, origin_records) 866 passed; 8 mutation rows, every red predicted by name; full suite 5658/5/1/0 (+23), predicted exactly. CI on PR #282: SUCCESS. Guards born red at e101f59 (import of the missing names) and 0339e0e (guide FileNotFoundError).",
+      "what": "R64: every adapter reads the provider's stop reason; a reply cut at the token ceiling raises seam.TransportAnswerCut and the client AnswerCutAtCeiling - our stop, never a refusal, not retryable; named in contract.UNVERIFIABLE_PROPERTIES. R65: RecordingStore.put refuses a different answer under a held request_key (RecordedAnswerConflict). R66: LiveLLM keeps the first outcome per request_key (answer, undecodable, cut; not an outage); the ceiling counts provider calls. R67: docs/usage/runtime/mindsos-llm-guide.md, the package's entry document. One gate by owner ruling. No model provider called.",
+      "docs": "docs/usage/runtime/mindsos-llm-guide.md (new); docs/plans/MINDSOS_LLM_PLAN.md (R64-R67, I-22..I-25, DONE WHEN, ORDER, 6); docs/decisions/adr/0210-llm-communication-layering.md (amendment 10, Accepted); docs/usage/runtime/llm-capability-contract.md (rows 4, 5, 7; guide pointer); mindsos_llm/__init__.py and mindsos_capacity/builtins/comprehension_v0.py docstrings"
+    },
+    {
+      "kind": "core",
       "name": "mindsos_llm plan item I-21 - a proven re-run: the walk lists what leaned on the model, and a re-run is proven model-free or says why not",
       "sha": "57460ad (PR #280, gate 3); gate 1 92429ff (PR #278), gate 2 1721b61 (PR #279). RULES 12.2(a) by EQUAL TREES at all three gates: b83672d, 9bcbc3c, bb22f02.",
       "tag": "llm-interpreted-declarations-confirmed, llm-proven-walk-confirmed, llm-proven-rerun-confirmed",
