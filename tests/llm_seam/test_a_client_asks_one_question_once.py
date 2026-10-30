@@ -11,6 +11,8 @@ The call ceiling counts provider calls, so a repeat costs nothing.
 
 from __future__ import annotations
 
+import copy
+
 import pytest
 
 from mindsos_capacity.builtins.comprehension_v0 import build_reader
@@ -144,7 +146,7 @@ def test_a_repeat_does_not_count_toward_the_ceiling():
 
 
 def test_a_returned_answer_is_a_copy():
-    client = _client(_Transport(lambda: dict(ANSWER)))
+    client = _client(_Transport(lambda: copy.deepcopy(ANSWER)))
     first = _read(client)
     first["fields"].clear()
     assert _read(client)["fields"] == ANSWER["fields"]

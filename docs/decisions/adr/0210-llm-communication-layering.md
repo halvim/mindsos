@@ -910,3 +910,33 @@ a reading's origin record rather than its value is never provable (built as *not
 proven*, R58); a write body's reads of the role it writes (measured 2026-10-28: no
 such body has outputs; nothing checks that stays so); interpretation's own L4 read
 of `request-patterns`, which produces no value.
+
+## Amendment 10 — a cut reply is refused, a recording never replaces an answer, a client asks once (2026-10-29)
+
+**Amendment status:** Proposed (2026-10-29) — plan items I-22, I-23, I-24 and
+I-25 of `docs/plans/MINDSOS_LLM_PLAN.md`, rulings R64–R67 (OWNER 2026-10-29),
+shipping in one gate. The decision above stands.
+
+1. **A reply cut at the token ceiling is never an answer** (R64). Every adapter
+   reads its provider's stop reason and raises `seam.TransportAnswerCut`; the
+   Anthropic adapter's is `stop_reason == "max_tokens"` (`STOP_AT_CEILING`), on
+   both the credentialled and the brokered entry point. The client raises
+   `exceptions.AnswerCutAtCeiling`: our stop, never a refusal on the case, not
+   retryable, no refusal token. A transport core did not write cannot be checked
+   for it from outside: `contract.UNVERIFIABLE_PROPERTIES` names
+   `refuses_an_answer_cut_at_the_ceiling`.
+2. **A recording never replaces an answer it already holds** (R65).
+   `RecordingStore.put` refuses a different answer under a held `request_key`
+   (`exceptions.RecordedAnswerConflict`) and keeps the first; the same answer
+   again changes nothing.
+3. **A client asks one question once** (R66). `LiveLLM` keeps the first outcome
+   of each `request_key` — an answer, an undecodable answer, or a cut reply — and
+   answers a repeat from it; an outage is not kept. The call ceiling counts
+   provider calls, so a repeat does not count. Several readers sharing one prompt
+   and schema therefore cost one call, and a capture records one answer.
+4. **One entry document** (R67): `docs/usage/runtime/mindsos-llm-guide.md`. It
+   owns no scope; adapters for other vendors are added when a deployment needs
+   one.
+
+**Not claimed.** That a provider other than Anthropic reports a cut the same way
+(each adapter maps its own); that a consumer's transport refuses a cut reply.

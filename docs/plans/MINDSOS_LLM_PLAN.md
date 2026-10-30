@@ -587,6 +587,45 @@ must mean *no model in its lineage*. Authority: R49, R50.
 **R63 — `rerun` stays the one-reading primitive the proof calls**, and its report
 is not a proof (contract row 12). Authority: R41, R47.
 
+---
+
+**R64 — a reply the provider cut at the token ceiling is never an answer.**
+Measured on `e935cf8`: no adapter read the provider's stop reason (no
+`stop_reason` anywhere in `mindsos_llm/`), so a reply cut at `max_tokens` that
+still decoded was taken as complete. Every adapter reads its provider's stop
+reason and raises `seam.TransportAnswerCut`; the client raises
+`AnswerCutAtCeiling`. The ceiling is our configuration, so the cut is **our stop,
+never a refusal** on the case (the `e440808` rule). **Not retryable** — measured,
+a transport failure becomes `LLMCallFailed`, which is `retryable = True`, and a
+second attempt at the same ceiling is the same cut. No refusal token, as
+`LLMCallBudgetExceeded` carries none. Named in `contract.UNVERIFIABLE_PROPERTIES`
+for a transport core did not write. **OWNER 2026-10-29.**
+
+**R65 — a recording never replaces an answer it already holds.** Measured:
+`RecordingStore.put` assigned with no check, so a second, different answer under
+one `request_key` silently replaced the first, and a conclusion minted from the
+first replayed to the second. `put` refuses (`RecordedAnswerConflict`) and keeps
+the first; the same answer again changes nothing. **OWNER 2026-10-29.**
+
+**R66 — a client asks one question once.** Measured: readers may share a prompt
+and schema, each taking its own field from `fields`, but `LiveLLM.read` called
+the provider every time, so N readers of one document paid N calls under one
+`request_key`. A client keeps the first outcome of each `request_key` — an
+answer, an undecodable answer, or a cut reply — and answers a repeat from it; an
+outage is not kept. This is what `request_key` already meant for replay
+(`recording.py`). **The call ceiling counts provider calls**, so a repeat does
+not count; `test_the_ceiling_is_enforced_BEFORE_the_transport_is_called` now
+reaches it with a second, different question. A consumer measuring repeat
+stability builds one client per repetition. **OWNER 2026-10-29** (replacing the
+same day's proposal of new L3 builders for a call-once step).
+
+**R67 — the package has one entry document**,
+`docs/usage/runtime/mindsos-llm-guide.md`: what it is, why each part exists (by
+commit), the intended use end to end with the test for each step, modes and
+levels, how a vendor is added, and its limits. It owns no scope (§0.4). Adapters
+for other vendors, and any credential level they bring, are added when a
+deployment needs one — not a gap. **OWNER 2026-10-29.**
+
 ## 3. THE ITEM LIST
 
 | id | item | filed as | state |
@@ -613,12 +652,16 @@ is not a proof (contract row 12). Authority: R41, R47.
 | I-19 | a run records where each of its starts came from — `given`, `produced` by named instances in named run graphs, or `unrecorded` — and snapshots the model declarations of the capacities it composed, as they were when it ran. **Specified by R50–R52**; ADR-0201 amendment 8; three gates (§6, 2026-10-09) | core-llm-rerun-proven-model-free | DONE(659e46f) |
 | I-20 | reads of stored knowledge are declared by role: the read channels reach a body only when declared, on both invoke paths, limited to the declared roles, held by an AST census; the run records the declaration. **Specified by R48**; two gates (§6, 2026-10-24: PRs #274, #275) | core-llm-rerun-proven-model-free | DONE(8255725) |
 | I-21 | a proven re-run: the walk lists every value that leaned on the model (R49), and a re-run is proven only when every model-produced ancestor re-derives with exact agreement (R47); the report names what it relied on. **Specified by R47, R49, R52, R53, R54–R63**; three gates (R54; §6, 2026-10-26 → 2026-10-29: PRs #278, #279, #280) | core-llm-rerun-proven-model-free | DONE(57460ad) |
+| I-22 | a reply the provider cut at the token ceiling is refused, as our stop, not retried (R64) | plan §6, 2026-10-29 | TODO |
+| I-23 | a recording never replaces an answer it already holds (R65) | plan §6, 2026-10-29 | TODO |
+| I-24 | a client asks one question once (R66) | plan §6, 2026-10-29 | TODO |
+| I-25 | the package's entry document, `docs/usage/runtime/mindsos-llm-guide.md` (R67) | plan §6, 2026-10-29 | TODO |
 
-**DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17, I-18, I-19, I-20, I-21.**
+**DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16, I-17, I-18, I-19, I-20, I-21, I-22, I-23, I-24, I-25.**
 
-**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅ → I-18 ✅ → I-19 ✅ → I-20 ✅ → I-21 ✅.**
+**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-17 ✅ → I-12 ✅ → I-18 ✅ → I-19 ✅ → I-20 ✅ → I-21 ✅ → I-22, I-23, I-24, I-25 (one gate).**
 
-⚠ **2026-10-29: every item on the DONE WHEN line is DONE.** New work here needs a new item (§0.2).
+⚠ *Superseded the same day:* ~~2026-10-29: every item on the DONE WHEN line is DONE.~~ **2026-10-29 (later): I-22–I-25 are OPEN** (R64–R67), one gate by owner ruling (§6). New work here still needs a new item (§0.2).
 
 ⚠ **I-19, I-20 and I-21 were OPENED 2026-10-09 (R46–R53)** from the 2026-10-07
 proposal, re-measured and amended (§6, 2026-10-09). The order is the dependency:
@@ -1477,3 +1520,23 @@ amendment.)*
   `reads_mm` step makes a value *not proven*); interpretation's own L4 read of
   `request-patterns`; Episodes stored before each I-19–I-21 gate say *not
   recorded*, by design. **No call to a model provider was made.**
+
+- **2026-10-29 (I-22–I-25 opened; R64–R67; one gate)** — The owner asked for
+  `mindsos_llm` to be tested on real work. Reading every commit's motivation
+  and the code at `e935cf8` found three defects in how the package behaves on
+  real calls and no entry document: a reply cut at the token ceiling was taken
+  as complete (R64), a recording could silently replace an answer (R65), readers
+  sharing a prompt paid for one question several times (R66), and nothing said
+  what the package is or how it is meant to be used (R67). Two first proposals
+  were withdrawn the same day: other vendors' adapters and a no-credential level
+  are **not gaps** (added when a deployment needs one, R67), and new L3 builders
+  for a call-once step were **replaced** by R66. Substitutes and what a body
+  does beyond its declaration are not this package's — excision's limits,
+  stated in the guide and contract row 12. **OWNER ruling: all four ship in ONE
+  gate** — they touch disjoint code (adapter/seam/exceptions; `recording.py`;
+  `LiveLLM.read`) and the guide describes the result; each keeps its own guard
+  file, born red, and its own mutation rows. All four rows take the gate's
+  squash sha. Born red at `e101f59`: the three code guards failed to import the
+  missing names (`AnswerCutAtCeiling` ×2, `RecordedAnswerConflict` ×1); the guide
+  guard failed `FileNotFoundError` at `0339e0e`. **No call to a model provider
+  was made.**

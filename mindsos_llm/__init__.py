@@ -1,5 +1,8 @@
 """``mindsos_llm`` — the external-model client.
 
+**Start at** ``docs/usage/runtime/mindsos-llm-guide.md``: what this package is,
+why each part exists, and how it is meant to be used.
+
 **This package holds no cognition.** It is transport typing,
 configuration, decoding, recording and replay for consulting an external
 language model, and nothing else. The *reading* — deciding what a
