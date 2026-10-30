@@ -1,5 +1,8 @@
 """``mindsos_llm`` — the external-model client.
 
+**Start at** ``docs/usage/runtime/mindsos-llm-guide.md``: what this package is,
+why each part exists, and how it is meant to be used.
+
 **This package holds no cognition.** It is transport typing,
 configuration, decoding, recording and replay for consulting an external
 language model, and nothing else. The *reading* — deciding what a
@@ -92,10 +95,12 @@ from .credentials import (
     static_resolver,
 )
 from .exceptions import (
+    AnswerCutAtCeiling,
     LLMCallBudgetExceeded,
     LLMCallFailed,
     LLMError,
     MalformedResponse,
+    RecordedAnswerConflict,
     RecordedResponseMiss,
     TransportContractError,
     TransportSignatureError,
@@ -112,6 +117,7 @@ from .recording import RecordingStore, request_key
 from .replay import RecordedLLM
 
 __all__ = [
+    "AnswerCutAtCeiling",
     "BROKER_PROTOCOL_VERSION",
     "BrokerContractViolated",
     "LEVELS",
@@ -127,6 +133,7 @@ __all__ = [
     "LLMError",
     "LiveLLM",
     "MalformedResponse",
+    "RecordedAnswerConflict",
     "RecordedLLM",
     "RecordedResponseMiss",
     "RecordedSetRefused",

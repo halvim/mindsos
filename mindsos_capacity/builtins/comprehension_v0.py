@@ -17,7 +17,9 @@ finder would have nothing to compose through and a run record nothing
 to cite. :func:`build_reader` is therefore a factory — a Skill registers
 one reader per value it needs. Note the shipped executor holds one value
 per DataState IRI, so two readers producing "a date" must produce two
-*different* date types.
+*different* date types. Several readers may share one prompt and schema, each
+taking its own field from the same answer: the client asks one question once
+(``mindsos_llm`` plan R66), so they cost one call.
 
 **Every reading is checked against the source.** The model must return a
 verbatim quote for the value it reports. The body locates that quote in the

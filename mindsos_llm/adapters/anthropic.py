@@ -63,7 +63,9 @@ from typing import Any, Callable, Mapping, Optional
 from ..broker import broker_headers, require_broker_endpoint, verify_broker_response
 from ..credentials import LEVEL_NEVER_KNOWN, LEVEL_NEVER_STORED, Resolver
 from ..seam import (
+    ANSWER_CUT,
     NO_ANSWER,
+    TransportAnswerCut,
     TransportCallFailed,
     build_headers,
     declared_properties,
@@ -83,6 +85,9 @@ ENDPOINT = "https://api.anthropic.com/v1/messages"
 
 #: The wire version header the Messages API requires.
 API_VERSION = "2023-06-01"
+
+#: The Messages API's stop reason for a reply cut at ``max_tokens`` (plan R64).
+STOP_AT_CEILING = "max_tokens"
 
 #: The credential header. Named here because the seam has to know what to
 #: scrub, and scrubbing the wrong name is a silent failure of the one property
@@ -202,6 +207,10 @@ def _build(
             envelope = json.loads(response.read().decode("utf-8"))
         except Exception as exc:
             raise TransportCallFailed(NO_ANSWER) from exc
+        if envelope.get("stop_reason") == STOP_AT_CEILING:
+            # Plan R64: a cut reply may still decode into a well-formed object
+            # missing whatever came after the cut. Never an answer.
+            raise TransportAnswerCut(ANSWER_CUT)
         blocks = [
             block
             for block in envelope.get("content") or []
@@ -299,6 +308,7 @@ __all__ = [
     "BROKERED_LEVELS",
     "CREDENTIAL_HEADER",
     "ENDPOINT",
+    "STOP_AT_CEILING",
     "SUPPORTED_LEVELS",
     "VENDOR_ID",
     "build_brokered_transport",
