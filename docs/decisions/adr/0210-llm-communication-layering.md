@@ -913,9 +913,9 @@ of `request-patterns`, which produces no value.
 
 ## Amendment 10 — a cut reply is refused, a recording never replaces an answer, a client asks once (2026-10-29)
 
-**Amendment status:** Proposed (2026-10-29) — plan items I-22, I-23, I-24 and
-I-25 of `docs/plans/MINDSOS_LLM_PLAN.md`, rulings R64–R67 (OWNER 2026-10-29),
-shipping in one gate. The decision above stands.
+**Amendment status:** Accepted (2026-10-29) — plan items I-22, I-23, I-24 and
+I-25 of `docs/plans/MINDSOS_LLM_PLAN.md` DONE(`7d7b3e4`), rulings R64–R67 (OWNER
+2026-10-29), shipped in one gate (PR #282). The decision above stands.
 
 1. **A reply cut at the token ceiling is never an answer** (R64). Every adapter
    reads its provider's stop reason and raises `seam.TransportAnswerCut`; the
